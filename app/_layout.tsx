@@ -8,11 +8,14 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { SQLiteProvider } from "expo-sqlite";
 import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import "react-native-reanimated";
 
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { migrateDbIfNeeded } from "@/services/database";
+import { Loader } from "@/components/Loader";
+
+const DATABASE_PATH = "../assets/db/dict.db";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -33,14 +36,22 @@ export default function RootLayout() {
   }
 
   return (
-    <SQLiteProvider databaseName="../assets/db/dict.db" onInit={migrateDbIfNeeded}>
-      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="+not-found" />
-        </Stack>
-        <StatusBar style="auto" />
-      </ThemeProvider>
-    </SQLiteProvider>
+    <Suspense fallback={<Loader />}>
+      <SQLiteProvider
+        databaseName="jisho.db"
+        assetSource={{ assetId: require(DATABASE_PATH) }}
+        onInit={migrateDbIfNeeded}
+        useSuspense
+      >
+        <ThemeProvider
+          value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
+        >
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="(home)" />
+          </Stack>
+          <StatusBar style="auto" />
+        </ThemeProvider>
+      </SQLiteProvider>
+    </Suspense>
   );
 }

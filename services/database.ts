@@ -1,4 +1,5 @@
 import { SQLiteDatabase } from "expo-sqlite";
+import * as wanakana from "wanakana";
 
 export interface DictionaryEntry {
   id: number;
@@ -6,13 +7,13 @@ export interface DictionaryEntry {
   reading: string;
   reading_hiragana?: string;
   kanji?: string;
-  meanings: {
+  meanings: Array<{
     meaning: string;
-    partOfSpeech?: string;
-    field?: string;
-    misc?: string;
-    info?: string;
-  }[];
+    part_of_speech: string | null;
+    field: string | null;
+    misc: string | null;
+    info: string | null;
+  }>;
 }
 
 interface WordRow {
@@ -23,6 +24,16 @@ interface WordRow {
   kanji: string | null;
   position: number;
 }
+
+/*
+{
+    "meaning": "dictionary of Chinese characters;kanji dictionary",
+    "part_of_speech": "n",
+    "field": "",
+    "misc": "",
+    "info": null
+  },
+*/
 
 interface MeaningRow {
   meaning: string;
@@ -41,6 +52,7 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
   let currentDbVersion = versionResult?.user_version ?? 0;
 
   if (currentDbVersion >= DATABASE_VERSION) {
+    console.log("Database is up-to-date", currentDbVersion);
     return;
   }
 
@@ -77,25 +89,118 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
     await db.execAsync(`PRAGMA user_version = 1`);
     currentDbVersion = 1;
   }
+
+  console.log("Database migrated to version", currentDbVersion);
+}
+
+interface SearchQuery {
+  original: string;
+  hiragana?: string;
+  katakana?: string;
+  romaji?: string;
+}
+
+function processSearchQuery(query: string): SearchQuery {
+  const result: SearchQuery = { original: query };
+
+  if (wanakana.isRomaji(query)) {
+    result.hiragana = wanakana.toHiragana(query);
+    result.katakana = wanakana.toKatakana(query);
+  } else if (wanakana.isJapanese(query)) {
+    result.romaji = wanakana.toRomaji(query);
+    if (wanakana.isKatakana(query)) {
+      result.hiragana = wanakana.toHiragana(query);
+    } else if (wanakana.isHiragana(query)) {
+      result.katakana = wanakana.toKatakana(query);
+    }
+  }
+
+  return result;
 }
 
 export async function searchDictionary(
   db: SQLiteDatabase,
   query: string
 ): Promise<DictionaryEntry[]> {
-  // First get matching words
-  const words = await db.getAllAsync<WordRow>(
-    `
-    SELECT * FROM words
-    WHERE word LIKE ?
-    OR reading LIKE ?
-    OR kanji LIKE ?
-    LIMIT 50
-  `,
-    [`%${query}%`, `%${query}%`, `%${query}%`]
+  const processedQuery = processSearchQuery(query);
+  const whereClauses: string[] = [];
+  const params: string[] = [];
+
+  // Add exact match conditions
+  whereClauses.push(`(
+    word LIKE ? OR
+    reading LIKE ? OR
+    kanji LIKE ? OR
+    word LIKE ? OR
+    reading LIKE ? OR
+    kanji LIKE ?
+  )`);
+  // Add parameters for exact start matches and contained matches
+  params.push(
+    `${processedQuery.original}%`,
+    `${processedQuery.original}%`,
+    `${processedQuery.original}%`,
+    `%${processedQuery.original}%`,
+    `%${processedQuery.original}%`,
+    `%${processedQuery.original}%`
   );
 
-  // Then get meanings for each word
+  if (processedQuery.hiragana) {
+    whereClauses.push(`(
+      word LIKE ? OR
+      reading LIKE ? OR
+      reading_hiragana LIKE ? OR
+      word LIKE ? OR
+      reading LIKE ? OR
+      reading_hiragana LIKE ?
+    )`);
+    params.push(
+      `${processedQuery.hiragana}%`,
+      `${processedQuery.hiragana}%`,
+      `${processedQuery.hiragana}%`,
+      `%${processedQuery.hiragana}%`,
+      `%${processedQuery.hiragana}%`,
+      `%${processedQuery.hiragana}%`
+    );
+  }
+
+  if (processedQuery.katakana) {
+    whereClauses.push(`(
+      word LIKE ? OR
+      reading LIKE ? OR
+      word LIKE ? OR
+      reading LIKE ?
+    )`);
+    params.push(
+      `${processedQuery.katakana}%`,
+      `${processedQuery.katakana}%`,
+      `%${processedQuery.katakana}%`,
+      `%${processedQuery.katakana}%`
+    );
+  }
+
+  const words = await db.getAllAsync<WordRow>(
+    `
+    SELECT DISTINCT * FROM words
+    WHERE
+      ${whereClauses.join(" OR ")}
+      AND length(word) >= ${Math.min(query.length, 2)}
+    ORDER BY
+      CASE
+        WHEN word = ? THEN 1
+        WHEN reading = ? THEN 2
+        WHEN kanji = ? THEN 3
+        WHEN word LIKE ? THEN 4
+        WHEN reading LIKE ? THEN 5
+        WHEN kanji LIKE ? THEN 6
+        ELSE 7
+      END,
+      length(word)
+    LIMIT 50
+    `,
+    [...params, query, query, query, `${query}%`, `${query}%`, `${query}%`]
+  );
+
   const entries: DictionaryEntry[] = await Promise.all(
     words.map(async (word) => {
       const meanings = await db.getAllAsync<MeaningRow>(
@@ -103,7 +208,7 @@ export async function searchDictionary(
         SELECT meaning, part_of_speech, field, misc, info
         FROM meanings
         WHERE word_id = ?
-      `,
+        `,
         [word.id]
       );
 
@@ -113,13 +218,7 @@ export async function searchDictionary(
         reading: word.reading,
         reading_hiragana: word.reading_hiragana || undefined,
         kanji: word.kanji || undefined,
-        meanings: meanings.map((m) => ({
-          meaning: m.meaning,
-          partOfSpeech: m.part_of_speech || undefined,
-          field: m.field || undefined,
-          misc: m.misc || undefined,
-          info: m.info || undefined,
-        })),
+        meanings,
       };
     })
   );
@@ -127,7 +226,6 @@ export async function searchDictionary(
   return entries;
 }
 
-// Helper function to get a single entry by ID
 export async function getDictionaryEntry(
   db: SQLiteDatabase,
   id: number
@@ -156,12 +254,6 @@ export async function getDictionaryEntry(
     reading: word.reading,
     reading_hiragana: word.reading_hiragana || undefined,
     kanji: word.kanji || undefined,
-    meanings: meanings.map((m) => ({
-      meaning: m.meaning,
-      partOfSpeech: m.part_of_speech || undefined,
-      field: m.field || undefined,
-      misc: m.misc || undefined,
-      info: m.info || undefined,
-    })),
+    meanings,
   };
 }
