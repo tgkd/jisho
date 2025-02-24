@@ -1,9 +1,11 @@
-import { StyleSheet, TextInput, FlatList, View, ActivityIndicator } from 'react-native';
+import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
+import { ActivityIndicator, FlatList, StyleSheet, TextInput, View } from 'react-native';
+
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { Colors } from '@/constants/Colors';
 import { useThemeColor } from '@/hooks/useThemeColor';
-import { useSQLiteContext } from 'expo-sqlite';
 import { searchDictionary, type DictionaryEntry } from '@/services/database';
 
 export default function ExploreScreen() {
@@ -76,11 +78,13 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   searchInput: {
-    height: 48,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    fontSize: 16,
+    height: 36,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    fontSize: 17,
+    backgroundColor: Colors.light.secondaryBackground,
     marginBottom: 16,
+    color: Colors.light.text,
   },
   loading: {
     marginTop: 20,
@@ -90,8 +94,9 @@ const styles = StyleSheet.create({
   },
   resultItem: {
     padding: 16,
-    borderRadius: 8,
+    borderRadius: 10,
     marginBottom: 8,
+    backgroundColor: Colors.light.groupedBackground,
   },
   wordContainer: {
     flexDirection: 'row',
@@ -100,13 +105,16 @@ const styles = StyleSheet.create({
   },
   kanji: {
     fontSize: 20,
+    fontWeight: '600',
     marginRight: 8,
   },
   reading: {
-    fontSize: 16,
+    fontSize: 15,
+    color: Colors.light.secondaryText,
   },
   meanings: {
-    fontSize: 14,
-    opacity: 0.7,
+    fontSize: 15,
+    color: Colors.light.secondaryText,
+    lineHeight: 20,
   },
 });

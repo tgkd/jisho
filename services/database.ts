@@ -4,7 +4,7 @@ import * as wanakana from "wanakana";
 export interface DictionaryEntry {
   id: number;
   word: string;
-  reading: string;
+  reading: string[];
   reading_hiragana?: string;
   kanji?: string;
   meanings: Array<{
@@ -215,7 +215,7 @@ export async function searchDictionary(
       return {
         id: word.id,
         word: word.word,
-        reading: word.reading,
+        reading: word.reading.split(";"),
         reading_hiragana: word.reading_hiragana || undefined,
         kanji: word.kanji || undefined,
         meanings,
@@ -251,7 +251,7 @@ export async function getDictionaryEntry(
   return {
     id: word.id,
     word: word.word,
-    reading: word.reading,
+    reading: word.reading.split(";"),
     reading_hiragana: word.reading_hiragana || undefined,
     kanji: word.kanji || undefined,
     meanings,
