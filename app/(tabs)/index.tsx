@@ -1,74 +1,190 @@
-import { Image, StyleSheet, Platform } from 'react-native';
-
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
+import { StyleSheet, TextInput, FlatList, View, ActivityIndicator, TouchableOpacity, Platform } from 'react-native';
+import { useState, useEffect } from 'react';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { router } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { databaseService } from '@/services/database';
+import { useThemeColor } from '@/hooks/useThemeColor';
+import { IconSymbol } from '@/components/ui/IconSymbol';
+
+interface SearchResult {
+  id: number;
+  kanji?: string[];
+  reading: string[];
+  meanings: string[];
+}
 
 export default function HomeScreen() {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isDbReady, setIsDbReady] = useState(false);
+  const inputBackground = useThemeColor({ light: '#fff', dark: '#1c1c1c' }, 'background');
+
+  useEffect(() => {
+    const initDb = async () => {
+      try {
+        await databaseService.init();
+        setIsDbReady(true);
+      } catch (error) {
+        console.error('Failed to initialize database:', error);
+      }
+    };
+    initDb();
+  }, []);
+
+  const handleSearch = async (text: string) => {
+    setQuery(text);
+    if (text.length < 1) {
+      setResults([]);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const searchResults = await databaseService.searchByQuery(text);
+      setResults(searchResults);
+    } catch (error) {
+      console.error('Search failed:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleWordPress = (item: SearchResult) => {
+    router.push({
+      pathname: '/(tabs)/word-detail',
+      params: {
+        id: item.id.toString(),
+        kanji: item.kanji?.[0],
+        reading: JSON.stringify(item.reading),
+        meanings: JSON.stringify(item.meanings),
+      },
+    });
+  };
+
+  const renderItem = ({ item }: { item: SearchResult }) => (
+    <TouchableOpacity onPress={() => handleWordPress(item)}>
+      <ThemedView style={styles.resultItem}>
+        <View style={styles.wordContainer}>
+          {item.kanji && item.kanji.length > 0 && (
+            <ThemedText type="title" style={styles.kanji}>
+              {item.kanji[0]}
+            </ThemedText>
+          )}
+          <ThemedText style={styles.reading}>{item.reading[0]}</ThemedText>
+        </View>
+        <ThemedText style={styles.meanings}>
+          {item.meanings.slice(0, 3).join('; ')}
+        </ThemedText>
+      </ThemedView>
+    </TouchableOpacity>
+  );
+
+  if (!isDbReady) {
+    return (
+      <ThemedView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" />
+        <ThemedText style={styles.loadingText}>Loading dictionary...</ThemedText>
+      </ThemedView>
+    );
+  }
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12'
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          Tap the Explore tab to learn more about what's included in this starter app.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{' '}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    <ThemedView style={styles.container}>
+      <KeyboardAwareScrollView
+        enableOnAndroid
+        enableResetScrollToCoords={false}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={styles.scrollContent}>
+        
+        <View style={styles.searchContainer}>
+          <TextInput
+            style={[styles.searchInput, { backgroundColor: inputBackground }]}
+            placeholder="Search in English or Japanese..."
+            value={query}
+            onChangeText={handleSearch}
+            placeholderTextColor="#666"
+            returnKeyType="search"
+            clearButtonMode="while-editing"
+          />
+        </View>
+        
+        {isLoading ? (
+          <ActivityIndicator style={styles.loading} />
+        ) : (
+          <FlatList
+            data={results}
+            renderItem={renderItem}
+            keyExtractor={(item) => item.id.toString()}
+            contentContainerStyle={styles.listContainer}
+            keyboardDismissMode="on-drag"
+            keyboardShouldPersistTaps="handled"
+            scrollEnabled={false} // The parent KeyboardAwareScrollView handles scrolling
+          />
+        )}
+      </KeyboardAwareScrollView>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
   },
-  stepContainer: {
-    gap: 8,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+  },
+  searchContainer: {
+    padding: 16,
+    paddingTop: Platform.OS === 'ios' ? 60 : 16, // Account for status bar on iOS
+    backgroundColor: 'transparent',
+  },
+  searchInput: {
+    height: 48,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    fontSize: 16,
+  },
+  loading: {
+    marginTop: 20,
+  },
+  listContainer: {
+    padding: 16,
+  },
+  resultItem: {
+    padding: 16,
+    borderRadius: 8,
     marginBottom: 8,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
+  wordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  kanji: {
+    fontSize: 24,
+    marginRight: 8,
+  },
+  reading: {
+    fontSize: 18,
+  },
+  meanings: {
+    fontSize: 14,
+    opacity: 0.7,
+  },
+  headerIcon: {
+    bottom: -90,
+    left: -35,
     position: 'absolute',
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
 });
