@@ -13,20 +13,14 @@ export function Card({
   children,
   ...props
 }: CardProps) {
-  const colorScheme = useColorScheme() ?? 'light';
-  const backgroundColor = variant === "grouped"
-    ? Colors[colorScheme].groupedBackground
-    : Colors[colorScheme].background;
+  const colorScheme = useColorScheme() ?? "light";
+  const backgroundColor =
+    variant === "grouped"
+      ? Colors[colorScheme].groupedBackground
+      : Colors[colorScheme].secondaryBackground; // Changed to use secondaryBackground (white in light mode)
 
   return (
-    <ThemedView
-      style={[
-        styles.card,
-        { backgroundColor },
-        style
-      ]}
-      {...props}
-    >
+    <ThemedView style={[styles.card, { backgroundColor }, style]} {...props}>
       {children}
     </ThemedView>
   );
@@ -36,10 +30,5 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 10,
     padding: 16,
-    // iOS card styling
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 1,
   },
 });

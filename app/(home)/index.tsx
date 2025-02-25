@@ -18,6 +18,8 @@ import {
 type SearchMode = "japanese" | "english";
 
 export default function HomeScreen() {
+  const inputBackground = useThemeColor({}, "secondaryBackground");
+  const inputTextColor = useThemeColor({}, "text");
   const db = useSQLiteContext();
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<DictionaryEntry[]>([]);
@@ -53,22 +55,6 @@ export default function HomeScreen() {
     string
   >(handleSearch);
 
-  const inputBackground = useThemeColor(
-    {
-      light: Colors.light.secondaryBackground,
-      dark: Colors.dark.secondaryBackground,
-    },
-    "background"
-  );
-
-  const inputTextColor = useThemeColor(
-    {
-      light: Colors.light.text,
-      dark: Colors.dark.text,
-    },
-    "text"
-  );
-
   const renderEmpty = () => {
     if (loading) {
       return null;
@@ -76,13 +62,13 @@ export default function HomeScreen() {
 
     if (query) {
       return (
-        <ThemedText style={styles.listPlaceholderText}>
+        <ThemedText type="secondary" style={styles.listPlaceholderText}>
           {`No results found for "${query}"`}
         </ThemedText>
       );
     } else {
       return (
-        <ThemedText style={styles.listPlaceholderText}>
+        <ThemedText type="secondary" style={styles.listPlaceholderText}>
           {"Start typing to search for words"}
         </ThemedText>
       );
@@ -132,12 +118,13 @@ export default function HomeScreen() {
 
       <FlatList
         data={results}
-        renderItem={ListItem}
+        renderItem={({ index, item }) => (
+          <ListItem index={index} item={item} total={results.length} />
+        )}
         keyExtractor={(item) => item.id.toString()}
         keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.scrollContainer}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
         ListEmptyComponent={renderEmpty}
       />
     </ThemedView>
@@ -147,11 +134,12 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 24,
+    paddingVertical: 24,
   },
   scrollContainer: {
-    padding: 16,
-    paddingTop: 0,
+    marginHorizontal: 16,
+    borderRadius: 10,
+    overflow: "hidden",
   },
   searchContainer: {
     paddingHorizontal: 16,
@@ -161,7 +149,6 @@ const styles = StyleSheet.create({
   searchInput: {
     height: 40,
     fontSize: 17,
-    backgroundColor: Colors.light.secondaryBackground,
     borderRadius: 10,
     paddingHorizontal: 12,
     color: Colors.light.text,
@@ -175,15 +162,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  separator: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: Colors.light.separator,
-  },
   listPlaceholderText: {
     textAlign: "center",
     marginTop: 20,
     fontSize: 17,
-    color: Colors.light.secondaryText,
     letterSpacing: -0.41,
   },
 });

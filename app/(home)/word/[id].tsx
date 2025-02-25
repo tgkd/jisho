@@ -17,10 +17,7 @@ import {
 } from "@/services/database";
 
 export default function WordDetailScreen() {
-  const tintColor = useThemeColor(
-    { light: "#000000", dark: "#ffffff" },
-    "text"
-  );
+  const tintColor = useThemeColor({}, "text");
 
   const params = useLocalSearchParams();
   const title = typeof params.title === "string" ? params.title : "Details";

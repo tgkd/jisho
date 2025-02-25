@@ -3,8 +3,8 @@ import { StyleSheet, TouchableOpacity, View } from "react-native";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
-import { Colors } from "@/constants/Colors";
 import { DictionaryEntry } from "@/services/database";
+import { Colors } from "@/constants/Colors";
 
 /*
 {
@@ -29,7 +29,15 @@ import { DictionaryEntry } from "@/services/database";
 
 */
 
-export function ListItem({ item }: { item: DictionaryEntry }) {
+export function ListItem({
+  item,
+  index,
+  total,
+}: {
+  item: DictionaryEntry;
+  index: number;
+  total: number;
+}) {
   const handleWordPress = (item: DictionaryEntry) => {
     router.push({
       pathname: "/word/[id]",
@@ -44,21 +52,28 @@ export function ListItem({ item }: { item: DictionaryEntry }) {
     .filter((m) => m.text.length > 0);
 
   return (
-    <TouchableOpacity onPress={() => handleWordPress(item)}>
-      <ThemedView style={styles.resultItem}>
-        <View style={styles.titleRow}>
-          <ThemedText type="defaultSemiBold">{item.word}</ThemedText>
-          <ThemedText type="secondary">
-            {`【${item.reading.join(", ")}】`}
-          </ThemedText>
-        </View>
-        {meanings.map((m, idx) => (
-          <View key={idx}>
-            <ThemedText type="secondary">{m.text}</ThemedText>
+    <>
+      <TouchableOpacity onPress={() => handleWordPress(item)}>
+        <ThemedView
+          style={styles.resultItem}
+          lightColor={Colors.light.groupedBackground}
+          darkColor={Colors.dark.groupedBackground}
+        >
+          <View style={styles.titleRow}>
+            <ThemedText type="defaultSemiBold">{item.word}</ThemedText>
+            <ThemedText type="secondary">
+              {`【${item.reading.join(", ")}】`}
+            </ThemedText>
           </View>
-        ))}
-      </ThemedView>
-    </TouchableOpacity>
+          {meanings.map((m, idx) => (
+            <View key={idx}>
+              <ThemedText type="secondary">{m.text}</ThemedText>
+            </View>
+          ))}
+        </ThemedView>
+      </TouchableOpacity>
+      {index < total - 1 ? <View style={styles.separator} /> : null}
+    </>
   );
 }
 
@@ -74,5 +89,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     flexWrap: "wrap",
+  },
+  separator: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: Colors.light.separator,
+    marginHorizontal: 8,
   },
 });

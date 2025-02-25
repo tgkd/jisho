@@ -10,15 +10,15 @@ export const Colors = {
   light: {
     text: "#000000",
     textSecondary: "#3C3C43",
-    background: "#FFFFFF",
+    background: "#F2F2F7", // Changed to iOS standard gray background
     tint: tintColorLight,
     icon: "#3C3C43",
     tabIconDefault: "rgba(60, 60, 67, 0.6)",
     tabIconSelected: tintColorLight,
-    secondaryBackground: "#F2F2F7",
+    secondaryBackground: "#FFFFFF", // Changed to white for cards/inputs
     secondaryText: "#6C6C70",
     separator: "rgba(60, 60, 67, 0.29)",
-    groupedBackground: "#F2F2F7",
+    groupedBackground: "#FFFFFF", // Changed to white for grouped content
     accent: tintColorLight,
   },
   dark: {
