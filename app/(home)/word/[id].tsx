@@ -29,29 +29,36 @@ export default function WordDetailScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const db = useSQLiteContext();
 
-  useEffect(() => {
-    const loadEntry = async () => {
-      try {
-        const result = await getDictionaryEntry(db, Number(params.id));
-        setEntry(result);
+  const loadEntry = async () => {
+    try {
+      const result = await getDictionaryEntry(db, Number(params.id), true);
 
-        if (result) {
-          try {
-            const exampleResults = await searchExamples(db, result.word);
-            setExamples(exampleResults);
-          } catch (error) {
-            console.error("Failed to load examples:", error);
-          }
+      if (result) {
+        if ("examples" in result) {
+          setExamples(result.examples);
+          setEntry({
+            id: result.id,
+            word: result.word,
+            reading: result.reading,
+            reading_hiragana: result.reading_hiragana,
+            kanji: result.kanji,
+            meanings: result.meanings,
+          });
+        } else {
+          setExamples([]);
+          setEntry(result);
         }
-      } catch (error) {
-        console.error("Failed to load dictionary entry:", error);
-      } finally {
-        setIsLoading(false);
       }
-    };
+    } catch (error) {
+      console.error("Failed to load dictionary entry:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     loadEntry();
-  }, [params]);
+  }, []);
 
   if (isLoading) {
     return (

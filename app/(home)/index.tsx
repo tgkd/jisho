@@ -1,20 +1,27 @@
-import { router } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useState } from "react";
 import { FlatList, StyleSheet, TextInput, View } from "react-native";
-import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 
 import { ListItem } from "@/components/ListItem";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Colors } from "@/constants/Colors";
 import { useThemeColor } from "@/hooks/useThemeColor";
 import { useThrottledSearch } from "@/hooks/useThrottledSearch";
-import { DictionaryEntry, searchDictionary } from "@/services/database";
+import {
+  DictionaryEntry,
+  searchByEnglishWord,
+  searchDictionary,
+} from "@/services/database";
+
+type SearchMode = "japanese" | "english";
 
 export default function HomeScreen() {
   const db = useSQLiteContext();
+  const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<DictionaryEntry[]>([]);
+  const [searchMode, setSearchMode] = useState<SearchMode>("japanese");
 
   const handleSearch = async (value: string) => {
     const text = value.trim();
@@ -25,11 +32,19 @@ export default function HomeScreen() {
     }
 
     try {
-      const searchResults = await searchDictionary(db, text);
+      setLoading(true);
+      let searchResults: DictionaryEntry[];
+      if (searchMode === "japanese") {
+        searchResults = await searchDictionary(db, text);
+      } else {
+        searchResults = await searchByEnglishWord(db, text);
+      }
       setResults(searchResults);
     } catch (error) {
       console.error("Search failed:", error);
       setResults([]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -55,6 +70,10 @@ export default function HomeScreen() {
   );
 
   const renderEmpty = () => {
+    if (loading) {
+      return null;
+    }
+
     if (query) {
       return (
         <ThemedText style={styles.listPlaceholderText}>
@@ -70,15 +89,36 @@ export default function HomeScreen() {
     }
   };
 
+  const toggleSearchMode = (mode: SearchMode) => {
+    if (searchMode !== mode) {
+      setSearchMode(mode);
+      if (query) {
+        handleSearch(query);
+      }
+    }
+  };
+
   return (
     <ThemedView style={styles.container}>
       <View style={styles.searchContainer}>
+        <SegmentedControl
+          options={[
+            { label: "Japanese", value: "japanese" },
+            { label: "English", value: "english" },
+          ]}
+          value={searchMode}
+          onChange={(value) => toggleSearchMode(value as SearchMode)}
+        />
         <TextInput
           style={[
             styles.searchInput,
             { backgroundColor: inputBackground, color: inputTextColor },
           ]}
-          placeholder="Search in English or Japanese..."
+          placeholder={
+            searchMode === "japanese"
+              ? "Search in Japanese..."
+              : "Search in English..."
+          }
           value={query || ""}
           onChangeText={handleChange}
           returnKeyType="search"
@@ -115,6 +155,8 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     paddingHorizontal: 16,
+    gap: 10,
+    marginBottom: 10,
   },
   searchInput: {
     height: 40,
