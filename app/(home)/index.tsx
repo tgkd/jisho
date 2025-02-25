@@ -6,7 +6,6 @@ import { ListItem } from "@/components/ListItem";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
-import { Colors } from "@/constants/Colors";
 import { useThemeColor } from "@/hooks/useThemeColor";
 import { useThrottledSearch } from "@/hooks/useThrottledSearch";
 import {
@@ -14,6 +13,7 @@ import {
   searchByEnglishWord,
   searchDictionary,
 } from "@/services/database";
+import { Loader } from "@/components/Loader";
 
 type SearchMode = "japanese" | "english";
 
@@ -28,7 +28,7 @@ export default function HomeScreen() {
   const handleSearch = async (value: string) => {
     const text = value.trim();
 
-    if (text.length < 1) {
+    if (text.length === 0) {
       setResults([]);
       return;
     }
@@ -53,27 +53,7 @@ export default function HomeScreen() {
   const { value: query, handleChange } = useThrottledSearch<
     typeof handleSearch,
     string
-  >(handleSearch);
-
-  const renderEmpty = () => {
-    if (loading) {
-      return null;
-    }
-
-    if (query) {
-      return (
-        <ThemedText type="secondary" style={styles.listPlaceholderText}>
-          {`No results found for "${query}"`}
-        </ThemedText>
-      );
-    } else {
-      return (
-        <ThemedText type="secondary" style={styles.listPlaceholderText}>
-          {"Start typing to search for words"}
-        </ThemedText>
-      );
-    }
-  };
+  >(handleSearch, 200);
 
   const toggleSearchMode = (mode: SearchMode) => {
     if (searchMode !== mode) {
@@ -83,6 +63,14 @@ export default function HomeScreen() {
       }
     }
   };
+
+  const renderItem = ({
+    item,
+    index,
+  }: {
+    item: DictionaryEntry;
+    index: number;
+  }) => <ListItem item={item} index={index} total={results?.length || 0} />;
 
   return (
     <ThemedView style={styles.container}>
@@ -111,21 +99,29 @@ export default function HomeScreen() {
           clearButtonMode="while-editing"
           autoCorrect={false}
           autoCapitalize="none"
-          enablesReturnKeyAutomatically={true}
+          enablesReturnKeyAutomatically
           spellCheck={false}
         />
       </View>
 
       <FlatList
         data={results}
-        renderItem={({ index, item }) => (
-          <ListItem index={index} item={item} total={results.length} />
-        )}
+        renderItem={renderItem}
         keyExtractor={(item) => item.id.toString()}
-        keyboardDismissMode="on-drag"
-        keyboardShouldPersistTaps="handled"
+        ListHeaderComponent={
+          loading ? (
+            <View style={styles.headerContainer}>
+              <Loader />
+            </View>
+          ) : null
+        }
         contentContainerStyle={styles.scrollContainer}
-        ListEmptyComponent={renderEmpty}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        removeClippedSubviews
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={5}
       />
     </ThemedView>
   );
@@ -134,7 +130,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingVertical: 24,
+    paddingBottom: 24,
   },
   scrollContainer: {
     marginHorizontal: 16,
@@ -142,30 +138,42 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   searchContainer: {
-    paddingHorizontal: 16,
-    gap: 10,
-    marginBottom: 10,
+    padding: 16,
+    gap: 16,
   },
   searchInput: {
-    height: 40,
-    fontSize: 17,
+    height: 38,
     borderRadius: 10,
     paddingHorizontal: 12,
-    color: Colors.light.text,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 1,
+    fontSize: 17,
+  },
+  headerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+  },
+  statusText: {
+    fontSize: 14,
+    marginRight: 8,
+  },
+  headerLoader: {
+    width: 14,
+    height: 14,
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: "center",
     alignItems: "center",
+    justifyContent: "center",
+    paddingTop: 32,
   },
-  listPlaceholderText: {
-    textAlign: "center",
-    marginTop: 20,
-    fontSize: 17,
-    letterSpacing: -0.41,
+  emptyContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingTop: 32,
+  },
+  emptyListContent: {
+    flexGrow: 1,
   },
 });

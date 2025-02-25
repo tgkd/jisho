@@ -5,6 +5,7 @@ import {
   StyleSheet,
   useColorScheme,
 } from "react-native";
+
 import { ThemedText } from "../ThemedText";
 import { Colors } from "../../constants/Colors";
 
@@ -69,7 +70,7 @@ export function SegmentedControl<T extends string>({
 const styles = StyleSheet.create({
   segmentedControl: {
     flexDirection: "row",
-    borderRadius: 8,
+    borderRadius: 10,
     overflow: "hidden",
     padding: 2,
   },
@@ -79,7 +80,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 6,
+    borderRadius: 8,
   },
   segmentedControlText: {
     fontSize: 13,

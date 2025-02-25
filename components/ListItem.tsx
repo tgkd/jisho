@@ -5,6 +5,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { DictionaryEntry } from "@/services/database";
 import { Colors } from "@/constants/Colors";
+import { HapticTab } from "./HapticTab";
 
 /*
 {
@@ -53,7 +54,7 @@ export function ListItem({
 
   return (
     <>
-      <TouchableOpacity onPress={() => handleWordPress(item)}>
+      <HapticTab onPress={() => handleWordPress(item)}>
         <ThemedView
           style={styles.resultItem}
           lightColor={Colors.light.groupedBackground}
@@ -71,7 +72,7 @@ export function ListItem({
             </View>
           ))}
         </ThemedView>
-      </TouchableOpacity>
+      </HapticTab>
       {index < total - 1 ? <View style={styles.separator} /> : null}
     </>
   );

@@ -16,9 +16,33 @@ import {
   searchExamples,
 } from "@/services/database";
 
+const PARTS_OF_SPEECH: Record<string, string> = {
+  n: "Noun",
+  v1: "Ichidan verb",
+  v5: "Godan verb",
+  "adj-i": "I-adjective",
+  "adj-na": "Na-adjective",
+  "adj-t": "Taru adjective",
+  adv: "Adverb",
+  exp: "Expression",
+  int: "Interjection",
+  num: "Number",
+  pref: "Prefix",
+  suf: "Suffix",
+  vs: "Suru verb",
+  v5r: "Godan verb (irregular)",
+  vz: "Ichidan verb (zuru)",
+  vi: "Intransitive verb",
+  vk: "Kuru verb",
+  vn: "Irregular nu verb",
+  vr: "Ru verb",
+  "vs-c": "Suru verb - special class",
+  "vs-i": "Suru verb - irregular",
+  "vs-s": "Suru verb - special class",
+};
+
 export default function WordDetailScreen() {
   const tintColor = useThemeColor({}, "text");
-
   const params = useLocalSearchParams();
   const title = typeof params.title === "string" ? params.title : "Details";
   const [entry, setEntry] = useState<DictionaryEntry | null>(null);
@@ -100,28 +124,33 @@ export default function WordDetailScreen() {
                 <ThemedText style={styles.meaningText}>
                   {m.meaning.replaceAll(";", ", ")}
                 </ThemedText>
-                <ThemedText type="secondary">{m.part_of_speech}</ThemedText>
+                {m.part_of_speech && PARTS_OF_SPEECH[m.part_of_speech] ? (
+                  <ThemedText type="secondary">
+                    {PARTS_OF_SPEECH[m.part_of_speech]}
+                  </ThemedText>
+                ) : null}
               </View>
             </View>
           ))}
         </Card>
-        <ThemedText type="title" style={styles.sectionTitle}>
-          Example Sentences
-        </ThemedText>
-        <Card variant="grouped" style={styles.examplesSection}>
-          {examples.map((example, idx) => (
-            <View key={idx} style={styles.exampleItem}>
-              <View>
-                <ThemedText style={styles.japaneseText}>
-                  {example.japanese_text}
-                </ThemedText>
-                <ThemedText type="secondary" style={styles.englishText}>
-                  {example.english_text}
-                </ThemedText>
-              </View>
-            </View>
-          ))}
-        </Card>
+
+        {examples.length ? (
+          <>
+            <ThemedText type="title" style={styles.sectionTitle}>
+              {"Example Sentences"}
+            </ThemedText>
+            <Card variant="grouped" style={styles.examplesSection}>
+              {examples.map((example, idx) => (
+                <View key={idx} style={styles.exampleItem}>
+                  <ThemedText>{example.japanese_text}</ThemedText>
+                  <ThemedText type="secondary">
+                    {example.english_text}
+                  </ThemedText>
+                </View>
+              ))}
+            </Card>
+          </>
+        ) : null}
       </ScrollView>
     </ThemedView>
   );
@@ -181,21 +210,12 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   examplesSection: {
-    gap: 16,
+    gap: 24,
     borderRadius: 10,
     padding: 16,
   },
   exampleItem: {
     gap: 8,
-  },
-  japaneseText: {
-    fontSize: 17,
-    lineHeight: 24,
-  },
-  englishText: {
-    fontSize: 15,
-    lineHeight: 20,
-    marginTop: 4,
   },
   examplesLoading: {
     marginTop: 24,

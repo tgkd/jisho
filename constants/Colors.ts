@@ -20,6 +20,7 @@ export const Colors = {
     separator: "rgba(60, 60, 67, 0.29)",
     groupedBackground: "#FFFFFF", // Changed to white for grouped content
     accent: tintColorLight,
+    link: tintColorLight,
   },
   dark: {
     text: "#FFFFFF",
@@ -34,5 +35,6 @@ export const Colors = {
     separator: "rgba(84, 84, 88, 0.65)",
     groupedBackground: "#1C1C1E",
     accent: tintColorDark,
+    link: tintColorDark,
   },
 };

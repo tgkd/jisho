@@ -11,9 +11,9 @@ import { StatusBar } from "expo-status-bar";
 import { Suspense, useEffect } from "react";
 import "react-native-reanimated";
 
+import { Loader } from "@/components/Loader";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { migrateDbIfNeeded } from "@/services/database";
-import { Loader } from "@/components/Loader";
 
 const DATABASE_PATH = "../assets/db/dict.db";
 
