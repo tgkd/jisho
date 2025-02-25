@@ -9,6 +9,7 @@ function createTables(db) {
       // Drop existing tables if they exist
       db.run("DROP TABLE IF EXISTS meanings");
       db.run("DROP TABLE IF EXISTS words");
+      db.run("DROP TABLE IF EXISTS examples");
 
       // Create words table
       db.run(`
@@ -36,11 +37,23 @@ function createTables(db) {
         )
       `);
 
+      // Create examples table
+      db.run(`
+        CREATE TABLE examples (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          japanese_text TEXT,
+          english_text TEXT,
+          tokens TEXT,
+          example_id TEXT
+        )
+      `);
+
       // Create indexes
       db.run("CREATE INDEX idx_word ON words(word)");
       db.run("CREATE INDEX idx_reading ON words(reading)");
       db.run("CREATE INDEX idx_position ON words(position)");
       db.run("CREATE INDEX idx_kanji ON words(kanji)");
+      db.run("CREATE INDEX idx_japanese_text ON examples(japanese_text)");
 
       console.log("Tables and indexes created successfully");
       resolve();
@@ -120,7 +133,118 @@ async function insertMeanings(db, wordId, senses) {
   }
 }
 
-async function convertToSqlite(ljsonPath, indexPath, outputDb) {
+async function loadExamples(db, examplesPath) {
+  console.log("Loading examples file...");
+  const fileContent = await fs.promises.readFile(examplesPath, "utf8");
+  const lines = fileContent.split("\n");
+
+  console.log(`Found ${lines.length} lines in examples file`);
+
+  let japaneseText = null;
+  let englishText = null;
+  let exampleId = null;
+  let tokens = null;
+
+  const examples = [];
+  let count = 0;
+
+  // Process in batches for better performance
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+
+    if (!line) continue;
+
+    if (line.startsWith("A: ")) {
+      // Japanese sentence and English translation
+      const parts = line.substring(3).split("\t");
+      if (parts.length === 2) {
+        japaneseText = parts[0];
+
+        // Extract example ID from the end of English text
+        const englishWithId = parts[1];
+        const idMatch = englishWithId.match(/#ID=([0-9_]+)$/);
+
+        if (idMatch) {
+          exampleId = idMatch[1];
+          englishText = englishWithId.substring(0, englishWithId.indexOf("#ID=")).trim();
+        } else {
+          exampleId = null;
+          englishText = englishWithId;
+        }
+      }
+    } else if (line.startsWith("B: ") && japaneseText && englishText) {
+      // Token information for the previous sentence
+      tokens = line.substring(3).trim();
+
+      examples.push({
+        japaneseText,
+        englishText,
+        tokens,
+        exampleId
+      });
+
+      count++;
+      japaneseText = null;
+      englishText = null;
+      tokens = null;
+      exampleId = null;
+    }
+  }
+
+  console.log(`Parsed ${count} example sentences`);
+
+  // Insert examples into the database
+  return new Promise((resolve, reject) => {
+    db.run("BEGIN TRANSACTION", async (err) => {
+      if (err) return reject(err);
+
+      try {
+        const stmt = db.prepare(`
+          INSERT INTO examples (japanese_text, english_text, tokens, example_id)
+          VALUES (?, ?, ?, ?)
+        `);
+
+        for (const example of examples) {
+          await new Promise((resolve, reject) => {
+            stmt.run(
+              example.japaneseText,
+              example.englishText,
+              example.tokens,
+              example.exampleId,
+              (err) => {
+                if (err) {
+                  console.error(`Error inserting example: ${err.message}`);
+                  reject(err);
+                } else {
+                  resolve();
+                }
+              }
+            );
+          });
+        }
+
+        await new Promise((resolve, reject) => {
+          stmt.finalize(err => {
+            if (err) reject(err);
+            else resolve();
+          });
+        });
+
+        db.run("COMMIT", (err) => {
+          if (err) reject(err);
+          else {
+            console.log(`Inserted ${examples.length} example sentences into database`);
+            resolve();
+          }
+        });
+      } catch (e) {
+        db.run("ROLLBACK", () => reject(e));
+      }
+    });
+  });
+}
+
+async function convertToSqlite(ljsonPath, indexPath, examplesPath, outputDb) {
   const db = new sqlite3.Database(outputDb);
 
   try {
@@ -189,6 +313,11 @@ async function convertToSqlite(ljsonPath, indexPath, outputDb) {
       );
     }
 
+    // Load example sentences if path is provided
+    if (examplesPath) {
+      await loadExamples(db, examplesPath);
+    }
+
     // Verify results
     const wordCount = await new Promise((resolve, reject) => {
       db.get("SELECT COUNT(*) as count FROM words", (err, row) => {
@@ -204,10 +333,18 @@ async function convertToSqlite(ljsonPath, indexPath, outputDb) {
       });
     });
 
+    const exampleCount = await new Promise((resolve, reject) => {
+      db.get("SELECT COUNT(*) as count FROM examples", (err, row) => {
+        if (err) reject(err);
+        else resolve(row ? row.count : 0);
+      });
+    });
+
     console.log("\nFinal Statistics:");
     console.log(`Total entries processed: ${processed}`);
     console.log(`Words in database: ${wordCount}`);
     console.log(`Meanings in database: ${meaningCount}`);
+    console.log(`Example sentences: ${exampleCount}`);
     console.log(`Errors encountered: ${errors}`);
   } catch (err) {
     console.error("Fatal error:", err);
@@ -235,6 +372,7 @@ function promisify(fn) {
     await convertToSqlite(
       path.resolve(__dirname, "../data/words.ljson"),
       path.resolve(__dirname, "../data/words.idx"),
+      path.resolve(__dirname, "../data/examples.utf"),
       path.resolve(__dirname, "../assets/db/dict.db")
     );
     console.log("Conversion completed successfully");

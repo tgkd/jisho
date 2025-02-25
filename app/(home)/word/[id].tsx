@@ -9,7 +9,12 @@ import { ThemedView } from "@/components/ThemedView";
 import { Card } from "@/components/ui/Card";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { useThemeColor } from "@/hooks/useThemeColor";
-import { DictionaryEntry, getDictionaryEntry } from "@/services/database";
+import {
+  DictionaryEntry,
+  ExampleSentence,
+  getDictionaryEntry,
+  searchExamples,
+} from "@/services/database";
 
 export default function WordDetailScreen() {
   const tintColor = useThemeColor(
@@ -20,6 +25,7 @@ export default function WordDetailScreen() {
   const params = useLocalSearchParams();
   const title = typeof params.title === "string" ? params.title : "Details";
   const [entry, setEntry] = useState<DictionaryEntry | null>(null);
+  const [examples, setExamples] = useState<ExampleSentence[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const db = useSQLiteContext();
 
@@ -28,6 +34,15 @@ export default function WordDetailScreen() {
       try {
         const result = await getDictionaryEntry(db, Number(params.id));
         setEntry(result);
+
+        if (result) {
+          try {
+            const exampleResults = await searchExamples(db, result.word);
+            setExamples(exampleResults);
+          } catch (error) {
+            console.error("Failed to load examples:", error);
+          }
+        }
       } catch (error) {
         console.error("Failed to load dictionary entry:", error);
       } finally {
@@ -86,6 +101,23 @@ export default function WordDetailScreen() {
             </View>
           ))}
         </Card>
+        <ThemedText type="title" style={styles.sectionTitle}>
+          Example Sentences
+        </ThemedText>
+        <Card variant="grouped" style={styles.examplesSection}>
+          {examples.map((example, idx) => (
+            <View key={idx} style={styles.exampleItem}>
+              <View>
+                <ThemedText style={styles.japaneseText}>
+                  {example.japanese_text}
+                </ThemedText>
+                <ThemedText type="secondary" style={styles.englishText}>
+                  {example.english_text}
+                </ThemedText>
+              </View>
+            </View>
+          ))}
+        </Card>
       </ScrollView>
     </ThemedView>
   );
@@ -97,6 +129,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 16,
+    paddingBottom: 24,
   },
   headerSection: {
     alignItems: "center",
@@ -136,5 +169,33 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 16,
+  },
+  sectionTitle: {
+    marginTop: 24,
+    marginBottom: 8,
+    fontSize: 20,
+    fontWeight: "600",
+  },
+  examplesSection: {
+    gap: 16,
+    borderRadius: 10,
+    padding: 16,
+  },
+  exampleItem: {
+    gap: 8,
+  },
+  japaneseText: {
+    fontSize: 17,
+    lineHeight: 24,
+  },
+  englishText: {
+    fontSize: 15,
+    lineHeight: 20,
+    marginTop: 4,
+  },
+  examplesLoading: {
+    marginTop: 24,
+    alignItems: "center",
+    paddingVertical: 16,
   },
 });

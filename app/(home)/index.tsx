@@ -14,7 +14,6 @@ import { DictionaryEntry, searchDictionary } from "@/services/database";
 
 export default function HomeScreen() {
   const db = useSQLiteContext();
-  const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<DictionaryEntry[]>([]);
 
   const handleSearch = async (value: string) => {
@@ -25,15 +24,12 @@ export default function HomeScreen() {
       return;
     }
 
-    setIsLoading(true);
     try {
       const searchResults = await searchDictionary(db, text);
       setResults(searchResults);
     } catch (error) {
       console.error("Search failed:", error);
       setResults([]);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -59,15 +55,7 @@ export default function HomeScreen() {
   );
 
   const renderEmpty = () => {
-    if (isLoading) {
-      return (
-        <View style={styles.loadingContainer}>
-          <ThemedText style={styles.listPlaceholderText}>
-            {"Loading..."}
-          </ThemedText>
-        </View>
-      );
-    } else if (query) {
+    if (query) {
       return (
         <ThemedText style={styles.listPlaceholderText}>
           {`No results found for "${query}"`}

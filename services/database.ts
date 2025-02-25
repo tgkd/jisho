@@ -5,8 +5,8 @@ export interface DictionaryEntry {
   id: number;
   word: string;
   reading: string[];
-  reading_hiragana?: string;
-  kanji?: string;
+  reading_hiragana: string | null;
+  kanji: string | null;
   meanings: Array<{
     meaning: string;
     part_of_speech: string | null;
@@ -16,6 +16,24 @@ export interface DictionaryEntry {
   }>;
 }
 
+export interface ExampleSentence {
+  id: number;
+  japanese_text: string;
+  english_text: string;
+  tokens?: string;
+  example_id?: string;
+}
+
+/* {
+  id: "11",
+  word: "仝",
+  reading: "どう",
+  reading_hiragana: "どう",
+  kanji: "仝",
+  position: "385",
+};
+
+*/
 interface WordRow {
   id: number;
   word: string;
@@ -44,7 +62,7 @@ interface MeaningRow {
 }
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
-  const DATABASE_VERSION = 1;
+  const DATABASE_VERSION = 2;
 
   const versionResult = await db.getFirstAsync<{ user_version: number }>(
     "PRAGMA user_version"
@@ -90,6 +108,23 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
     currentDbVersion = 1;
   }
 
+  if (currentDbVersion === 1) {
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS examples (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        japanese_text TEXT,
+        english_text TEXT,
+        tokens TEXT,
+        example_id TEXT
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_japanese_text ON examples(japanese_text);
+    `);
+
+    await db.execAsync(`PRAGMA user_version = 2`);
+    currentDbVersion = 2;
+  }
+
   console.log("Database migrated to version", currentDbVersion);
 }
 
@@ -126,7 +161,6 @@ export async function searchDictionary(
   const whereClauses: string[] = [];
   const params: string[] = [];
 
-  // Add exact match conditions
   whereClauses.push(`(
     word LIKE ? OR
     reading LIKE ? OR
@@ -135,7 +169,7 @@ export async function searchDictionary(
     reading LIKE ? OR
     kanji LIKE ?
   )`);
-  // Add parameters for exact start matches and contained matches
+
   params.push(
     `${processedQuery.original}%`,
     `${processedQuery.original}%`,
@@ -216,8 +250,8 @@ export async function searchDictionary(
         id: word.id,
         word: word.word,
         reading: word.reading.split(";"),
-        reading_hiragana: word.reading_hiragana || undefined,
-        kanji: word.kanji || undefined,
+        reading_hiragana: word.reading_hiragana,
+        kanji: word.kanji,
         meanings,
       };
     })
@@ -252,8 +286,68 @@ export async function getDictionaryEntry(
     id: word.id,
     word: word.word,
     reading: word.reading.split(";"),
-    reading_hiragana: word.reading_hiragana || undefined,
-    kanji: word.kanji || undefined,
+    reading_hiragana: word.reading_hiragana,
+    kanji: word.kanji,
     meanings,
   };
+}
+
+export async function searchExamples(
+  db: SQLiteDatabase,
+  query: string,
+  limit: number = 20
+): Promise<ExampleSentence[]> {
+  const processedQuery = processSearchQuery(query);
+  const whereClauses: string[] = [];
+  const params: string[] = [];
+
+  // Search in original Japanese text
+  whereClauses.push(`japanese_text LIKE ?`);
+  params.push(`%${processedQuery.original}%`);
+
+  // If we have hiragana form, search with that too
+  if (processedQuery.hiragana) {
+    whereClauses.push(`japanese_text LIKE ?`);
+    params.push(`%${processedQuery.hiragana}%`);
+  }
+
+  // If we have katakana form, search with that too
+  if (processedQuery.katakana) {
+    whereClauses.push(`japanese_text LIKE ?`);
+    params.push(`%${processedQuery.katakana}%`);
+  }
+
+  // Search in token data for more accurate matching
+  if (processedQuery.original) {
+    whereClauses.push(`tokens LIKE ?`);
+    params.push(`%${processedQuery.original}%`);
+  }
+
+  const examples = await db.getAllAsync<ExampleSentence>(
+    `
+    SELECT id, japanese_text, english_text, tokens, example_id
+    FROM examples
+    WHERE ${whereClauses.join(" OR ")}
+    LIMIT ?
+    `,
+    [...params, limit]
+  );
+
+  return examples;
+}
+
+export async function getExampleById(
+  db: SQLiteDatabase,
+  id: number
+): Promise<ExampleSentence | null> {
+  const example = await db.getFirstAsync<ExampleSentence>(
+    `
+    SELECT id, japanese_text, english_text, tokens, example_id
+    FROM examples
+    WHERE id = ?
+    `,
+    [id]
+  );
+
+  return example;
 }
