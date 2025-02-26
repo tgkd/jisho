@@ -3,17 +3,18 @@ import { useState } from "react";
 import { FlatList, StyleSheet, TextInput, View } from "react-native";
 
 import { ListItem } from "@/components/ListItem";
-import { ThemedText } from "@/components/ThemedText";
+import { Loader } from "@/components/Loader";
 import { ThemedView } from "@/components/ThemedView";
-import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { useThemeColor } from "@/hooks/useThemeColor";
-import { useThrottledSearch } from "@/hooks/useThrottledSearch";
 import {
   DictionaryEntry,
   searchByEnglishWord,
   searchDictionary,
 } from "@/services/database";
-import { Loader } from "@/components/Loader";
+import { HapticTab } from "@/components/HapticTab";
+import { IconSymbol } from "@/components/ui/IconSymbol";
+import { Colors } from "@/constants/Colors";
+import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
 
 type SearchMode = "japanese" | "english";
 
@@ -24,9 +25,14 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<DictionaryEntry[]>([]);
   const [searchMode, setSearchMode] = useState<SearchMode>("japanese");
+  const [search, setSearch] = useState("");
 
-  const handleSearch = async (value: string) => {
-    const text = value.trim();
+  const toggleSearchMode = () => {
+    setSearchMode((prev) => (prev === "japanese" ? "english" : "japanese"));
+  };
+
+  const handleSearch = useDebouncedCallback(async (query: string) => {
+    const text = query.trim();
 
     if (text.length === 0) {
       setResults([]);
@@ -48,20 +54,11 @@ export default function HomeScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, 500);
 
-  const { value: query, handleChange } = useThrottledSearch<
-    typeof handleSearch,
-    string
-  >(handleSearch, 200);
-
-  const toggleSearchMode = (mode: SearchMode) => {
-    if (searchMode !== mode) {
-      setSearchMode(mode);
-      if (query) {
-        handleSearch(query);
-      }
-    }
+  const handleChange = (text: string) => {
+    setSearch(text);
+    handleSearch(text);
   };
 
   const renderItem = ({
@@ -75,14 +72,6 @@ export default function HomeScreen() {
   return (
     <ThemedView style={styles.container}>
       <View style={styles.searchContainer}>
-        <SegmentedControl
-          options={[
-            { label: "Japanese", value: "japanese" },
-            { label: "English", value: "english" },
-          ]}
-          value={searchMode}
-          onChange={(value) => toggleSearchMode(value as SearchMode)}
-        />
         <TextInput
           style={[
             styles.searchInput,
@@ -93,7 +82,7 @@ export default function HomeScreen() {
               ? "Search in Japanese..."
               : "Search in English..."
           }
-          value={query || ""}
+          value={search}
           onChangeText={handleChange}
           returnKeyType="search"
           clearButtonMode="while-editing"
@@ -102,6 +91,13 @@ export default function HomeScreen() {
           enablesReturnKeyAutomatically
           spellCheck={false}
         />
+        <HapticTab onPress={toggleSearchMode}>
+          <IconSymbol
+            color={Colors.light.tint}
+            name={searchMode === "japanese" ? "e.circle" : "j.circle"}
+            size={24}
+          />
+        </HapticTab>
       </View>
 
       <FlatList
@@ -138,10 +134,13 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
     padding: 16,
-    gap: 16,
+    gap: 8,
   },
   searchInput: {
+    flex: 1,
     height: 38,
     borderRadius: 10,
     paddingHorizontal: 12,

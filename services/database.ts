@@ -71,8 +71,15 @@ interface MeaningRow {
   info: string | null;
 }
 
+interface SearchQuery {
+  original: string;
+  hiragana?: string;
+  katakana?: string;
+  romaji?: string;
+}
+
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
-  const DATABASE_VERSION = 3;
+  const DATABASE_VERSION = 4;
 
   try {
     const versionResult = await db.getFirstAsync<{ user_version: number }>(
@@ -80,17 +87,13 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
     );
     let currentDbVersion = versionResult?.user_version ?? 0;
 
-    console.log(
-      `Current database version: ${currentDbVersion}, target version: ${DATABASE_VERSION}`
-    );
+    console.log("DB: ", currentDbVersion, DATABASE_VERSION);
 
     if (currentDbVersion >= DATABASE_VERSION) {
-      console.log("Database schema is up to date");
       return;
     }
 
     if (currentDbVersion < 1) {
-      console.log("Applying migration 1: Creating dictionary tables");
       await db.execAsync(`
         PRAGMA journal_mode = 'wal';
 
@@ -122,12 +125,9 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
 
       await db.execAsync(`PRAGMA user_version = 1`);
       currentDbVersion = 1;
-      console.log("Migration 1 completed");
     }
 
-    // Migration 2: Create examples table
     if (currentDbVersion < 2) {
-      console.log("Applying migration 2: Creating examples table");
       await db.execAsync(`
         CREATE TABLE IF NOT EXISTS examples (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -142,12 +142,9 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
 
       await db.execAsync(`PRAGMA user_version = 2`);
       currentDbVersion = 2;
-      console.log("Migration 2 completed");
     }
 
-    // Make sure to add the EDICT tables if they don't exist yet
     if (currentDbVersion < 3) {
-      console.log("Applying migration 3: Ensuring EDICT tables exist");
       await db.execAsync(`
         CREATE TABLE IF NOT EXISTS edict_entries (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -173,7 +170,20 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
 
       await db.execAsync(`PRAGMA user_version = 3`);
       currentDbVersion = 3;
-      console.log("Migration 3 completed");
+    }
+
+    if (currentDbVersion < 4) {
+      await db.execAsync(`
+            CREATE TABLE IF NOT EXISTS bookmarks (
+              id INTEGER PRIMARY KEY,
+              word_id INTEGER NOT NULL,
+              date_added INTEGER NOT NULL,
+              UNIQUE(word_id)
+            );
+          `);
+
+      await db.execAsync(`PRAGMA user_version = 4`);
+      currentDbVersion = 4;
     }
 
     console.log(
@@ -183,13 +193,6 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
     console.error("Migration error:", error);
     throw error;
   }
-}
-
-interface SearchQuery {
-  original: string;
-  hiragana?: string;
-  katakana?: string;
-  romaji?: string;
 }
 
 function processSearchQuery(query: string): SearchQuery {
@@ -582,6 +585,7 @@ export async function resetDatabase(db: SQLiteDatabase): Promise<void> {
       DROP TABLE IF EXISTS edict_fts;
       DROP TABLE IF EXISTS edict_meanings;
       DROP TABLE IF EXISTS edict_entries;
+      DROP TABLE IF EXISTS bookmarks;
     `);
 
     await db.execAsync(`PRAGMA user_version = 0`);
@@ -592,5 +596,90 @@ export async function resetDatabase(db: SQLiteDatabase): Promise<void> {
   } catch (error) {
     console.error("Error resetting database:", error);
     throw error;
+  }
+}
+
+export async function getBookmarks(
+  db: SQLiteDatabase
+): Promise<DictionaryEntry[]> {
+  try {
+    const bookmarks = await db.getAllAsync<{
+      word_id: number;
+      date_added: number;
+    }>(`SELECT word_id, date_added FROM bookmarks ORDER BY date_added DESC`);
+
+    if (bookmarks.length === 0) {
+      return [];
+    }
+
+    const entries: DictionaryEntry[] = [];
+
+    for (const bookmark of bookmarks) {
+      const id = bookmark.word_id;
+
+      if (id >= 1000000) {
+        const entry = await getEdictEntry(db, id);
+        if (entry) entries.push(entry);
+      } else {
+        const entry = await getDictionaryEntry(db, id);
+        if (entry) entries.push(entry);
+      }
+    }
+
+    return entries;
+  } catch (error) {
+    console.error("Error getting bookmarks:", error);
+    return [];
+  }
+}
+
+export async function addBookmark(
+  db: SQLiteDatabase,
+  wordId: number
+): Promise<boolean> {
+  try {
+    await db.runAsync(
+      `
+      INSERT OR REPLACE INTO bookmarks (word_id, date_added)
+      VALUES (?, ?)
+    `,
+      [wordId, Date.now()]
+    );
+
+    return true;
+  } catch (error) {
+    console.error("Error adding bookmark:", error);
+    return false;
+  }
+}
+
+export async function removeBookmark(
+  db: SQLiteDatabase,
+  wordId: number
+): Promise<boolean> {
+  try {
+    await db.runAsync(`DELETE FROM bookmarks WHERE word_id = ?`, [wordId]);
+
+    return true;
+  } catch (error) {
+    console.error("Error removing bookmark:", error);
+    return false;
+  }
+}
+
+export async function isBookmarked(
+  db: SQLiteDatabase,
+  wordId: number
+): Promise<boolean> {
+  try {
+    const result = await db.getFirstAsync<{ count: number }>(
+      `SELECT COUNT(*) as count FROM bookmarks WHERE word_id = ?`,
+      [wordId]
+    );
+
+    return Boolean(result && result.count > 0);
+  } catch (error) {
+    console.error("Error checking bookmark status:", error);
+    return false;
   }
 }

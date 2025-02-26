@@ -3,6 +3,7 @@ import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 
+import { HapticTab } from "@/components/HapticTab";
 import { Loader } from "@/components/Loader";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -10,10 +11,12 @@ import { Card } from "@/components/ui/Card";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { useThemeColor } from "@/hooks/useThemeColor";
 import {
+  addBookmark,
   DictionaryEntry,
   ExampleSentence,
   getDictionaryEntry,
-  searchExamples,
+  isBookmarked,
+  removeBookmark,
 } from "@/services/database";
 
 const PARTS_OF_SPEECH: Record<string, string> = {
@@ -48,6 +51,7 @@ export default function WordDetailScreen() {
   const [entry, setEntry] = useState<DictionaryEntry | null>(null);
   const [examples, setExamples] = useState<ExampleSentence[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [bookmarked, setBookmarked] = useState(false);
   const db = useSQLiteContext();
 
   const loadEntry = async () => {
@@ -70,6 +74,11 @@ export default function WordDetailScreen() {
           setEntry(result);
         }
       }
+
+      if (result) {
+        const bookmarkStatus = await isBookmarked(db, result.id);
+        setBookmarked(bookmarkStatus);
+      }
     } catch (error) {
       console.error("Failed to load dictionary entry:", error);
     } finally {
@@ -81,10 +90,30 @@ export default function WordDetailScreen() {
     loadEntry();
   }, []);
 
+  const handleToggleBookmark = async () => {
+    if (!entry) return;
+
+    try {
+      if (bookmarked) {
+        await removeBookmark(db, entry.id);
+      } else {
+        await addBookmark(db, entry.id);
+      }
+      setBookmarked(!bookmarked);
+    } catch (error) {
+      console.error("Failed to toggle bookmark:", error);
+    }
+  };
+
   if (isLoading) {
     return (
       <ThemedView style={styles.container}>
-        <Stack.Screen options={{ headerBackTitle: "Search", title }} />
+        <Stack.Screen
+          options={{
+            headerBackTitle: "Search",
+            title,
+          }}
+        />
         <View style={styles.loadingContainer}>
           <Loader />
         </View>
@@ -95,7 +124,12 @@ export default function WordDetailScreen() {
   if (!entry) {
     return (
       <ThemedView style={styles.container}>
-        <Stack.Screen options={{ headerBackTitle: "Search", title }} />
+        <Stack.Screen
+          options={{
+            headerBackTitle: "Search",
+            title,
+          }}
+        />
         <View style={styles.errorContainer}>
           <ThemedText>{"Word not found"}</ThemedText>
         </View>
@@ -105,7 +139,22 @@ export default function WordDetailScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <Stack.Screen options={{ headerBackTitle: "Search", title }} />
+      <Stack.Screen
+        options={{
+          headerBackTitle: "Search",
+          title,
+          headerRight: () => (
+            <HapticTab onPress={handleToggleBookmark}>
+              <IconSymbol
+                name={bookmarked ? "bookmark.fill" : "bookmark"}
+                size={24}
+                color={tintColor}
+              />
+            </HapticTab>
+          ),
+        }}
+      />
+
       <ScrollView contentContainerStyle={styles.content}>
         <ThemedView style={styles.headerSection}>
           <ThemedText type="title" style={styles.word}>

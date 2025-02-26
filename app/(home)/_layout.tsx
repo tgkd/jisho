@@ -1,4 +1,7 @@
-import { Stack } from "expo-router";
+import { HapticTab } from "@/components/HapticTab";
+import { IconSymbol } from "@/components/ui/IconSymbol";
+import { Colors } from "@/constants/Colors";
+import { Stack, useRouter } from "expo-router";
 import { StyleSheet } from "react-native";
 
 export default function HomeLayout() {
@@ -6,23 +9,38 @@ export default function HomeLayout() {
     <Stack>
       <Stack.Screen
         name="index"
-        options={{
+        options={({ route }) => ({
           headerBlurEffect: "regular",
           headerTitle: "Search",
           headerTitleStyle: styles.headerTitle,
           headerBackTitleStyle: styles.headerBackTitle,
-        }}
+          headerRight: () => <BookmarksButton />,
+        })}
       />
       <Stack.Screen
-        name="explore"
+        name="bookmarks"
         options={{
           headerBlurEffect: "regular",
-          headerTitle: "Explore",
+          headerTitle: "Bookmarks",
           headerTitleStyle: styles.headerTitle,
           headerBackTitleStyle: styles.headerBackTitle,
         }}
       />
     </Stack>
+  );
+}
+
+function BookmarksButton() {
+  const router = useRouter();
+
+  const navigateToBookmarks = () => {
+    router.push("/bookmarks");
+  };
+
+  return (
+    <HapticTab onPress={navigateToBookmarks}>
+      <IconSymbol color={Colors.light.tint} name="bookmark" size={24} />
+    </HapticTab>
   );
 }
 
