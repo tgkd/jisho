@@ -129,9 +129,7 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   scrollContainer: {
-    marginHorizontal: 16,
-    borderRadius: 10,
-    overflow: "hidden",
+    paddingHorizontal: 16,
   },
   searchContainer: {
     flexDirection: "row",

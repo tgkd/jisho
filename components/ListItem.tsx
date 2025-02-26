@@ -39,6 +39,9 @@ export function ListItem({
   index: number;
   total: number;
 }) {
+  const isFirst = index === 0;
+  const isLast = index === total - 1;
+
   const handleWordPress = (item: DictionaryEntry) => {
     router.push({
       pathname: "/word/[id]",
@@ -56,7 +59,11 @@ export function ListItem({
     <>
       <HapticTab onPress={() => handleWordPress(item)}>
         <ThemedView
-          style={styles.resultItem}
+          style={[
+            styles.resultItem,
+            isFirst && styles.firstRadius,
+            isLast && styles.lastRadius,
+          ]}
           lightColor={Colors.light.groupedBackground}
           darkColor={Colors.dark.groupedBackground}
         >
@@ -73,7 +80,7 @@ export function ListItem({
           ))}
         </ThemedView>
       </HapticTab>
-      {index < total - 1 ? <View style={styles.separator} /> : null}
+      {isLast ? null : <View style={styles.separator} />}
     </>
   );
 }
@@ -95,5 +102,13 @@ const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     backgroundColor: Colors.light.separator,
     marginHorizontal: 8,
+  },
+  firstRadius: {
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 10,
+  },
+  lastRadius: {
+    borderBottomLeftRadius: 10,
+    borderBottomRightRadius: 10,
   },
 });

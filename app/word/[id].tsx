@@ -45,7 +45,7 @@ const PARTS_OF_SPEECH: Record<string, string> = {
 };
 
 export default function WordDetailScreen() {
-  const tintColor = useThemeColor({}, "text");
+  const tintColor = useThemeColor({}, "tint");
   const params = useLocalSearchParams();
   const title = typeof params.title === "string" ? params.title : "Details";
   const [entry, setEntry] = useState<DictionaryEntry | null>(null);
@@ -126,7 +126,7 @@ export default function WordDetailScreen() {
       <ThemedView style={styles.container}>
         <Stack.Screen
           options={{
-            headerBackTitle: "Search",
+            headerBackTitle: "Back",
             title,
           }}
         />
