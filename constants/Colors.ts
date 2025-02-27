@@ -5,6 +5,8 @@
 
 const tintColorLight = "#007AFF"; // iOS blue
 const tintColorDark = "#0A84FF"; // iOS blue dark mode
+const errorRedLight = "#FF3B30"; // iOS red
+const errorRedDark = "#FF453A"; // iOS red dark mode
 
 export const Colors = {
   light: {
@@ -17,10 +19,12 @@ export const Colors = {
     tabIconSelected: tintColorLight,
     secondaryBackground: "#FFFFFF", // Changed to white for cards/inputs
     secondaryText: "#6C6C70",
-    separator: "rgba(60, 60, 67, 0.29)",
+    separator: "gray",
     groupedBackground: "#FFFFFF", // Changed to white for grouped content
     accent: tintColorLight,
     link: tintColorLight,
+    accentForeground: "#FFFFFF",
+    error: errorRedLight,
   },
   dark: {
     text: "#FFFFFF",
@@ -32,9 +36,11 @@ export const Colors = {
     tabIconSelected: tintColorDark,
     secondaryBackground: "#1C1C1E",
     secondaryText: "#EBEBF5",
-    separator: "rgba(84, 84, 88, 0.65)",
+    separator: "gray",
     groupedBackground: "#1C1C1E",
     accent: tintColorDark,
     link: tintColorDark,
+    accentForeground: "#FFFFFF",
+    error: errorRedDark,
   },
 };

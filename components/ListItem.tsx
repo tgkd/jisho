@@ -1,11 +1,21 @@
 import { router } from "expo-router";
-import { StyleSheet, TouchableOpacity, View } from "react-native";
+import { StyleSheet, View } from "react-native";
+import ReanimatedSwipeable, {
+  SwipeableMethods,
+} from "react-native-gesture-handler/ReanimatedSwipeable";
+import Animated, {
+  interpolateColor,
+  SharedValue,
+  useAnimatedStyle,
+} from "react-native-reanimated";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
-import { DictionaryEntry } from "@/services/database";
 import { Colors } from "@/constants/Colors";
+import { useThemeColor } from "@/hooks/useThemeColor";
+import { DictionaryEntry } from "@/services/database";
 import { HapticTab } from "./HapticTab";
+import { IconSymbol } from "./ui/IconSymbol";
 
 /*
 {
@@ -30,14 +40,18 @@ import { HapticTab } from "./HapticTab";
 
 */
 
+const ACTION_WIDTH = 40;
+
 export function ListItem({
   item,
   index,
   total,
+  onRightPress,
 }: {
   item: DictionaryEntry;
   index: number;
   total: number;
+  onRightPress?: () => void;
 }) {
   const isFirst = index === 0;
   const isLast = index === total - 1;
@@ -56,7 +70,15 @@ export function ListItem({
     .filter((m) => m.text.length > 0);
 
   return (
-    <>
+    <ReanimatedSwipeable
+      friction={2}
+      rightThreshold={ACTION_WIDTH}
+      enableTrackpadTwoFingerGesture
+      enabled={Boolean(onRightPress)}
+      renderRightActions={(_, drag, swipe) => (
+        <RightAction drag={drag} swipe={swipe} onPress={onRightPress} />
+      )}
+    >
       <HapticTab onPress={() => handleWordPress(item)}>
         <ThemedView
           style={[
@@ -81,10 +103,40 @@ export function ListItem({
         </ThemedView>
       </HapticTab>
       {isLast ? null : <View style={styles.separator} />}
-    </>
+    </ReanimatedSwipeable>
   );
 }
 
+function RightAction({
+  drag,
+  swipe,
+  onPress,
+}: {
+  drag: SharedValue<number>;
+  swipe: SwipeableMethods;
+  onPress?: () => void;
+}) {
+  const iconColor = useThemeColor({}, "error");
+
+  const styleAnimation = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateX: drag.value + ACTION_WIDTH }],
+    };
+  });
+
+  const handlePress = () => {
+    swipe.close();
+    onPress?.();
+  };
+
+  return (
+    <Animated.View style={[styleAnimation, styles.rightAction]}>
+      <HapticTab onPress={handlePress}>
+        <IconSymbol color={iconColor} name="trash.circle.fill" size={32} />
+      </HapticTab>
+    </Animated.View>
+  );
+}
 const styles = StyleSheet.create({
   resultItem: {
     flexDirection: "column",
@@ -110,5 +162,11 @@ const styles = StyleSheet.create({
   lastRadius: {
     borderBottomLeftRadius: 10,
     borderBottomRightRadius: 10,
+  },
+
+  rightAction: {
+    alignItems: "center",
+    justifyContent: "center",
+    width: ACTION_WIDTH,
   },
 });

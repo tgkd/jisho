@@ -1,7 +1,7 @@
-import { Stack } from "expo-router";
+import { Stack, useFocusEffect } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
-import { useEffect, useRef, useState } from "react";
-import { FlatList, StyleSheet } from "react-native";
+import { useCallback, useRef, useState } from "react";
+import { StyleSheet } from "react-native";
 import Animated, {
   useAnimatedStyle,
   withTiming,
@@ -12,7 +12,11 @@ import { SearchBarCommands } from "react-native-screens";
 import { ListItem } from "@/components/ListItem";
 import { ThemedText } from "@/components/ThemedText";
 import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
-import { getBookmarks, type DictionaryEntry } from "@/services/database";
+import {
+  getBookmarks,
+  removeBookmark,
+  type DictionaryEntry,
+} from "@/services/database";
 
 export default function BookmarksScreen() {
   const insets = useSafeAreaInsets();
@@ -26,22 +30,24 @@ export default function BookmarksScreen() {
   const db = useSQLiteContext();
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    const fetchBookmarks = async () => {
-      try {
-        setLoading(true);
-        const results = await getBookmarks(db);
-        setBookmarks(results);
-        setFilteredBookmarks(results);
-      } catch (error) {
-        console.error("Failed to fetch bookmarks:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  useFocusEffect(
+    useCallback(() => {
+      const fetchBookmarks = async () => {
+        try {
+          setLoading(true);
+          const results = await getBookmarks(db);
+          setBookmarks(results);
+          setFilteredBookmarks(results);
+        } catch (error) {
+          console.error("Failed to fetch bookmarks:", error);
+        } finally {
+          setLoading(false);
+        }
+      };
 
-    fetchBookmarks();
-  }, [db]);
+      fetchBookmarks();
+    }, [])
+  );
 
   const handleSearch = useDebouncedCallback((query: string) => {
     const text = query.trim().toLowerCase();
@@ -79,6 +85,11 @@ export default function BookmarksScreen() {
   const handleChange = (text: string) => {
     setSearch(text);
     handleSearch(text);
+  };
+
+  const handleRemoveBookmark = async (id: string | number) => {
+    await removeBookmark(db, id as number);
+    setBookmarks((prev) => prev.filter((item) => item.id !== id));
   };
 
   const renderListHeader = () => {
@@ -127,13 +138,14 @@ export default function BookmarksScreen() {
           },
         }}
       />
-      <FlatList
+      <Animated.FlatList
         data={filteredBookmarks}
         renderItem={({ index, item }) => (
           <ListItem
             item={item}
             index={index}
             total={filteredBookmarks.length}
+            onRightPress={() => handleRemoveBookmark(item.id)}
           />
         )}
         keyExtractor={(item) => item.id.toString()}
@@ -145,7 +157,11 @@ export default function BookmarksScreen() {
         initialNumToRender={10}
         maxToRenderPerBatch={10}
         windowSize={5}
-        ListEmptyComponent={null}
+        ListEmptyComponent={
+          <ThemedText textAlign="center" type="secondary">
+            {"No bookmarks yet"}
+          </ThemedText>
+        }
       />
     </Animated.View>
   );

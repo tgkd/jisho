@@ -1,3 +1,4 @@
+import "react-native-reanimated";
 import {
   DarkTheme,
   DefaultTheme,
@@ -10,8 +11,6 @@ import { SQLiteProvider } from "expo-sqlite";
 import { StatusBar } from "expo-status-bar";
 import { Suspense, useEffect } from "react";
 import { StyleSheet } from "react-native";
-import "react-native-reanimated";
-import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { HapticTab } from "@/components/HapticTab";
 import { Loader } from "@/components/Loader";
@@ -19,6 +18,7 @@ import { IconSymbol } from "@/components/ui/IconSymbol";
 import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { migrateDbIfNeeded } from "@/services/database";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 const DATABASE_PATH = "../assets/db/dict.db";
 
@@ -41,32 +41,34 @@ export default function RootLayout() {
   }
 
   return (
-    <Suspense fallback={<Loader />}>
-      <SQLiteProvider
-        databaseName="jisho.db"
-        assetSource={{ assetId: require(DATABASE_PATH) }}
-        onInit={migrateDbIfNeeded}
-        useSuspense
-      >
-        <ThemeProvider
-          value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
+    <GestureHandlerRootView style={styles.container}>
+      <Suspense fallback={<Loader />}>
+        <SQLiteProvider
+          databaseName="jisho.db"
+          assetSource={{ assetId: require(DATABASE_PATH) }}
+          onInit={migrateDbIfNeeded}
+          useSuspense
         >
-          <Stack>
-            <Stack.Screen
-              name="index"
-              options={() => ({
-                headerTitle: "Search",
-                headerTitleStyle: styles.headerTitle,
-                headerBackTitleStyle: styles.headerBackTitle,
-                headerRight: () => <BookmarksButton />,
-              })}
-            />
-            <Stack.Screen name="bookmarks" />
-          </Stack>
-          <StatusBar style="auto" />
-        </ThemeProvider>
-      </SQLiteProvider>
-    </Suspense>
+          <ThemeProvider
+            value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
+          >
+            <Stack>
+              <Stack.Screen
+                name="index"
+                options={() => ({
+                  headerTitle: "Search",
+                  headerTitleStyle: styles.headerTitle,
+                  headerBackTitleStyle: styles.headerBackTitle,
+                  headerRight: () => <BookmarksButton />,
+                })}
+              />
+              <Stack.Screen name="bookmarks" />
+            </Stack>
+            <StatusBar style="auto" />
+          </ThemeProvider>
+        </SQLiteProvider>
+      </Suspense>
+    </GestureHandlerRootView>
   );
 }
 
@@ -79,12 +81,19 @@ function BookmarksButton() {
 
   return (
     <HapticTab onPress={navigateToBookmarks}>
-      <IconSymbol color={Colors.light.tint} name="bookmark.fill" size={24} />
+      <IconSymbol
+        color={Colors.light.tint}
+        name="bookmark.circle.fill"
+        size={32}
+      />
     </HapticTab>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   header: {
     borderBottomWidth: 0,
     shadowColor: "transparent",

@@ -12,6 +12,7 @@ import { IconSymbol } from "@/components/ui/IconSymbol";
 import { useThemeColor } from "@/hooks/useThemeColor";
 import {
   addBookmark,
+  addToHistory,
   DictionaryEntry,
   ExampleSentence,
   getDictionaryEntry,
@@ -69,9 +70,21 @@ export default function WordDetailScreen() {
             kanji: result.kanji,
             meanings: result.meanings,
           });
+
+          await addToHistory(db, {
+            id: result.id,
+            word: result.word,
+            reading: result.reading,
+            reading_hiragana: result.reading_hiragana,
+            kanji: result.kanji,
+            meanings: result.meanings,
+            source: result.source,
+          });
         } else {
           setExamples([]);
           setEntry(result);
+
+          await addToHistory(db, result);
         }
       }
 
@@ -91,7 +104,9 @@ export default function WordDetailScreen() {
   }, []);
 
   const handleToggleBookmark = async () => {
-    if (!entry) return;
+    if (!entry) {
+      return;
+    }
 
     try {
       if (bookmarked) {
@@ -99,7 +114,7 @@ export default function WordDetailScreen() {
       } else {
         await addBookmark(db, entry.id);
       }
-      setBookmarked(!bookmarked);
+      setBookmarked((prev) => !prev);
     } catch (error) {
       console.error("Failed to toggle bookmark:", error);
     }
@@ -146,8 +161,8 @@ export default function WordDetailScreen() {
           headerRight: () => (
             <HapticTab onPress={handleToggleBookmark}>
               <IconSymbol
-                name={bookmarked ? "bookmark.fill" : "bookmark"}
-                size={24}
+                name={bookmarked ? "bookmark.circle.fill" : "bookmark.circle"}
+                size={32}
                 color={tintColor}
               />
             </HapticTab>

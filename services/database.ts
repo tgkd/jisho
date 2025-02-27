@@ -1,5 +1,41 @@
-import { SQLiteDatabase } from "expo-sqlite";
+import { openDatabaseAsync, SQLiteDatabase } from "expo-sqlite";
 import * as wanakana from "wanakana";
+
+// Connection pooling
+let dbConnectionPromise: Promise<SQLiteDatabase> | null = null;
+
+export function getDbConnection(): Promise<SQLiteDatabase> {
+  if (!dbConnectionPromise) {
+    dbConnectionPromise = openDatabaseAsync("jisho.db");
+  }
+  return dbConnectionPromise;
+}
+
+// Wrapper for better error handling in database operations
+export async function executeDbOperation<T>(
+  operation: (db: SQLiteDatabase) => Promise<T>
+): Promise<T> {
+  try {
+    const db = await getDbConnection();
+    return await operation(db);
+  } catch (error) {
+    console.error("Database operation failed:", error);
+    throw new Error(
+      `Database operation failed: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
+  }
+}
+
+// Entry cache
+const entryCache = new Map<number, DictionaryEntry>();
+const MAX_CACHE_SIZE = 100;
+
+// Clear cache function
+export function clearEntryCache(): void {
+  entryCache.clear();
+}
 
 export interface DictionaryEntry {
   id: number;
@@ -71,6 +107,16 @@ interface MeaningRow {
   info: string | null;
 }
 
+export interface HistoryEntry {
+  id: number;
+  word_id: number;
+  word: string;
+  reading: string;
+  preview: string;
+  timestamp: number;
+  source?: string;
+}
+
 interface SearchQuery {
   original: string;
   hiragana?: string;
@@ -79,7 +125,7 @@ interface SearchQuery {
 }
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
-  const DATABASE_VERSION = 4;
+  const DATABASE_VERSION = 6;
 
   try {
     const versionResult = await db.getFirstAsync<{ user_version: number }>(
@@ -155,8 +201,8 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
         CREATE TABLE IF NOT EXISTS edict_meanings (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           entry_id INTEGER,
-          part_of_speech TEXT,
           english_definition TEXT,
+          part_of_speech TEXT,
           FOREIGN KEY (entry_id) REFERENCES edict_entries (id)
         );
 
@@ -184,6 +230,43 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
 
       await db.execAsync(`PRAGMA user_version = 4`);
       currentDbVersion = 4;
+    }
+
+    if (currentDbVersion < 5) {
+      await db.execAsync(`
+        CREATE VIRTUAL TABLE IF NOT EXISTS dictionary_fts
+        USING fts5(word, reading, reading_hiragana, meanings, word_id UNINDEXED);
+
+        INSERT INTO dictionary_fts (word_id, word, reading, reading_hiragana, meanings)
+        SELECT w.id, w.word, w.reading, w.reading_hiragana,
+          GROUP_CONCAT(m.meaning, ' ') as meanings
+        FROM words w
+        LEFT JOIN meanings m ON m.word_id = w.id
+        GROUP BY w.id;
+      `);
+
+      await db.execAsync(`PRAGMA user_version = 5`);
+      currentDbVersion = 5;
+    }
+
+    if (currentDbVersion < 6) {
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS history (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          word_id INTEGER NOT NULL,
+          word TEXT NOT NULL,
+          reading TEXT NOT NULL,
+          preview TEXT NOT NULL,
+          timestamp INTEGER NOT NULL,
+          source TEXT
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_history_timestamp ON history(timestamp);
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_history_word_id ON history(word_id);
+      `);
+
+      await db.execAsync(`PRAGMA user_version = 6`);
+      currentDbVersion = 6;
     }
 
     console.log(
@@ -321,14 +404,11 @@ export async function searchByEnglishWord(
   return [...entries, ...edictResults];
 }
 
-function uniqueBy<T extends { [key: string]: any }>(
-  array: T[],
-  key: string
-): T[] {
-  const seen = new Set();
+function uniqueBy<T>(array: T[], keySelector: (item: T) => any): T[] {
+  const seen = new Set<any>();
   return array.filter((item) => {
-    const k = key ? item[key] : item;
-    return seen.has(k) ? false : seen.add(k);
+    const key = keySelector(item);
+    return seen.has(key) ? false : seen.add(key);
   });
 }
 
@@ -540,7 +620,10 @@ export async function searchDictionary(
       })
     );
 
-    const result = uniqueBy([...entries, ...edictDictEntries], "word");
+    const result = uniqueBy(
+      [...entries, ...edictDictEntries],
+      (item) => item.word
+    );
 
     return result;
   }
@@ -555,10 +638,13 @@ export async function getDictionaryEntry(
 ): Promise<
   DictionaryEntry | (DictionaryEntry & { examples: ExampleSentence[] }) | null
 > {
+  // Check cache first if not requesting examples
+  if (!withExamples && entryCache.has(id)) {
+    return entryCache.get(id)!;
+  }
+
   const word = await db.getFirstAsync<WordRow>(
-    `
-    SELECT * FROM words WHERE id = ?
-  `,
+    `SELECT * FROM words WHERE id = ?`,
     [id]
   );
 
@@ -569,30 +655,38 @@ export async function getDictionaryEntry(
     SELECT meaning, part_of_speech, field, misc, info
     FROM meanings
     WHERE word_id = ?
-  `,
+    `,
     [id]
   );
 
-  if (!withExamples) {
-    return {
-      id: word.id,
-      word: word.word,
-      reading: word.reading.split(";"),
-      reading_hiragana: word.reading_hiragana,
-      kanji: word.kanji,
-      meanings,
-    };
-  }
-
-  const examples = await searchExamples(db, word.word, 5);
-
-  return {
+  const entry = {
     id: word.id,
     word: word.word,
     reading: word.reading.split(";"),
     reading_hiragana: word.reading_hiragana,
     kanji: word.kanji,
     meanings,
+  };
+
+  // Cache the result if not requesting examples
+  if (!withExamples) {
+    if (entryCache.size >= MAX_CACHE_SIZE) {
+      const firstKey = entryCache.keys().next().value;
+      if (firstKey) {
+        entryCache.delete(firstKey);
+      }
+    }
+    entryCache.set(id, entry);
+  }
+
+  if (!withExamples) {
+    return entry;
+  }
+
+  const examples = await searchExamples(db, word.word, 5);
+
+  return {
+    ...entry,
     examples,
   };
 }
@@ -657,6 +751,11 @@ export async function getEdictEntry(
   db: SQLiteDatabase,
   id: number
 ): Promise<DictionaryEntry | null> {
+  // Check cache first
+  if (entryCache.has(id)) {
+    return entryCache.get(id)!;
+  }
+
   const realId = id - 1000000;
 
   const entry = await db.getFirstAsync<{
@@ -675,7 +774,7 @@ export async function getEdictEntry(
     [realId]
   );
 
-  return {
+  const result = {
     id,
     word: entry.japanese,
     reading: entry.reading.split(";"),
@@ -690,6 +789,16 @@ export async function getEdictEntry(
     })),
     source: "edict",
   };
+
+  if (entryCache.size >= MAX_CACHE_SIZE) {
+    const firstKey = entryCache.keys().next().value;
+    if (firstKey) {
+      entryCache.delete(firstKey);
+    }
+  }
+  entryCache.set(id, result);
+
+  return result;
 }
 
 export async function resetDatabase(db: SQLiteDatabase): Promise<void> {
@@ -730,59 +839,200 @@ export async function getBookmarks(
       return [];
     }
 
+    // Group IDs by type
+    const regularIds: number[] = [];
+    const edictIds: number[] = [];
+
+    bookmarks.forEach((b) => {
+      if (b.word_id >= 1000000) {
+        edictIds.push(b.word_id - 1000000);
+      } else {
+        regularIds.push(b.word_id);
+      }
+    });
+
+    // Batch fetch entries
     const entries: DictionaryEntry[] = [];
 
-    for (const bookmark of bookmarks) {
-      const id = bookmark.word_id;
-
-      if (id >= 1000000) {
-        const entry = await getEdictEntry(db, id);
-        if (entry) entries.push(entry);
-      } else {
-        const entry = await getDictionaryEntry(db, id);
-        if (entry) entries.push(entry);
-      }
+    if (regularIds.length > 0) {
+      const regularEntries = await batchGetDictionaryEntries(db, regularIds);
+      entries.push(...regularEntries);
     }
 
-    return entries;
+    if (edictIds.length > 0) {
+      const edictEntries = await batchGetEdictEntries(db, edictIds);
+      entries.push(...edictEntries);
+    }
+
+    // Create a map for faster lookup and preserve original order
+    const entriesMap = new Map<number, DictionaryEntry>();
+    entries.forEach((entry) => {
+      entriesMap.set(entry.id, entry);
+    });
+
+    // Return entries in the same order as bookmarks
+    return bookmarks
+      .map((b) => entriesMap.get(b.word_id))
+      .filter((entry): entry is DictionaryEntry => entry !== undefined);
   } catch (error) {
     console.error("Error getting bookmarks:", error);
     return [];
   }
 }
 
-export async function addBookmark(
+// Helper functions for batch operations
+async function batchGetDictionaryEntries(
   db: SQLiteDatabase,
-  wordId: number
-): Promise<boolean> {
-  try {
-    await db.runAsync(
-      `
-      INSERT OR REPLACE INTO bookmarks (word_id, date_added)
-      VALUES (?, ?)
-    `,
-      [wordId, Date.now()]
-    );
+  ids: number[]
+): Promise<DictionaryEntry[]> {
+  if (ids.length === 0) return [];
 
-    return true;
-  } catch (error) {
-    console.error("Error adding bookmark:", error);
-    return false;
-  }
+  const placeholders = ids.map(() => "?").join(",");
+
+  // Get all words
+  const words = await db.getAllAsync<WordRow>(
+    `SELECT * FROM words WHERE id IN (${placeholders})`,
+    ids
+  );
+
+  if (words.length === 0) return [];
+
+  // Get all meanings in a single query
+  const allMeanings = await db.getAllAsync<MeaningRow & { word_id: number }>(
+    `SELECT word_id, meaning, part_of_speech, field, misc, info
+     FROM meanings WHERE word_id IN (${placeholders})`,
+    ids
+  );
+
+  // Group meanings by word_id for faster assembly
+  const meaningsMap = new Map<number, MeaningRow[]>();
+  allMeanings.forEach((m) => {
+    if (!meaningsMap.has(m.word_id)) {
+      meaningsMap.set(m.word_id, []);
+    }
+    meaningsMap.get(m.word_id)!.push({
+      meaning: m.meaning,
+      part_of_speech: m.part_of_speech,
+      field: m.field,
+      misc: m.misc,
+      info: m.info,
+    });
+  });
+
+  // Assemble entries
+  return words.map((word) => {
+    // Check cache first
+    if (entryCache.has(word.id)) {
+      return entryCache.get(word.id)!;
+    }
+
+    const entry = {
+      id: word.id,
+      word: word.word,
+      reading: word.reading.split(";"),
+      reading_hiragana: word.reading_hiragana,
+      kanji: word.kanji,
+      meanings: meaningsMap.get(word.id) || [],
+    };
+
+    // Cache for future use
+    if (entryCache.size >= MAX_CACHE_SIZE) {
+      const firstKey = entryCache.keys().next().value;
+      if (firstKey) {
+        entryCache.delete(firstKey);
+      }
+    }
+    entryCache.set(word.id, entry);
+
+    return entry;
+  });
 }
 
-export async function removeBookmark(
+async function batchGetEdictEntries(
   db: SQLiteDatabase,
-  wordId: number
-): Promise<boolean> {
-  try {
-    await db.runAsync(`DELETE FROM bookmarks WHERE word_id = ?`, [wordId]);
+  ids: number[]
+): Promise<DictionaryEntry[]> {
+  if (ids.length === 0) return [];
 
-    return true;
-  } catch (error) {
-    console.error("Error removing bookmark:", error);
-    return false;
-  }
+  const placeholders = ids.map(() => "?").join(",");
+
+  // Get all entries
+  const entries = await db.getAllAsync<{
+    id: number;
+    japanese: string;
+    reading: string;
+  }>(
+    `SELECT id, japanese, reading FROM edict_entries WHERE id IN (${placeholders})`,
+    ids
+  );
+
+  if (entries.length === 0) return [];
+
+  // Get all meanings in a single query
+  const allMeanings = await db.getAllAsync<{
+    entry_id: number;
+    english_definition: string;
+    part_of_speech: string | null;
+  }>(
+    `SELECT entry_id, english_definition, part_of_speech
+     FROM edict_meanings WHERE entry_id IN (${placeholders})`,
+    ids
+  );
+
+  // Group meanings by entry_id
+  const meaningsMap = new Map<
+    number,
+    Array<{
+      meaning: string;
+      part_of_speech: string | null;
+      field: null;
+      misc: null;
+      info: null;
+    }>
+  >();
+
+  allMeanings.forEach((m) => {
+    if (!meaningsMap.has(m.entry_id)) {
+      meaningsMap.set(m.entry_id, []);
+    }
+
+    meaningsMap.get(m.entry_id)!.push({
+      meaning: m.english_definition,
+      part_of_speech: m.part_of_speech,
+      field: null,
+      misc: null,
+      info: null,
+    });
+  });
+
+  // Assemble entries
+  return entries.map((entry) => {
+    const id = entry.id + 1000000;
+
+    if (entryCache.has(id)) {
+      return entryCache.get(id)!;
+    }
+
+    const result = {
+      id,
+      word: entry.japanese,
+      reading: entry.reading.split(";"),
+      reading_hiragana: entry.reading,
+      kanji: entry.japanese,
+      meanings: meaningsMap.get(entry.id) || [],
+      source: "edict",
+    };
+
+    if (entryCache.size >= MAX_CACHE_SIZE) {
+      const firstKey = entryCache.keys().next().value;
+      if (firstKey) {
+        entryCache.delete(firstKey);
+      }
+    }
+    entryCache.set(id, result);
+
+    return result;
+  });
 }
 
 export async function isBookmarked(
@@ -798,6 +1048,428 @@ export async function isBookmarked(
     return Boolean(result && result.count > 0);
   } catch (error) {
     console.error("Error checking bookmark status:", error);
+    return false;
+  }
+}
+
+export async function addBookmark(
+  db: SQLiteDatabase,
+  wordId: number
+): Promise<boolean> {
+  try {
+    await db.execAsync("BEGIN TRANSACTION");
+
+    // Check if exists
+    const exists = await isBookmarked(db, wordId);
+
+    if (!exists) {
+      await db.runAsync(
+        `INSERT INTO bookmarks (word_id, date_added) VALUES (?, ?)`,
+        [wordId, Date.now()]
+      );
+    }
+
+    await db.execAsync("COMMIT");
+    return true;
+  } catch (error) {
+    await db.execAsync("ROLLBACK");
+    console.error("Error in bookmark transaction:", error);
+    return false;
+  }
+}
+
+export async function removeBookmark(
+  db: SQLiteDatabase,
+  wordId: number
+): Promise<boolean> {
+  try {
+    await db.execAsync("BEGIN TRANSACTION");
+
+    await db.runAsync(`DELETE FROM bookmarks WHERE word_id = ?`, [wordId]);
+
+    await db.execAsync("COMMIT");
+    return true;
+  } catch (error) {
+    await db.execAsync("ROLLBACK");
+    console.error("Error removing bookmark:", error);
+    return false;
+  }
+}
+
+export interface SearchResults<T> {
+  items: T[];
+  totalCount: number;
+  hasMore: boolean;
+}
+
+export async function searchDictionaryPaginated(
+  db: SQLiteDatabase,
+  query: string,
+  page: number = 1,
+  pageSize: number = 20
+): Promise<SearchResults<DictionaryEntry>> {
+  const processedQuery = processSearchQuery(query);
+  const offset = (page - 1) * pageSize;
+  const whereClauses: string[] = [];
+  const params: string[] = [];
+
+  whereClauses.push(`(
+    word LIKE ? OR
+    reading LIKE ? OR
+    kanji LIKE ? OR
+    word LIKE ? OR
+    reading LIKE ? OR
+    kanji LIKE ?
+  )`);
+
+  params.push(
+    `${processedQuery.original}%`,
+    `${processedQuery.original}%`,
+    `${processedQuery.original}%`,
+    `%${processedQuery.original}%`,
+    `%${processedQuery.original}%`,
+    `%${processedQuery.original}%`
+  );
+
+  if (processedQuery.hiragana) {
+    whereClauses.push(`(
+      word LIKE ? OR
+      reading LIKE ? OR
+      reading_hiragana LIKE ? OR
+      word LIKE ? OR
+      reading LIKE ? OR
+      reading_hiragana LIKE ?
+    )`);
+    params.push(
+      `${processedQuery.hiragana}%`,
+      `${processedQuery.hiragana}%`,
+      `${processedQuery.hiragana}%`,
+      `%${processedQuery.hiragana}%`,
+      `%${processedQuery.hiragana}%`,
+      `%${processedQuery.hiragana}%`
+    );
+  }
+
+  if (processedQuery.katakana) {
+    whereClauses.push(`(
+      word LIKE ? OR
+      reading LIKE ? OR
+      word LIKE ? OR
+      reading LIKE ?
+    )`);
+    params.push(
+      `${processedQuery.katakana}%`,
+      `${processedQuery.katakana}%`,
+      `%${processedQuery.katakana}%`,
+      `%${processedQuery.katakana}%`
+    );
+  }
+
+  // Get total count for pagination
+  const countResult = await db.getFirstAsync<{ count: number }>(
+    `SELECT COUNT(DISTINCT id) as count FROM words
+     WHERE (${whereClauses.join(" OR ")})
+     AND length(word) >= ${Math.min(query.length, 2)}`,
+    params
+  );
+
+  const totalCount = countResult?.count || 0;
+
+  // Get paginated results
+  const words = await db.getAllAsync<WordRow>(
+    `
+    SELECT DISTINCT * FROM words
+    WHERE (${whereClauses.join(" OR ")})
+      AND length(word) >= ${Math.min(query.length, 2)}
+    ORDER BY
+      CASE
+        WHEN word = ? THEN 1
+        WHEN reading = ? THEN 2
+        WHEN kanji = ? THEN 3
+        WHEN word LIKE ? THEN 4
+        WHEN reading LIKE ? THEN 5
+        WHEN kanji LIKE ? THEN 6
+        ELSE 7
+      END,
+      length(word)
+    LIMIT ? OFFSET ?
+    `,
+    [
+      ...params,
+      query,
+      query,
+      query,
+      `${query}%`,
+      `${query}%`,
+      `${query}%`,
+      pageSize,
+      offset,
+    ]
+  );
+
+  // Use batch fetching for performance
+  const wordIds = words.map((word) => word.id);
+  const entries = await batchGetDictionaryEntries(db, wordIds);
+
+  return {
+    items: entries,
+    totalCount,
+    hasMore: offset + entries.length < totalCount,
+  };
+}
+
+export async function searchByEnglishWordPaginated(
+  db: SQLiteDatabase,
+  query: string,
+  page: number = 1,
+  pageSize: number = 20
+): Promise<SearchResults<DictionaryEntry>> {
+  const offset = (page - 1) * pageSize;
+
+  // Get total count first
+  const countResult = await db.getFirstAsync<{ count: number }>(
+    `SELECT COUNT(DISTINCT words.id) as count FROM words
+     JOIN meanings ON meanings.word_id = words.id
+     WHERE meanings.meaning LIKE ?`,
+    [`%${query}%`]
+  );
+
+  const totalCount = countResult?.count || 0;
+
+  // Get words for current page
+  const words = await db.getAllAsync<WordRow>(
+    `
+    SELECT DISTINCT words.* FROM words
+    JOIN meanings ON meanings.word_id = words.id
+    WHERE meanings.meaning LIKE ?
+    ORDER BY length(words.word)
+    LIMIT ? OFFSET ?
+    `,
+    [`%${query}%`, pageSize, offset]
+  );
+
+  // Use batch fetching for performance
+  const wordIds = words.map((word) => word.id);
+  const entries = await batchGetDictionaryEntries(db, wordIds);
+
+  return {
+    items: entries,
+    totalCount,
+    hasMore: offset + entries.length < totalCount,
+  };
+}
+
+export async function searchDictionaryFTS(
+  db: SQLiteDatabase,
+  query: string,
+  limit: number = 50
+): Promise<DictionaryEntry[]> {
+  const processedQuery = processSearchQuery(query);
+  const searchTerms: string[] = [];
+
+  // Build FTS query terms
+  searchTerms.push(`${processedQuery.original}*`); // Prefix matching
+
+  if (processedQuery.hiragana) {
+    searchTerms.push(`${processedQuery.hiragana}*`);
+  }
+
+  if (processedQuery.katakana) {
+    searchTerms.push(`${processedQuery.katakana}*`);
+  }
+
+  // Execute FTS search
+  const ftsQuery = searchTerms.join(" OR ");
+  const wordIds = await db.getAllAsync<{ word_id: number }>(
+    `SELECT word_id FROM dictionary_fts
+     WHERE dictionary_fts MATCH ?
+     ORDER BY rank
+     LIMIT ?`,
+    [ftsQuery, limit]
+  );
+
+  if (wordIds.length === 0) return [];
+
+  // Fetch complete entries
+  const ids = wordIds.map((w) => w.word_id);
+  return await batchGetDictionaryEntries(db, ids);
+}
+
+export async function searchDictionaryFTSPaginated(
+  db: SQLiteDatabase,
+  query: string,
+  page: number = 1,
+  pageSize: number = 20
+): Promise<SearchResults<DictionaryEntry>> {
+  const processedQuery = processSearchQuery(query);
+  const offset = (page - 1) * pageSize;
+  const searchTerms: string[] = [];
+
+  // Build FTS query terms
+  searchTerms.push(`${processedQuery.original}*`); // Prefix matching
+
+  if (processedQuery.hiragana) {
+    searchTerms.push(`${processedQuery.hiragana}*`);
+  }
+
+  if (processedQuery.katakana) {
+    searchTerms.push(`${processedQuery.katakana}*`);
+  }
+
+  // Execute FTS search for count
+  const ftsQuery = searchTerms.join(" OR ");
+
+  // Get total count
+  const countResult = await db.getFirstAsync<{ count: number }>(
+    `SELECT COUNT(*) as count
+     FROM dictionary_fts
+     WHERE dictionary_fts MATCH ?`,
+    [ftsQuery]
+  );
+
+  const totalCount = countResult?.count || 0;
+
+  // Get paginated results
+  const wordIds = await db.getAllAsync<{ word_id: number }>(
+    `SELECT word_id FROM dictionary_fts
+     WHERE dictionary_fts MATCH ?
+     ORDER BY rank
+     LIMIT ? OFFSET ?`,
+    [ftsQuery, pageSize, offset]
+  );
+
+  if (wordIds.length === 0) {
+    return { items: [], totalCount, hasMore: false };
+  }
+
+  // Fetch complete entries
+  const ids = wordIds.map((w) => w.word_id);
+  const entries = await batchGetDictionaryEntries(db, ids);
+
+  return {
+    items: entries,
+    totalCount,
+    hasMore: offset + entries.length < totalCount,
+  };
+}
+
+// Helper function to update FTS when dictionary entries change
+export async function updateDictionaryFTS(
+  db: SQLiteDatabase,
+  wordId: number
+): Promise<boolean> {
+  try {
+    const word = await db.getFirstAsync<WordRow>(
+      `SELECT * FROM words WHERE id = ?`,
+      [wordId]
+    );
+
+    if (!word) return false;
+
+    const meanings = await db.getAllAsync<MeaningRow>(
+      `SELECT meaning FROM meanings WHERE word_id = ?`,
+      [wordId]
+    );
+
+    const meaningsText = meanings.map((m) => m.meaning).join(" ");
+
+    // Delete any existing entry first
+    await db.runAsync(`DELETE FROM dictionary_fts WHERE word_id = ?`, [wordId]);
+
+    // Insert new entry
+    await db.runAsync(
+      `INSERT INTO dictionary_fts (word_id, word, reading, reading_hiragana, meanings)
+       VALUES (?, ?, ?, ?, ?)`,
+      [wordId, word.word, word.reading, word.reading_hiragana, meaningsText]
+    );
+
+    return true;
+  } catch (error) {
+    console.error("Error updating dictionary FTS:", error);
+    return false;
+  }
+}
+
+export async function addToHistory(
+  db: SQLiteDatabase,
+  entry: DictionaryEntry
+): Promise<boolean> {
+  try {
+    let preview = "";
+    if (entry.meanings && entry.meanings.length > 0) {
+      preview = entry.meanings[0].meaning.split(";")[0].trim();
+      if (preview.length > 100) {
+        preview = preview.substring(0, 97) + "...";
+      }
+    }
+
+    const reading = entry.reading.join(", ");
+
+    await db.execAsync("BEGIN TRANSACTION");
+
+    // TODO problem with duplidations in history
+    await db.runAsync("DELETE FROM history WHERE word_id = ?", [entry.id]);
+
+    await db.runAsync(
+      `INSERT INTO history (word_id, word, reading, preview, timestamp, source)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [entry.id, entry.word, reading, preview, Date.now(), entry.source || null]
+    );
+
+    await db.runAsync(`
+      DELETE FROM history
+      WHERE id IN (
+        SELECT id FROM history
+        ORDER BY timestamp DESC
+        LIMIT -1 OFFSET 100
+      )
+    `);
+
+    await db.execAsync("COMMIT");
+    return true;
+  } catch (error) {
+    await db.execAsync("ROLLBACK");
+    console.error("Error adding to history:", error);
+    return false;
+  }
+}
+
+export async function getHistory(
+  db: SQLiteDatabase,
+  limit: number = 50
+): Promise<HistoryEntry[]> {
+  try {
+    const history = await db.getAllAsync<HistoryEntry>(
+      `SELECT * FROM history ORDER BY timestamp DESC LIMIT ?`,
+      [limit]
+    );
+
+    return history;
+  } catch (error) {
+    console.error("Error getting history:", error);
+    return [];
+  }
+}
+
+export async function clearHistory(db: SQLiteDatabase): Promise<boolean> {
+  try {
+    await db.runAsync("DELETE FROM history");
+    return true;
+  } catch (error) {
+    console.error("Error clearing history:", error);
+    return false;
+  }
+}
+
+export async function removeHistoryById(
+  db: SQLiteDatabase,
+  id: number
+): Promise<boolean> {
+  try {
+    await db.runAsync("DELETE FROM history WHERE id = ?", [id]);
+    return true;
+  } catch (error) {
+    console.error("Error removing history entry:", error);
     return false;
   }
 }

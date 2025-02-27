@@ -1,20 +1,26 @@
 import { useSQLiteContext } from "expo-sqlite";
 import { useState } from "react";
-import { FlatList, StyleSheet, TextInput, View } from "react-native";
+import {
+  FlatList,
+  StyleSheet,
+  TextInput,
+  View
+} from "react-native";
 
+import { HapticTab } from "@/components/HapticTab";
+import { HistoryList } from "@/components/HistoryList";
 import { ListItem } from "@/components/ListItem";
 import { Loader } from "@/components/Loader";
 import { ThemedView } from "@/components/ThemedView";
+import { IconSymbol } from "@/components/ui/IconSymbol";
+import { Colors } from "@/constants/Colors";
+import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
 import { useThemeColor } from "@/hooks/useThemeColor";
 import {
   DictionaryEntry,
   searchByEnglishWord,
-  searchDictionary,
+  searchDictionary
 } from "@/services/database";
-import { HapticTab } from "@/components/HapticTab";
-import { IconSymbol } from "@/components/ui/IconSymbol";
-import { Colors } from "@/constants/Colors";
-import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
 
 type SearchMode = "japanese" | "english";
 
@@ -69,6 +75,8 @@ export default function HomeScreen() {
     index: number;
   }) => <ListItem item={item} index={index} total={results?.length || 0} />;
 
+  const showHistory = !search.trim().length && !results.length;
+
   return (
     <ThemedView style={styles.container}>
       <View style={styles.searchContainer}>
@@ -95,30 +103,33 @@ export default function HomeScreen() {
           <IconSymbol
             color={Colors.light.tint}
             name={searchMode === "japanese" ? "e.circle" : "j.circle"}
-            size={24}
+            size={32}
           />
         </HapticTab>
       </View>
 
-      <FlatList
-        data={results}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.id.toString()}
-        ListHeaderComponent={
-          loading ? (
-            <View style={styles.headerContainer}>
-              <Loader />
-            </View>
-          ) : null
-        }
-        contentContainerStyle={styles.scrollContainer}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        removeClippedSubviews
-        initialNumToRender={10}
-        maxToRenderPerBatch={10}
-        windowSize={5}
-      />
+      {loading ? (
+        <View style={styles.headerContainer}>
+          <Loader />
+        </View>
+      ) : null}
+
+      {!loading && showHistory ? (
+        <HistoryList />
+      ) : (
+        <FlatList
+          data={results}
+          renderItem={renderItem}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.scrollContainer}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          removeClippedSubviews
+          initialNumToRender={10}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+        />
+      )}
     </ThemedView>
   );
 }
