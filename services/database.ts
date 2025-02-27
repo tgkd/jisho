@@ -87,7 +87,7 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
     );
     let currentDbVersion = versionResult?.user_version ?? 0;
 
-    console.log("DB: ", currentDbVersion, 'TARGET: ', DATABASE_VERSION);
+    console.log("DB: ", currentDbVersion, "TARGET: ", DATABASE_VERSION);
 
     if (currentDbVersion >= DATABASE_VERSION) {
       return;
@@ -321,6 +321,17 @@ export async function searchByEnglishWord(
   return [...entries, ...edictResults];
 }
 
+function uniqueBy<T extends { [key: string]: any }>(
+  array: T[],
+  key: string
+): T[] {
+  const seen = new Set();
+  return array.filter((item) => {
+    const k = key ? item[key] : item;
+    return seen.has(k) ? false : seen.add(k);
+  });
+}
+
 export async function searchDictionary(
   db: SQLiteDatabase,
   query: string
@@ -426,6 +437,113 @@ export async function searchDictionary(
       };
     })
   );
+
+  // Search in edict_entries table
+  const edictWhereClauses: string[] = [];
+  const edictParams: string[] = [];
+
+  edictWhereClauses.push(`(
+    japanese LIKE ? OR
+    reading LIKE ? OR
+    japanese LIKE ? OR
+    reading LIKE ?
+  )`);
+
+  edictParams.push(
+    `${processedQuery.original}%`,
+    `${processedQuery.original}%`,
+    `%${processedQuery.original}%`,
+    `%${processedQuery.original}%`
+  );
+
+  if (processedQuery.hiragana) {
+    edictWhereClauses.push(`(
+      japanese LIKE ? OR
+      reading LIKE ? OR
+      japanese LIKE ? OR
+      reading LIKE ?
+    )`);
+    edictParams.push(
+      `${processedQuery.hiragana}%`,
+      `${processedQuery.hiragana}%`,
+      `%${processedQuery.hiragana}%`,
+      `%${processedQuery.hiragana}%`
+    );
+  }
+
+  if (processedQuery.katakana) {
+    edictWhereClauses.push(`(
+      japanese LIKE ? OR
+      reading LIKE ? OR
+      japanese LIKE ? OR
+      reading LIKE ?
+    )`);
+    edictParams.push(
+      `${processedQuery.katakana}%`,
+      `${processedQuery.katakana}%`,
+      `%${processedQuery.katakana}%`,
+      `%${processedQuery.katakana}%`
+    );
+  }
+
+  const edictEntries = await db.getAllAsync<{
+    id: number;
+    japanese: string;
+    reading: string;
+  }>(
+    `
+    SELECT DISTINCT id, japanese, reading
+    FROM edict_entries
+    WHERE
+      ${edictWhereClauses.join(" OR ")}
+      AND length(japanese) >= ${Math.min(query.length, 2)}
+    ORDER BY
+      CASE
+        WHEN japanese = ? THEN 1
+        WHEN reading = ? THEN 2
+        WHEN japanese LIKE ? THEN 3
+        WHEN reading LIKE ? THEN 4
+        ELSE 5
+      END,
+      length(japanese)
+    LIMIT 25
+    `,
+    [...edictParams, query, query, `${query}%`, `${query}%`]
+  );
+
+  if (edictEntries.length > 0) {
+    const edictDictEntries = await Promise.all(
+      edictEntries.map(async (entry) => {
+        const meanings = await db.getAllAsync<{
+          english_definition: string;
+          part_of_speech: string | null;
+        }>(
+          `SELECT english_definition, part_of_speech FROM edict_meanings WHERE entry_id = ?`,
+          [entry.id]
+        );
+
+        return {
+          id: entry.id + 1000000,
+          word: entry.japanese,
+          reading: entry.reading.split(";"),
+          reading_hiragana: entry.reading,
+          kanji: entry.japanese,
+          meanings: meanings.map((m) => ({
+            meaning: m.english_definition,
+            part_of_speech: m.part_of_speech,
+            field: null,
+            misc: null,
+            info: null,
+          })),
+          source: "edict",
+        } as DictionaryEntry;
+      })
+    );
+
+    const result = uniqueBy([...entries, ...edictDictEntries], "word");
+
+    return result;
+  }
 
   return entries;
 }
