@@ -1,13 +1,11 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
-import { useCallback, useState } from "react";
-import { StyleSheet, View } from "react-native";
-import { FlatList } from "react-native-gesture-handler";
+import { useCallback, useMemo, useState } from "react";
+import { StyleSheet, View, SectionList } from "react-native";
 import ReanimatedSwipeable, {
   SwipeableMethods,
 } from "react-native-gesture-handler/ReanimatedSwipeable";
 import Animated, {
-  interpolateColor,
   SharedValue,
   useAnimatedStyle,
 } from "react-native-reanimated";
@@ -29,8 +27,29 @@ const ACTION_WIDTH = 40;
 export function HistoryList() {
   const router = useRouter();
   const db = useSQLiteContext();
-  const backgroundColor = useThemeColor({}, "background");
   const [historyItems, setHistoryItems] = useState<HistoryEntry[]>([]);
+
+  const groupedByMonth = useMemo(() => {
+    const grouped: Record<string, HistoryEntry[]> = {};
+
+    for (const item of historyItems) {
+      const title = new Date(item.timestamp).toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: undefined,
+      });
+
+      if (!grouped[title]) {
+        grouped[title] = [];
+      }
+      grouped[title].push(item);
+    }
+
+    return Object.entries(grouped).map(([key, value]) => ({
+      title: key,
+      data: value,
+    }));
+  }, [historyItems]);
 
   useFocusEffect(
     useCallback(() => {
@@ -61,24 +80,28 @@ export function HistoryList() {
   const handleWordPress = async (item: HistoryEntry) => {
     router.push({
       pathname: "/word/[id]",
-      params: { id: item.id.toString(), title: item.word },
+      params: { id: item.word_id.toString(), title: item.word },
     });
   };
 
   const renderHistoryItem = ({
     item,
     index,
+    section,
   }: {
     item: HistoryEntry;
     index: number;
+    section: { data: HistoryEntry[] };
   }) => {
     const isFirst = index === 0;
-    const isLast = index === historyItems.length - 1;
+    const isLast = index === section.data.length - 1;
+
     return (
       <ReanimatedSwipeable
         friction={2}
         rightThreshold={ACTION_WIDTH}
         enableTrackpadTwoFingerGesture
+        onActivated={(e) => console.log("onSwipeableOpen", e.nativeEvent.state)}
         renderRightActions={(_, drag, swipe) => (
           <RightAction
             drag={drag}
@@ -98,7 +121,7 @@ export function HistoryList() {
             darkColor={Colors.dark.groupedBackground}
           >
             <ThemedText type="defaultSemiBold">{item.word}</ThemedText>
-            <ThemedText type="secondary">{`【${item.reading}】`}</ThemedText>
+            <ThemedText type="secondary">{item.preview}</ThemedText>
           </ThemedView>
           {!isLast ? <View style={styles.separator} /> : null}
         </HapticTab>
@@ -108,16 +131,22 @@ export function HistoryList() {
 
   return (
     <ThemedView style={styles.container}>
-      <FlatList
-        data={historyItems}
-        keyExtractor={(item) => item.id.toString()}
+      <SectionList
+        sections={groupedByMonth}
+        keyExtractor={(i) => i.id.toString()}
         renderItem={renderHistoryItem}
+        renderSectionHeader={({ section: { title } }) => (
+          <ThemedText style={styles.sectionTitle} type="secondary">
+            {title}
+          </ThemedText>
+        )}
         maxToRenderPerBatch={5}
         windowSize={5}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         removeClippedSubviews
         initialNumToRender={5}
+        stickySectionHeadersEnabled={false}
       />
     </ThemedView>
   );
@@ -162,7 +191,7 @@ const styles = StyleSheet.create({
   resultItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 8,
     paddingVertical: 12,
     paddingHorizontal: 8,
   },
@@ -190,5 +219,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     width: ACTION_WIDTH,
+  },
+
+  sectionTitle: {
+    marginVertical: 8,
+    paddingHorizontal: 8,
   },
 });

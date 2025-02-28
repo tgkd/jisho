@@ -638,7 +638,6 @@ export async function getDictionaryEntry(
 ): Promise<
   DictionaryEntry | (DictionaryEntry & { examples: ExampleSentence[] }) | null
 > {
-  // Check cache first if not requesting examples
   if (!withExamples && entryCache.has(id)) {
     return entryCache.get(id)!;
   }
@@ -1406,10 +1405,7 @@ export async function addToHistory(
     const reading = entry.reading.join(", ");
 
     await db.execAsync("BEGIN TRANSACTION");
-
-    // TODO problem with duplidations in history
     await db.runAsync("DELETE FROM history WHERE word_id = ?", [entry.id]);
-
     await db.runAsync(
       `INSERT INTO history (word_id, word, reading, preview, timestamp, source)
        VALUES (?, ?, ?, ?, ?, ?)`,

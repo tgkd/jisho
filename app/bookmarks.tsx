@@ -90,6 +90,7 @@ export default function BookmarksScreen() {
   const handleRemoveBookmark = async (id: string | number) => {
     await removeBookmark(db, id as number);
     setBookmarks((prev) => prev.filter((item) => item.id !== id));
+    setFilteredBookmarks((prev) => prev.filter((item) => item.id !== id));
   };
 
   const renderListHeader = () => {

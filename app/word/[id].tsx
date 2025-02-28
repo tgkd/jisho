@@ -47,6 +47,7 @@ const PARTS_OF_SPEECH: Record<string, string> = {
 
 export default function WordDetailScreen() {
   const tintColor = useThemeColor({}, "tint");
+  const markColor = useThemeColor({}, "text");
   const params = useLocalSearchParams();
   const title = typeof params.title === "string" ? params.title : "Details";
   const [entry, setEntry] = useState<DictionaryEntry | null>(null);
@@ -55,7 +56,7 @@ export default function WordDetailScreen() {
   const [bookmarked, setBookmarked] = useState(false);
   const db = useSQLiteContext();
 
-  const loadEntry = async () => {
+  const initEntry = async () => {
     try {
       const result = await getDictionaryEntry(db, Number(params.id), true);
 
@@ -70,27 +71,16 @@ export default function WordDetailScreen() {
             kanji: result.kanji,
             meanings: result.meanings,
           });
-
-          await addToHistory(db, {
-            id: result.id,
-            word: result.word,
-            reading: result.reading,
-            reading_hiragana: result.reading_hiragana,
-            kanji: result.kanji,
-            meanings: result.meanings,
-            source: result.source,
-          });
         } else {
           setExamples([]);
           setEntry(result);
-
-          await addToHistory(db, result);
         }
       }
 
       if (result) {
         const bookmarkStatus = await isBookmarked(db, result.id);
         setBookmarked(bookmarkStatus);
+        await addToHistory(db, result);
       }
     } catch (error) {
       console.error("Failed to load dictionary entry:", error);
@@ -100,7 +90,7 @@ export default function WordDetailScreen() {
   };
 
   useEffect(() => {
-    loadEntry();
+    initEntry();
   }, []);
 
   const handleToggleBookmark = async () => {
@@ -183,7 +173,7 @@ export default function WordDetailScreen() {
         <Card variant="grouped" style={styles.meaningsSection}>
           {entry.meanings.map((m, idx) => (
             <View key={idx} style={styles.meaningItem}>
-              <IconSymbol name="circle.fill" size={6} color={tintColor} />
+              <IconSymbol name="circle.fill" size={6} color={markColor} />
               <View>
                 <ThemedText style={styles.meaningText}>
                   {m.meaning.replaceAll(";", ", ")}

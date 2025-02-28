@@ -11,6 +11,11 @@ import { SQLiteProvider } from "expo-sqlite";
 import { StatusBar } from "expo-status-bar";
 import { Suspense, useEffect } from "react";
 import { StyleSheet } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import {
+  configureReanimatedLogger,
+  ReanimatedLogLevel,
+} from "react-native-reanimated";
 
 import { HapticTab } from "@/components/HapticTab";
 import { Loader } from "@/components/Loader";
@@ -18,11 +23,15 @@ import { IconSymbol } from "@/components/ui/IconSymbol";
 import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { migrateDbIfNeeded } from "@/services/database";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 const DATABASE_PATH = "../assets/db/dict.db";
 
 SplashScreen.preventAutoHideAsync();
+
+configureReanimatedLogger({
+  level: ReanimatedLogLevel.warn,
+  strict: false,
+});
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();

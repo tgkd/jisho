@@ -1,11 +1,6 @@
 import { useSQLiteContext } from "expo-sqlite";
 import { useState } from "react";
-import {
-  FlatList,
-  StyleSheet,
-  TextInput,
-  View
-} from "react-native";
+import { FlatList, StyleSheet, TextInput, View } from "react-native";
 
 import { HapticTab } from "@/components/HapticTab";
 import { HistoryList } from "@/components/HistoryList";
@@ -19,7 +14,7 @@ import { useThemeColor } from "@/hooks/useThemeColor";
 import {
   DictionaryEntry,
   searchByEnglishWord,
-  searchDictionary
+  searchDictionary,
 } from "@/services/database";
 
 type SearchMode = "japanese" | "english";
@@ -102,8 +97,12 @@ export default function HomeScreen() {
         <HapticTab onPress={toggleSearchMode}>
           <IconSymbol
             color={Colors.light.tint}
-            name={searchMode === "japanese" ? "e.circle" : "j.circle"}
-            size={32}
+            name={
+              searchMode === "japanese"
+                ? "globe.asia.australia.fill"
+                : "globe.americas.fill"
+            }
+            size={28}
           />
         </HapticTab>
       </View>
