@@ -21,9 +21,7 @@
   "submit": {
     "production": {
       "ios": {
-        "appleId": "p.y.trofimov@gmail.com",
-        "ascAppId": "1234567890",
-        "appleTeamId": "AB12XYZ34S"
+        "bundleIdentifier": "app.jisho.loc"
       }
     }
   }
