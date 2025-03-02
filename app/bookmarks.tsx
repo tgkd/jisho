@@ -1,13 +1,8 @@
 import { Stack, useFocusEffect } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
-import { useCallback, useRef, useState } from "react";
-import { StyleSheet } from "react-native";
-import Animated, {
-  useAnimatedStyle,
-  withTiming,
-} from "react-native-reanimated";
+import { useCallback, useState } from "react";
+import { FlatList, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { SearchBarCommands } from "react-native-screens";
 
 import { ListItem } from "@/components/ListItem";
 import { ThemedText } from "@/components/ThemedText";
@@ -20,8 +15,6 @@ import {
 
 export default function BookmarksScreen() {
   const insets = useSafeAreaInsets();
-  const searchRef = useRef<SearchBarCommands>(null);
-  const [searchFocused, setSearchFocused] = useState(false);
   const [search, setSearch] = useState("");
   const [bookmarks, setBookmarks] = useState<DictionaryEntry[]>([]);
   const [filteredBookmarks, setFilteredBookmarks] = useState<DictionaryEntry[]>(
@@ -119,27 +112,19 @@ export default function BookmarksScreen() {
     );
   };
 
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      paddingTop: withTiming(insets.top + (searchFocused ? 64 : 108)),
-    };
-  });
-
   return (
-    <Animated.View style={[styles.container, animatedStyle]}>
+    <>
       <Stack.Screen
         options={{
           headerSearchBarOptions: {
-            ref: searchRef,
             placeholder: "Search in bookmarks",
             onChangeText: (e) => handleChange(e.nativeEvent.text),
             autoCapitalize: "none",
-            onFocus: () => setSearchFocused(true),
-            onBlur: () => setSearchFocused(false),
           },
         }}
       />
-      <Animated.FlatList
+      <FlatList
+        contentInsetAdjustmentBehavior="automatic"
         data={filteredBookmarks}
         renderItem={({ index, item }) => (
           <ListItem
@@ -164,7 +149,7 @@ export default function BookmarksScreen() {
           </ThemedText>
         }
       />
-    </Animated.View>
+    </>
   );
 }
 
@@ -173,6 +158,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   scrollContainer: {
+    paddingVertical: 24,
     paddingHorizontal: 16,
   },
 });

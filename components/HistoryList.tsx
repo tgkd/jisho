@@ -130,25 +130,25 @@ export function HistoryList() {
   };
 
   return (
-    <ThemedView style={styles.container}>
-      <SectionList
-        sections={groupedByMonth}
-        keyExtractor={(i) => i.id.toString()}
-        renderItem={renderHistoryItem}
-        renderSectionHeader={({ section: { title } }) => (
-          <ThemedText style={styles.sectionTitle} type="secondary">
-            {title}
-          </ThemedText>
-        )}
-        maxToRenderPerBatch={5}
-        windowSize={5}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        removeClippedSubviews
-        initialNumToRender={5}
-        stickySectionHeadersEnabled={false}
-      />
-    </ThemedView>
+    <SectionList
+      contentInsetAdjustmentBehavior="automatic"
+      sections={groupedByMonth}
+      keyExtractor={(i) => i.id.toString()}
+      renderItem={renderHistoryItem}
+      renderSectionHeader={({ section: { title } }) => (
+        <ThemedText style={styles.sectionTitle} type="secondary">
+          {title}
+        </ThemedText>
+      )}
+      maxToRenderPerBatch={5}
+      windowSize={5}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+      removeClippedSubviews
+      initialNumToRender={5}
+      stickySectionHeadersEnabled={false}
+      contentContainerStyle={styles.container}
+    />
   );
 }
 
@@ -185,8 +185,9 @@ function RightAction({
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    marginHorizontal: 16,
+    paddingBottom: 24,
+    paddingTop: 8,
+    paddingHorizontal: 16,
   },
   resultItem: {
     flexDirection: "row",

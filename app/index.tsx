@@ -1,5 +1,5 @@
 import { useSQLiteContext } from "expo-sqlite";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { FlatList, StyleSheet, TextInput, View } from "react-native";
 
 import { HapticTab } from "@/components/HapticTab";
@@ -16,6 +16,9 @@ import {
   searchByEnglishWord,
   searchDictionary,
 } from "@/services/database";
+import { Stack } from "expo-router";
+import { SearchBarCommands } from "react-native-screens";
+import { ThemedText } from "@/components/ThemedText";
 
 type SearchMode = "japanese" | "english";
 
@@ -37,11 +40,11 @@ export default function HomeScreen() {
 
     if (text.length === 0) {
       setResults([]);
+      setLoading(false);
       return;
     }
 
     try {
-      setLoading(true);
       let searchResults: DictionaryEntry[];
       if (searchMode === "japanese") {
         searchResults = await searchDictionary(db, text);
@@ -58,67 +61,37 @@ export default function HomeScreen() {
   }, 500);
 
   const handleChange = (text: string) => {
+    setLoading(true);
     setSearch(text);
     handleSearch(text);
   };
 
-  const renderItem = ({
-    item,
-    index,
-  }: {
-    item: DictionaryEntry;
-    index: number;
-  }) => <ListItem item={item} index={index} total={results?.length || 0} />;
-
   const showHistory = !search.trim().length && !results.length;
 
   return (
-    <ThemedView style={styles.container}>
-      <View style={styles.searchContainer}>
-        <TextInput
-          style={[
-            styles.searchInput,
-            { backgroundColor: inputBackground, color: inputTextColor },
-          ]}
-          placeholder={
-            searchMode === "japanese"
-              ? "Search in Japanese..."
-              : "Search in English..."
-          }
-          value={search}
-          onChangeText={handleChange}
-          returnKeyType="search"
-          clearButtonMode="while-editing"
-          autoCorrect={false}
-          autoCapitalize="none"
-          enablesReturnKeyAutomatically
-          spellCheck={false}
-        />
-        <HapticTab onPress={toggleSearchMode}>
-          <IconSymbol
-            color={Colors.light.tint}
-            name={
+    <>
+      <Stack.Screen
+        options={{
+          headerLargeTitle: true,
+          headerSearchBarOptions: {
+            placeholder:
               searchMode === "japanese"
-                ? "globe.asia.australia.fill"
-                : "globe.americas.fill"
-            }
-            size={28}
-          />
-        </HapticTab>
-      </View>
-
-      {loading ? (
-        <View style={styles.headerContainer}>
-          <Loader />
-        </View>
-      ) : null}
-
-      {!loading && showHistory ? (
+                ? "Search in Japanese..."
+                : "Search in English...",
+            onChangeText: (e) => handleChange(e.nativeEvent.text),
+            autoCapitalize: "none",
+          },
+        }}
+      />
+      {showHistory ? (
         <HistoryList />
       ) : (
         <FlatList
+          contentInsetAdjustmentBehavior="automatic"
           data={results}
-          renderItem={renderItem}
+          renderItem={({ index, item }) => (
+            <ListItem item={item} index={index} total={results?.length || 0} />
+          )}
           keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={styles.scrollContainer}
           keyboardShouldPersistTaps="handled"
@@ -127,18 +100,29 @@ export default function HomeScreen() {
           initialNumToRender={10}
           maxToRenderPerBatch={10}
           windowSize={5}
+          ListHeaderComponent={
+            loading && search.length ? (
+              <View style={styles.headerContainer}>
+                <Loader />
+              </View>
+            ) : null
+          }
+          ListEmptyComponent={
+            loading || !search.length ? null : (
+              <View style={styles.emptyContainer}>
+                <ThemedText type="secondary">{"No results found"}</ThemedText>
+              </View>
+            )
+          }
         />
       )}
-    </ThemedView>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingBottom: 24,
-  },
   scrollContainer: {
+    paddingVertical: 24,
     paddingHorizontal: 16,
   },
   searchContainer: {

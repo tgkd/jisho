@@ -2,16 +2,13 @@
   "expo": {
     "name": "jisho",
     "slug": "jisho",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "ios": {
-        "bundleIdentifier": "app.jisho.loc",
-        "buildNumber": "3"
-      },
+      "buildNumber": "5",
       "supportsTablet": false,
       "bundleIdentifier": "app.jisho.loc",
       "infoPlist": {

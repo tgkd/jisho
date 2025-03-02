@@ -1397,8 +1397,8 @@ export async function addToHistory(
     let preview = "";
     if (entry.meanings && entry.meanings.length > 0) {
       preview = entry.meanings[0].meaning.split(";")[0].trim();
-      if (preview.length > 100) {
-        preview = preview.substring(0, 97) + "...";
+      if (preview.length > 60) {
+        preview = preview.substring(0, 57) + "...";
       }
     }
 
