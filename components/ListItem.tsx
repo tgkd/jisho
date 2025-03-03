@@ -4,7 +4,6 @@ import ReanimatedSwipeable, {
   SwipeableMethods,
 } from "react-native-gesture-handler/ReanimatedSwipeable";
 import Animated, {
-  interpolateColor,
   SharedValue,
   useAnimatedStyle,
 } from "react-native-reanimated";
@@ -16,29 +15,7 @@ import { useThemeColor } from "@/hooks/useThemeColor";
 import { DictionaryEntry } from "@/services/database";
 import { HapticTab } from "./HapticTab";
 import { IconSymbol } from "./ui/IconSymbol";
-
-/*
-{
-  "id": 106891,
-  "word": "すんばらしい",
-  "reading": [
-    "すばらしい",
-    "すんばらしい"
-  ],
-  "reading_hiragana": "すばらしい",
-  "kanji": "素晴らしい;素晴しい;素薔薇しい",
-  "meanings": [
-    {
-      "meaning": "wonderful;splendid;magnificent",
-      "part_of_speech": "adj-i",
-      "field": "",
-      "misc": "",
-      "info": null
-    }
-  ]
-}
-
-*/
+import { MarkersText } from "./MarkersText";
 
 const ACTION_WIDTH = 40;
 
@@ -62,12 +39,9 @@ export function ListItem({
       params: { id: item.id.toString(), title: item.word },
     });
   };
-  const meanings = item.meanings
-    .map((m) => ({
-      text: m.meaning.replaceAll(";", ", "),
-      partOfSpeech: m.part_of_speech,
-    }))
-    .filter((m) => m.text.length > 0);
+
+  const meanings =
+    "meanings" in item ? item.meanings.filter((m) => m.meaning.length > 0) : [];
 
   return (
     <ReanimatedSwipeable
@@ -91,14 +65,10 @@ export function ListItem({
         >
           <View style={styles.titleRow}>
             <ThemedText type="defaultSemiBold">{item.word}</ThemedText>
-            <ThemedText type="secondary">
-              {`【${item.reading.join(", ")}】`}
-            </ThemedText>
+            <MarkersText text={item.reading} />
           </View>
-          {meanings.map((m, idx) => (
-            <View key={idx}>
-              <ThemedText type="secondary">{m.text}</ThemedText>
-            </View>
+          {meanings.map((m) => (
+            <MarkersText key={m.id} textType="secondary" text={m.meaning} />
           ))}
         </ThemedView>
       </HapticTab>

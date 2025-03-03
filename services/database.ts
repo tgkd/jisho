@@ -1,527 +1,70 @@
-import * as SQLite from 'expo-sqlite';
-import * as FileSystem from 'expo-file-system';
-import { Asset } from 'expo-asset';
+import * as SQLite from "expo-sqlite";
 import * as wanakana from "wanakana";
 
-// Define a statement cache to reuse prepared statements
-interface PreparedStatementCache {
-  [key: string]: SQLite.SQLiteStatement;
-}
+// words table schema
+// [{"id":"15307","word":"亜熱帯高圧帯","reading":"あねったいこうあつたい"}]
 
-// Define the connection pool size for better performance
-const CONNECTION_POOL_SIZE = 3;
-const STATEMENT_CACHE_SIZE = 50;
-const connectionPool: SQLite.SQLiteDatabase[] = [];
-const statementCaches: PreparedStatementCache[] = [];
+// meanings table schema
+// [{"id":"14356","word_id":"5003","meaning":"to carry","part_of_speech":null,"tags":null}]
 
-let dbInitialized = false;
+// examples table schema
+// [{"id":"52","japanese":"彼は宝石を盗んだといわれている。","english":"He is alleged to have stolen the jewelry.#ID=303645_100052","parsed_tokens":"彼(かれ)[01] は 宝石 を 盗む{盗んだ} と言われる{といわれている}"}]
 
-export async function openDatabase() {
-  // Initialize the connection pool if not already done
-  if (!dbInitialized) {
-    await initializeDatabasePool();
-  }
+// bookmarks table schema
+// [{"id":"1","word_id":"5003","created_at":"2021-09-01T00:00:00.000Z"}]
 
-  // Return a connection from the pool
-  return getConnectionFromPool();
-}
+// history table schema
+// [{"id":"1","word_id":"5003", "created_at":"2021-09-01T00:00:00.000Z"}]
 
-async function initializeDatabasePool() {
-  // Check if db exists at FileSystem.documentDirectory + 'SQLite/dict.db'
-  const dbDirectory = FileSystem.documentDirectory + 'SQLite';
-  const dbPath = dbDirectory + '/dict.db';
-
-  // Ensure the directory exists
-  const dirInfo = await FileSystem.getInfoAsync(dbDirectory);
-  if (!dirInfo.exists) {
-    await FileSystem.makeDirectoryAsync(dbDirectory, { intermediates: true });
-  }
-
-  // Check if database file exists
-  const fileInfo = await FileSystem.getInfoAsync(dbPath);
-
-  if (!fileInfo.exists) {
-    // Copy database from assets
-    try {
-      const asset = Asset.fromModule(require('../assets/db/dict.db'));
-      await asset.downloadAsync();
-
-      if (!asset.localUri) {
-        throw new Error('Failed to download database asset');
-      }
-
-      await FileSystem.copyAsync({
-        from: asset.localUri,
-        to: dbPath
-      });
-
-      console.log('Database copied from assets to:', dbPath);
-    } catch (error) {
-      console.error('Error copying database from assets:', error);
-      throw error;
+export type DictionaryEntry =
+  | {
+      id: number;
+      word: string;
+      reading: string;
     }
-  }
-
-  // Initialize the connection pool
-  for (let i = 0; i < CONNECTION_POOL_SIZE; i++) {
-    try {
-      const db = SQLite.openDatabase('dict.db');
-      // Apply optimized pragmas for better performance
-      executeSql(db, 'PRAGMA journal_mode = WAL');
-      executeSql(db, 'PRAGMA synchronous = NORMAL');
-      executeSql(db, 'PRAGMA cache_size = 2000');
-      executeSql(db, 'PRAGMA temp_store = MEMORY');
-      executeSql(db, 'PRAGMA foreign_keys = ON');
-
-      connectionPool.push(db);
-      statementCaches.push({});
-    } catch (error) {
-      console.error('Error initializing database connection:', error);
+  | {
+      id: number;
+      word: string;
+      reading: string;
+      meanings: MeaningEntry[];
     }
-  }
-
-  dbInitialized = true;
-  console.log(`Database connection pool initialized with ${connectionPool.length} connections`);
-}
-
-function getConnectionFromPool() {
-  // Simple round-robin connection pooling
-  const index = Math.floor(Math.random() * connectionPool.length);
-  return {
-    db: connectionPool[index],
-    statementCache: statementCaches[index],
-    index
-  };
-}
-
-function prepareCachedStatement(db: SQLite.SQLiteDatabase, cache: PreparedStatementCache, sql: string) {
-  if (!cache[sql]) {
-    // Limit the cache size to prevent memory leaks
-    const cacheKeys = Object.keys(cache);
-    if (cacheKeys.length >= STATEMENT_CACHE_SIZE) {
-      // Remove the oldest statement (simple implementation - could be improved with LRU)
-      const oldestKey = cacheKeys[0];
-      delete cache[oldestKey];
+  | {
+      id: number;
+      word: string;
+      reading: string;
+      examples: ExampleEntry[];
     }
-    cache[sql] = db.prepareStatement(sql);
-  }
-  return cache[sql];
-}
+  | {
+      id: number;
+      word: string;
+      reading: string;
+      meanings: MeaningEntry[];
+      examples: ExampleEntry[];
+    };
 
-function executeSql(db: SQLite.SQLiteDatabase, sql: string, params: any[] = []): Promise<SQLite.SQLResultSet> {
-  return new Promise((resolve, reject) => {
-    db.exec([{ sql, args: params }], false, (err, resultSet) => {
-      if (err) {
-        reject(err);
-        return;
-      }
-      if (resultSet && resultSet.length > 0) {
-        resolve(resultSet[0]);
-      } else {
-        resolve({ insertId: null, rowsAffected: 0, rows: { length: 0, item: () => null, _array: [] } });
-      }
-    });
-  });
-}
-
-export async function executeQuery(sql: string, params: any[] = []) {
-  const connection = getConnectionFromPool();
-  try {
-    // Use prepared statements for better performance
-    const statement = prepareCachedStatement(connection.db, connection.statementCache, sql);
-    return await executeSql(connection.db, sql, params);
-  } catch (error) {
-    console.error(`Error executing SQL: ${sql}`, error);
-    throw error;
-  }
-}
-
-export async function searchWords(query: string, limit: number = 20) {
-  // Optimize the search query with better indexing
-  const normalizedQuery = query.trim().toLowerCase();
-
-  // Skip searching if query is too short
-  if (normalizedQuery.length < 1) {
-    return [];
-  }
-
-  const connection = getConnectionFromPool();
-
-  try {
-    // Use a more efficient search query with proper indexing
-    // Query for exact matches first, then partial matches
-    const sql = `
-      SELECT w.id, w.word, w.reading, m.meaning, m.part_of_speech
-      FROM words w
-      JOIN meanings m ON w.id = m.word_id
-      WHERE
-        w.word = ? OR
-        w.reading = ? OR
-        w.word LIKE ? OR
-        w.reading LIKE ? OR
-        m.meaning MATCH ?
-      GROUP BY w.id
-      ORDER BY
-        CASE
-          WHEN w.word = ? THEN 0
-          WHEN w.reading = ? THEN 1
-          WHEN w.word LIKE ? THEN 2
-          WHEN w.reading LIKE ? THEN 3
-          ELSE 4
-        END,
-        length(w.word)
-      LIMIT ?
-    `;
-
-    const likeParam = `%${normalizedQuery}%`;
-    const ftsParam = `"${normalizedQuery}"*`;
-
-    const results = await executeSql(connection.db, sql, [
-      normalizedQuery, // exact word match
-      normalizedQuery, // exact reading match
-      likeParam, // partial word match
-      likeParam, // partial reading match
-      ftsParam, // FTS match
-      normalizedQuery, // for ordering - exact word match
-      normalizedQuery, // for ordering - exact reading match
-      likeParam, // for ordering - partial word match
-      likeParam, // for ordering - partial reading match
-      limit // limit results
-    ]);
-
-    return results.rows._array;
-  } catch (error) {
-    console.error('Error searching words:', error);
-    throw error;
-  }
-}
-
-export async function getWord(id: number) {
-  const connection = getConnectionFromPool();
-
-  try {
-    // Get the word and all its meanings
-    const sql = `
-      SELECT
-        w.id, w.word, w.reading,
-        json_group_array(
-          json_object(
-            'id', m.id,
-            'meaning', m.meaning,
-            'part_of_speech', m.part_of_speech,
-            'tags', m.tags
-          )
-        ) as meanings
-      FROM words w
-      LEFT JOIN meanings m ON w.id = m.word_id
-      WHERE w.id = ?
-      GROUP BY w.id
-    `;
-
-    const result = await executeSql(connection.db, sql, [id]);
-
-    if (result.rows.length === 0) {
-      return null;
-    }
-
-    const wordData = result.rows.item(0);
-
-    // Parse the JSON string of meanings
-    try {
-      wordData.meanings = JSON.parse(wordData.meanings);
-    } catch (e) {
-      wordData.meanings = [];
-    }
-
-    return wordData;
-  } catch (error) {
-    console.error('Error getting word:', error);
-    throw error;
-  }
-}
-
-export async function getExamples(wordId: number, limit: number = 5) {
-  const connection = getConnectionFromPool();
-
-  try {
-    // Optimize examples retrieval with better indexing
-    const sql = `
-      SELECT e.id, e.japanese, e.english
-      FROM examples e
-      JOIN example_word_map ewm ON e.id = ewm.example_id
-      WHERE ewm.word_id = ?
-      LIMIT ?
-    `;
-
-    const result = await executeSql(connection.db, sql, [wordId, limit]);
-    return result.rows._array;
-  } catch (error) {
-    console.error('Error getting examples:', error);
-    throw error;
-  }
-}
-
-export async function closeDatabase() {
-  // Properly close all connections in the pool
-  for (const db of connectionPool) {
-    db.closeAsync();
-  }
-
-  // Clear the pools
-  connectionPool.length = 0;
-  statementCaches.length = 0;
-  dbInitialized = false;
-}
-
-// Entry cache
-const entryCache = new Map<number, DictionaryEntry>();
-const MAX_CACHE_SIZE = 100;
-
-// Clear cache function
-export function clearEntryCache(): void {
-  entryCache.clear();
-}
-
-export interface DictionaryEntry {
-  id: number;
-  word: string;
-  reading: string[];
-  reading_hiragana: string | null;
-  kanji: string | null;
-  meanings: Array<{
-    meaning: string;
-    part_of_speech: string | null;
-    field: string | null;
-    misc: string | null;
-    info: string | null;
-  }>;
-  source?: string;
-}
-
-/* {
-    id: "1",
-    japanese_text: "彼は忙しい生活の中で家族と会うことがない。",
-    english_text: "He doesn't see his family in his busy life.",
-    tokens:
-      "彼(かれ)[01] は 忙しい(いそがしい) 生活 の 中(なか) で(#2028980) 家族 と 会う[01] 事(こと){こと} が 無い{ない}",
-    example_id: "303697_100000",
-  } */
-
-export interface ExampleSentence {
-  id: number;
-  japanese_text: string;
-  english_text: string;
-  tokens?: string;
-  example_id?: string;
-}
-
-/* {
-  id: "11",
-  word: "仝",
-  reading: "どう",
-  reading_hiragana: "どう",
-  kanji: "仝",
-  position: "385",
-};
-
-*/
-interface WordRow {
-  id: number;
-  word: string;
-  reading: string;
-  reading_hiragana: string | null;
-  kanji: string | null;
-  position: number;
-}
-
-/*
-{
-    "meaning": "dictionary of Chinese characters;kanji dictionary",
-    "part_of_speech": "n",
-    "field": "",
-    "misc": "",
-    "info": null
-  },
-*/
-
-interface MeaningRow {
-  meaning: string;
-  part_of_speech: string | null;
-  field: string | null;
-  misc: string | null;
-  info: string | null;
-}
-
-export interface HistoryEntry {
+export type MeaningEntry = {
   id: number;
   word_id: number;
-  word: string;
-  reading: string;
-  preview: string;
-  timestamp: number;
-  source?: string;
-}
+  meaning: string;
+  part_of_speech: string;
+  tags: string;
+};
 
-interface SearchQuery {
+export type ExampleEntry = {
+  id: number;
+  japanese: string;
+  english: string;
+  parsed_tokens: string;
+};
+
+type SearchQuery = {
   original: string;
   hiragana?: string;
   katakana?: string;
   romaji?: string;
-}
+};
 
-export async function migrateDbIfNeeded(db: SQLite.SQLiteDatabase) {
-  const DATABASE_VERSION = 6;
-
-  try {
-    const versionResult = await db.getFirstAsync<{ user_version: number }>(
-      "PRAGMA user_version"
-    );
-    let currentDbVersion = versionResult?.user_version ?? 0;
-
-    console.log("DB: ", currentDbVersion, "TARGET: ", DATABASE_VERSION);
-
-    if (currentDbVersion >= DATABASE_VERSION) {
-      return;
-    }
-
-    if (currentDbVersion < 1) {
-      await db.execAsync(`
-        PRAGMA journal_mode = 'wal';
-
-        CREATE TABLE IF NOT EXISTS words (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          word TEXT,
-          reading TEXT,
-          reading_hiragana TEXT,
-          kanji TEXT,
-          position INTEGER
-        );
-
-        CREATE TABLE IF NOT EXISTS meanings (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          word_id INTEGER,
-          meaning TEXT,
-          part_of_speech TEXT,
-          field TEXT,
-          misc TEXT,
-          info TEXT,
-          FOREIGN KEY (word_id) REFERENCES words (id)
-        );
-
-        CREATE INDEX IF NOT EXISTS idx_word ON words(word);
-        CREATE INDEX IF NOT EXISTS idx_reading ON words(reading);
-        CREATE INDEX IF NOT EXISTS idx_position ON words(position);
-        CREATE INDEX IF NOT EXISTS idx_kanji ON words(kanji);
-      `);
-
-      await db.execAsync(`PRAGMA user_version = 1`);
-      currentDbVersion = 1;
-    }
-
-    if (currentDbVersion < 2) {
-      await db.execAsync(`
-        CREATE TABLE IF NOT EXISTS examples (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          japanese_text TEXT,
-          english_text TEXT,
-          tokens TEXT,
-          example_id TEXT
-        );
-
-        CREATE INDEX IF NOT EXISTS idx_japanese_text ON examples(japanese_text);
-      `);
-
-      await db.execAsync(`PRAGMA user_version = 2`);
-      currentDbVersion = 2;
-    }
-
-    if (currentDbVersion < 3) {
-      await db.execAsync(`
-        CREATE TABLE IF NOT EXISTS edict_entries (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          japanese TEXT,
-          reading TEXT
-        );
-
-        CREATE TABLE IF NOT EXISTS edict_meanings (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          entry_id INTEGER,
-          english_definition TEXT,
-          part_of_speech TEXT,
-          FOREIGN KEY (entry_id) REFERENCES edict_entries (id)
-        );
-
-        CREATE VIRTUAL TABLE IF NOT EXISTS edict_fts
-        USING fts5(english_definition, meaning_id UNINDEXED);
-
-        CREATE INDEX IF NOT EXISTS idx_edict_japanese ON edict_entries(japanese);
-        CREATE INDEX IF NOT EXISTS idx_edict_reading ON edict_entries(reading);
-        CREATE INDEX IF NOT EXISTS idx_edict_entry_id ON edict_meanings(entry_id);
-      `);
-
-      await db.execAsync(`PRAGMA user_version = 3`);
-      currentDbVersion = 3;
-    }
-
-    if (currentDbVersion < 4) {
-      await db.execAsync(`
-            CREATE TABLE IF NOT EXISTS bookmarks (
-              id INTEGER PRIMARY KEY,
-              word_id INTEGER NOT NULL,
-              date_added INTEGER NOT NULL,
-              UNIQUE(word_id)
-            );
-          `);
-
-      await db.execAsync(`PRAGMA user_version = 4`);
-      currentDbVersion = 4;
-    }
-
-    if (currentDbVersion < 5) {
-      await db.execAsync(`
-        CREATE VIRTUAL TABLE IF NOT EXISTS dictionary_fts
-        USING fts5(word, reading, reading_hiragana, meanings, word_id UNINDEXED);
-
-        INSERT INTO dictionary_fts (word_id, word, reading, reading_hiragana, meanings)
-        SELECT w.id, w.word, w.reading, w.reading_hiragana,
-          GROUP_CONCAT(m.meaning, ' ') as meanings
-        FROM words w
-        LEFT JOIN meanings m ON m.word_id = w.id
-        GROUP BY w.id;
-      `);
-
-      await db.execAsync(`PRAGMA user_version = 5`);
-      currentDbVersion = 5;
-    }
-
-    if (currentDbVersion < 6) {
-      await db.execAsync(`
-        CREATE TABLE IF NOT EXISTS history (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          word_id INTEGER NOT NULL,
-          word TEXT NOT NULL,
-          reading TEXT NOT NULL,
-          preview TEXT NOT NULL,
-          timestamp INTEGER NOT NULL,
-          source TEXT
-        );
-
-        CREATE INDEX IF NOT EXISTS idx_history_timestamp ON history(timestamp);
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_history_word_id ON history(word_id);
-      `);
-
-      await db.execAsync(`PRAGMA user_version = 6`);
-      currentDbVersion = 6;
-    }
-
-    console.log(
-      `Database migrations completed. Current version: ${currentDbVersion}`
-    );
-  } catch (error) {
-    console.error("Migration error:", error);
-    throw error;
-  }
-}
+export type HistoryEntry = DictionaryEntry & { createdAt: string };
 
 function processSearchQuery(query: string): SearchQuery {
   const result: SearchQuery = { original: query };
@@ -541,1176 +84,341 @@ function processSearchQuery(query: string): SearchQuery {
   return result;
 }
 
-export async function searchByEnglishWord(
-  db: SQLite.SQLiteDatabase,
-  query: string
-): Promise<DictionaryEntry[]> {
-  const words = await db.getAllAsync<WordRow>(
-    `
-    SELECT DISTINCT words.* FROM words
-    JOIN meanings ON meanings.word_id = words.id
-    WHERE meanings.meaning LIKE ?
-    ORDER BY length(words.word)
-    LIMIT 50
-    `,
-    [`%${query}%`]
-  );
-
-  const entries: DictionaryEntry[] = await Promise.all(
-    words.map(async (word) => {
-      const meanings = await db.getAllAsync<MeaningRow>(
-        `
-        SELECT meaning, part_of_speech, field, misc, info
-        FROM meanings
-        WHERE word_id = ?
-        `,
-        [word.id]
-      );
-
-      return {
-        id: word.id,
-        word: word.word,
-        reading: word.reading.split(";"),
-        reading_hiragana: word.reading_hiragana,
-        kanji: word.kanji,
-        meanings,
-      };
-    })
-  );
-
-  const edictEntries = await db.getAllAsync<{
-    id: number;
-    japanese: string;
-    reading: string;
-    english_definition: string;
-    part_of_speech: string;
-    meaning_id: number;
-  }>(
-    `
-    SELECT e.id, e.japanese, e.reading, m.english_definition, m.part_of_speech, m.id as meaning_id
-    FROM edict_entries e
-    JOIN edict_meanings m ON m.entry_id = e.id
-    JOIN edict_fts fts ON fts.meaning_id = m.id
-    WHERE edict_fts MATCH ?
-    ORDER BY length(e.japanese)
-    LIMIT 25
-    `,
-    [`"${query}"`]
-  );
-
-  const edictEntriesMap = new Map<
-    number,
-    {
-      id: number;
-      japanese: string;
-      reading: string;
-      meanings: Array<{
-        meaning: string;
-        part_of_speech: string | null;
-        field: string | null;
-        misc: string | null;
-        info: string | null;
-      }>;
-    }
-  >();
-
-  for (const entry of edictEntries) {
-    if (!edictEntriesMap.has(entry.id)) {
-      edictEntriesMap.set(entry.id, {
-        id: entry.id,
-        japanese: entry.japanese,
-        reading: entry.reading,
-        meanings: [],
-      });
-    }
-
-    const currentEntry = edictEntriesMap.get(entry.id)!;
-    currentEntry.meanings.push({
-      meaning: entry.english_definition,
-      part_of_speech: entry.part_of_speech,
-      field: null,
-      misc: null,
-      info: null,
-    });
-  }
-
-  const edictResults: DictionaryEntry[] = Array.from(
-    edictEntriesMap.values()
-  ).map((entry) => ({
-    id: entry.id + 1000000,
-    word: entry.japanese,
-    reading: entry.reading.split(";"),
-    reading_hiragana: entry.reading,
-    kanji: entry.japanese,
-    meanings: entry.meanings,
-    source: "edict",
-  }));
-
-  return [...entries, ...edictResults];
-}
-
-function uniqueBy<T>(array: T[], keySelector: (item: T) => any): T[] {
-  const seen = new Set<any>();
-  return array.filter((item) => {
-    const key = keySelector(item);
-    return seen.has(key) ? false : seen.add(key);
-  });
-}
-
 export async function searchDictionary(
   db: SQLite.SQLiteDatabase,
-  query: string
-): Promise<DictionaryEntry[]> {
-  const processedQuery = processSearchQuery(query);
-  const whereClauses: string[] = [];
-  const params: string[] = [];
-
-  whereClauses.push(`(
-    word LIKE ? OR
-    reading LIKE ? OR
-    kanji LIKE ? OR
-    word LIKE ? OR
-    reading LIKE ? OR
-    kanji LIKE ?
-  )`);
-
-  params.push(
-    `${processedQuery.original}%`,
-    `${processedQuery.original}%`,
-    `${processedQuery.original}%`,
-    `%${processedQuery.original}%`,
-    `%${processedQuery.original}%`,
-    `%${processedQuery.original}%`
-  );
-
-  // hiragana search
-  if (processedQuery.hiragana) {
-    whereClauses.push(`(
-      word LIKE ? OR
-      reading LIKE ? OR
-      reading_hiragana LIKE ? OR
-      word LIKE ? OR
-      reading LIKE ? OR
-      reading_hiragana LIKE ?
-    )`);
-    params.push(
-      `${processedQuery.hiragana}%`,
-      `${processedQuery.hiragana}%`,
-      `${processedQuery.hiragana}%`,
-      `%${processedQuery.hiragana}%`,
-      `%${processedQuery.hiragana}%`,
-      `%${processedQuery.hiragana}%`
-    );
-  }
-
-  // katakana search
-  if (processedQuery.katakana) {
-    whereClauses.push(`(
-      word LIKE ? OR
-      reading LIKE ? OR
-      word LIKE ? OR
-      reading LIKE ?
-    )`);
-    params.push(
-      `${processedQuery.katakana}%`,
-      `${processedQuery.katakana}%`,
-      `%${processedQuery.katakana}%`,
-      `%${processedQuery.katakana}%`
-    );
-  }
-
-  const words = await db.getAllAsync<WordRow>(
-    `
-    SELECT DISTINCT * FROM words
-    WHERE
-      ${whereClauses.join(" OR ")}
-      AND length(word) >= ${Math.min(query.length, 2)}
-    ORDER BY
-      CASE
-        WHEN word = ? THEN 1
-        WHEN reading = ? THEN 2
-        WHEN kanji = ? THEN 3
-        WHEN word LIKE ? THEN 4
-        WHEN reading LIKE ? THEN 5
-        WHEN kanji LIKE ? THEN 6
-        ELSE 7
-      END,
-      length(word)
-    LIMIT 50
-    `,
-    [...params, query, query, query, `${query}%`, `${query}%`, `${query}%`]
-  );
-
-  const entries: DictionaryEntry[] = await Promise.all(
-    words.map(async (word) => {
-      const meanings = await db.getAllAsync<MeaningRow>(
-        `
-        SELECT meaning, part_of_speech, field, misc, info
-        FROM meanings
-        WHERE word_id = ?
-        `,
-        [word.id]
-      );
-
-      return {
-        id: word.id,
-        word: word.word,
-        reading: word.reading.split(";"),
-        reading_hiragana: word.reading_hiragana,
-        kanji: word.kanji,
-        meanings,
-      };
-    })
-  );
-
-  // Search in edict_entries table
-  const edictWhereClauses: string[] = [];
-  const edictParams: string[] = [];
-
-  edictWhereClauses.push(`(
-    japanese LIKE ? OR
-    reading LIKE ? OR
-    japanese LIKE ? OR
-    reading LIKE ?
-  )`);
-
-  edictParams.push(
-    `${processedQuery.original}%`,
-    `${processedQuery.original}%`,
-    `%${processedQuery.original}%`,
-    `%${processedQuery.original}%`
-  );
-
-  if (processedQuery.hiragana) {
-    edictWhereClauses.push(`(
-      japanese LIKE ? OR
-      reading LIKE ? OR
-      japanese LIKE ? OR
-      reading LIKE ?
-    )`);
-    edictParams.push(
-      `${processedQuery.hiragana}%`,
-      `${processedQuery.hiragana}%`,
-      `%${processedQuery.hiragana}%`,
-      `%${processedQuery.hiragana}%`
-    );
-  }
-
-  if (processedQuery.katakana) {
-    edictWhereClauses.push(`(
-      japanese LIKE ? OR
-      reading LIKE ? OR
-      japanese LIKE ? OR
-      reading LIKE ?
-    )`);
-    edictParams.push(
-      `${processedQuery.katakana}%`,
-      `${processedQuery.katakana}%`,
-      `%${processedQuery.katakana}%`,
-      `%${processedQuery.katakana}%`
-    );
-  }
-
-  const edictEntries = await db.getAllAsync<{
-    id: number;
-    japanese: string;
-    reading: string;
-  }>(
-    `
-    SELECT DISTINCT id, japanese, reading
-    FROM edict_entries
-    WHERE
-      ${edictWhereClauses.join(" OR ")}
-      AND length(japanese) >= ${Math.min(query.length, 2)}
-    ORDER BY
-      CASE
-        WHEN japanese = ? THEN 1
-        WHEN reading = ? THEN 2
-        WHEN japanese LIKE ? THEN 3
-        WHEN reading LIKE ? THEN 4
-        ELSE 5
-      END,
-      length(japanese)
-    LIMIT 25
-    `,
-    [...edictParams, query, query, `${query}%`, `${query}%`]
-  );
-
-  if (edictEntries.length > 0) {
-    const edictDictEntries = await Promise.all(
-      edictEntries.map(async (entry) => {
-        const meanings = await db.getAllAsync<{
-          english_definition: string;
-          part_of_speech: string | null;
-        }>(
-          `SELECT english_definition, part_of_speech FROM edict_meanings WHERE entry_id = ?`,
-          [entry.id]
-        );
-
-        return {
-          id: entry.id + 1000000,
-          word: entry.japanese,
-          reading: entry.reading.split(";"),
-          reading_hiragana: entry.reading,
-          kanji: entry.japanese,
-          meanings: meanings.map((m) => ({
-            meaning: m.english_definition,
-            part_of_speech: m.part_of_speech,
-            field: null,
-            misc: null,
-            info: null,
-          })),
-          source: "edict",
-        } as DictionaryEntry;
-      })
-    );
-
-    const result = uniqueBy(
-      [...entries, ...edictDictEntries],
-      (item) => item.word
-    );
-
-    return result;
-  }
-
-  return entries;
-}
-
-export async function getDictionaryEntry(
-  db: SQLite.SQLiteDatabase,
-  id: number,
-  withExamples: boolean = false
-): Promise<
-  DictionaryEntry | (DictionaryEntry & { examples: ExampleSentence[] }) | null
-> {
-  if (!withExamples && entryCache.has(id)) {
-    return entryCache.get(id)!;
-  }
-
-  const word = await db.getFirstAsync<WordRow>(
-    `SELECT * FROM words WHERE id = ?`,
-    [id]
-  );
-
-  if (!word) return null;
-
-  const meanings = await db.getAllAsync<MeaningRow>(
-    `
-    SELECT meaning, part_of_speech, field, misc, info
-    FROM meanings
-    WHERE word_id = ?
-    `,
-    [id]
-  );
-
-  const entry = {
-    id: word.id,
-    word: word.word,
-    reading: word.reading.split(";"),
-    reading_hiragana: word.reading_hiragana,
-    kanji: word.kanji,
-    meanings,
-  };
-
-  // Cache the result if not requesting examples
-  if (!withExamples) {
-    if (entryCache.size >= MAX_CACHE_SIZE) {
-      const firstKey = entryCache.keys().next().value;
-      if (firstKey) {
-        entryCache.delete(firstKey);
-      }
-    }
-    entryCache.set(id, entry);
-  }
-
-  if (!withExamples) {
-    return entry;
-  }
-
-  const examples = await searchExamples(db, word.word, 5);
-
-  return {
-    ...entry,
-    examples,
-  };
-}
-
-export async function searchExamples(
-  db: SQLite.SQLiteDatabase,
   query: string,
-  limit: number = 20
-): Promise<ExampleSentence[]> {
-  const processedQuery = processSearchQuery(query);
-  const whereClauses: string[] = [];
-  const params: string[] = [];
-
-  whereClauses.push(`japanese_text LIKE ?`);
-  params.push(`%${processedQuery.original}%`);
-
-  if (processedQuery.hiragana) {
-    whereClauses.push(`japanese_text LIKE ?`);
-    params.push(`%${processedQuery.hiragana}%`);
-  }
-
-  if (processedQuery.katakana) {
-    whereClauses.push(`japanese_text LIKE ?`);
-    params.push(`%${processedQuery.katakana}%`);
-  }
-
-  if (processedQuery.original) {
-    whereClauses.push(`tokens LIKE ?`);
-    params.push(`%${processedQuery.original}%`);
-  }
-
-  const examples = await db.getAllAsync<ExampleSentence>(
-    `
-    SELECT id, japanese_text, english_text, tokens, example_id
-    FROM examples
-    WHERE ${whereClauses.join(" OR ")}
-    LIMIT ?
-    `,
-    [...params, limit]
-  );
-
-  return examples;
-}
-
-export async function getExampleById(
-  db: SQLite.SQLiteDatabase,
-  id: number
-): Promise<ExampleSentence | null> {
-  const example = await db.getFirstAsync<ExampleSentence>(
-    `
-    SELECT id, japanese_text, english_text, tokens, example_id
-    FROM examples
-    WHERE id = ?
-    `,
-    [id]
-  );
-
-  return example;
-}
-
-export async function getEdictEntry(
-  db: SQLite.SQLiteDatabase,
-  id: number
-): Promise<DictionaryEntry | null> {
-  // Check cache first
-  if (entryCache.has(id)) {
-    return entryCache.get(id)!;
-  }
-
-  const realId = id - 1000000;
-
-  const entry = await db.getFirstAsync<{
-    id: number;
-    japanese: string;
-    reading: string;
-  }>(`SELECT id, japanese, reading FROM edict_entries WHERE id = ?`, [realId]);
-
-  if (!entry) return null;
-
-  const meanings = await db.getAllAsync<{
-    english_definition: string;
-    part_of_speech: string | null;
-  }>(
-    `SELECT english_definition, part_of_speech FROM edict_meanings WHERE entry_id = ?`,
-    [realId]
-  );
-
-  const result = {
-    id,
-    word: entry.japanese,
-    reading: entry.reading.split(";"),
-    reading_hiragana: entry.reading,
-    kanji: entry.japanese,
-    meanings: meanings.map((m) => ({
-      meaning: m.english_definition,
-      part_of_speech: m.part_of_speech,
-      field: null,
-      misc: null,
-      info: null,
-    })),
-    source: "edict",
-  };
-
-  if (entryCache.size >= MAX_CACHE_SIZE) {
-    const firstKey = entryCache.keys().next().value;
-    if (firstKey) {
-      entryCache.delete(firstKey);
-    }
-  }
-  entryCache.set(id, result);
-
-  return result;
-}
-
-export async function resetDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
+  withMeanings = false
+): Promise<Array<DictionaryEntry>> {
   try {
-    console.log("Dropping all tables...");
-
-    await db.execAsync(`
-      DROP TABLE IF EXISTS meanings;
-      DROP TABLE IF EXISTS words;
-      DROP TABLE IF EXISTS examples;
-      DROP TABLE IF EXISTS edict_fts;
-      DROP TABLE IF EXISTS edict_meanings;
-      DROP TABLE IF EXISTS edict_entries;
-      DROP TABLE IF EXISTS bookmarks;
-    `);
-
-    await db.execAsync(`PRAGMA user_version = 0`);
-
-    console.log("Database reset complete");
-
-    await migrateDbIfNeeded(db);
-  } catch (error) {
-    console.error("Error resetting database:", error);
-    throw error;
-  }
-}
-
-export async function getBookmarks(
-  db: SQLite.SQLiteDatabase
-): Promise<DictionaryEntry[]> {
-  try {
-    const bookmarks = await db.getAllAsync<{
-      word_id: number;
-      date_added: number;
-    }>(`SELECT word_id, date_added FROM bookmarks ORDER BY date_added DESC`);
-
-    if (bookmarks.length === 0) {
+    const text = query.trim();
+    if (text.length === 0) {
       return [];
     }
 
-    // Group IDs by type
-    const regularIds: number[] = [];
-    const edictIds: number[] = [];
+    const sq = processSearchQuery(text);
 
-    bookmarks.forEach((b) => {
-      if (b.word_id >= 1000000) {
-        edictIds.push(b.word_id - 1000000);
-      } else {
-        regularIds.push(b.word_id);
-      }
-    });
+    // First try for exact matches only
+    const exactSql = `
+      SELECT DISTINCT w.*,
+      CASE
+        WHEN w.word = ? THEN 1
+        WHEN w.reading = ? THEN 2
+        WHEN w.reading = ? THEN 3
+        WHEN w.reading = ? THEN 4
+        ELSE 5
+      END as match_rank
+      FROM words w
+      WHERE w.word = ?
+      OR w.reading = ?
+      OR w.reading = ?
+      OR w.reading = ?
+      ORDER BY match_rank ASC
+      LIMIT 100
+    `;
 
-    // Batch fetch entries
-    const entries: DictionaryEntry[] = [];
+    const exactParams = [
+      // Parameters for the CASE statement (exact match ranking)
+      sq.original,
+      sq.original,
+      sq.hiragana || sq.original,
+      sq.katakana || sq.original,
 
-    if (regularIds.length > 0) {
-      const regularEntries = await batchGetDictionaryEntries(db, regularIds);
-      entries.push(...regularEntries);
+      // Parameters for the WHERE clause (exact matches only)
+      sq.original,
+      sq.original,
+      sq.hiragana || sq.original,
+      sq.katakana || sq.original,
+    ];
+
+    let result = await db.getAllAsync<DictionaryEntry>(exactSql, exactParams);
+
+    // If no exact matches found, try partial matches
+    if (result.length === 0) {
+      const partialSql = `
+        SELECT DISTINCT w.*,
+        CASE
+          WHEN w.word LIKE ? THEN 1
+          WHEN w.reading LIKE ? THEN 2
+          WHEN w.reading LIKE ? THEN 3
+          WHEN w.reading LIKE ? THEN 4
+          ELSE 5
+        END as match_rank
+        FROM words w
+        WHERE w.word LIKE ?
+        OR w.reading LIKE ?
+        OR w.reading LIKE ?
+        OR w.reading LIKE ?
+        ORDER BY match_rank ASC
+        LIMIT 100
+      `;
+
+      const searchPattern = `%${sq.original}%`;
+      const startPattern = `${sq.original}%`;
+
+      const partialParams = [
+        // Parameters for the CASE statement (partial match ranking)
+        startPattern,
+        startPattern,
+        sq.hiragana ? `${sq.hiragana}%` : startPattern,
+        sq.katakana ? `${sq.katakana}%` : startPattern,
+
+        // Parameters for the WHERE clause
+        searchPattern,
+        searchPattern,
+        sq.hiragana ? `%${sq.hiragana}%` : searchPattern,
+        sq.katakana ? `%${sq.katakana}%` : searchPattern,
+      ];
+
+      result = await db.getAllAsync<DictionaryEntry>(partialSql, partialParams);
     }
 
-    if (edictIds.length > 0) {
-      const edictEntries = await batchGetEdictEntries(db, edictIds);
-      entries.push(...edictEntries);
+    if (withMeanings) {
+      const resWithMeanings = await Promise.all(
+        result.map(async (entry) => {
+          const meanings = await getMeanings(db, entry.id, 3);
+          return { ...entry, meanings };
+        })
+      );
+      return resWithMeanings;
     }
 
-    // Create a map for faster lookup and preserve original order
-    const entriesMap = new Map<number, DictionaryEntry>();
-    entries.forEach((entry) => {
-      entriesMap.set(entry.id, entry);
-    });
-
-    // Return entries in the same order as bookmarks
-    return bookmarks
-      .map((b) => entriesMap.get(b.word_id))
-      .filter((entry): entry is DictionaryEntry => entry !== undefined);
+    return result;
   } catch (error) {
-    console.error("Error getting bookmarks:", error);
+    console.error("Search failed:", error);
     return [];
   }
 }
 
-// Helper functions for batch operations
-async function batchGetDictionaryEntries(
+export async function getMeanings(
   db: SQLite.SQLiteDatabase,
-  ids: number[]
-): Promise<DictionaryEntry[]> {
-  if (ids.length === 0) return [];
+  wordId: number,
+  limit?: number
+): Promise<MeaningEntry[]> {
+  try {
+    const query = limit
+      ? `
+      SELECT DISTINCT id, word_id, meaning, part_of_speech, tags
+      FROM (
+        SELECT * FROM meanings
+        WHERE word_id = ?
+        GROUP BY meaning
+      )
+      LIMIT ?
+    `
+      : `
+      SELECT DISTINCT id, word_id, meaning, part_of_speech, tags
+      FROM (
+        SELECT * FROM meanings
+        WHERE word_id = ?
+        GROUP BY meaning
+      )
+    `;
 
-  const placeholders = ids.map(() => "?").join(",");
-
-  // Get all words
-  const words = await db.getAllAsync<WordRow>(
-    `SELECT * FROM words WHERE id IN (${placeholders})`,
-    ids
-  );
-
-  if (words.length === 0) return [];
-
-  // Get all meanings in a single query
-  const allMeanings = await db.getAllAsync<MeaningRow & { word_id: number }>(
-    `SELECT word_id, meaning, part_of_speech, field, misc, info
-     FROM meanings WHERE word_id IN (${placeholders})`,
-    ids
-  );
-
-  // Group meanings by word_id for faster assembly
-  const meaningsMap = new Map<number, MeaningRow[]>();
-  allMeanings.forEach((m) => {
-    if (!meaningsMap.has(m.word_id)) {
-      meaningsMap.set(m.word_id, []);
-    }
-    meaningsMap.get(m.word_id)!.push({
-      meaning: m.meaning,
-      part_of_speech: m.part_of_speech,
-      field: m.field,
-      misc: m.misc,
-      info: m.info,
-    });
-  });
-
-  // Assemble entries
-  return words.map((word) => {
-    // Check cache first
-    if (entryCache.has(word.id)) {
-      return entryCache.get(word.id)!;
-    }
-
-    const entry = {
-      id: word.id,
-      word: word.word,
-      reading: word.reading.split(";"),
-      reading_hiragana: word.reading_hiragana,
-      kanji: word.kanji,
-      meanings: meaningsMap.get(word.id) || [],
-    };
-
-    // Cache for future use
-    if (entryCache.size >= MAX_CACHE_SIZE) {
-      const firstKey = entryCache.keys().next().value;
-      if (firstKey) {
-        entryCache.delete(firstKey);
-      }
-    }
-    entryCache.set(word.id, entry);
-
-    return entry;
-  });
-}
-
-async function batchGetEdictEntries(
-  db: SQLite.SQLiteDatabase,
-  ids: number[]
-): Promise<DictionaryEntry[]> {
-  if (ids.length === 0) return [];
-
-  const placeholders = ids.map(() => "?").join(",");
-
-  // Get all entries
-  const entries = await db.getAllAsync<{
-    id: number;
-    japanese: string;
-    reading: string;
-  }>(
-    `SELECT id, japanese, reading FROM edict_entries WHERE id IN (${placeholders})`,
-    ids
-  );
-
-  if (entries.length === 0) return [];
-
-  // Get all meanings in a single query
-  const allMeanings = await db.getAllAsync<{
-    entry_id: number;
-    english_definition: string;
-    part_of_speech: string | null;
-  }>(
-    `SELECT entry_id, english_definition, part_of_speech
-     FROM edict_meanings WHERE entry_id IN (${placeholders})`,
-    ids
-  );
-
-  // Group meanings by entry_id
-  const meaningsMap = new Map<
-    number,
-    Array<{
-      meaning: string;
-      part_of_speech: string | null;
-      field: null;
-      misc: null;
-      info: null;
-    }>
-  >();
-
-  allMeanings.forEach((m) => {
-    if (!meaningsMap.has(m.entry_id)) {
-      meaningsMap.set(m.entry_id, []);
-    }
-
-    meaningsMap.get(m.entry_id)!.push({
-      meaning: m.english_definition,
-      part_of_speech: m.part_of_speech,
-      field: null,
-      misc: null,
-      info: null,
-    });
-  });
-
-  // Assemble entries
-  return entries.map((entry) => {
-    const id = entry.id + 1000000;
-
-    if (entryCache.has(id)) {
-      return entryCache.get(id)!;
-    }
-
-    const result = {
-      id,
-      word: entry.japanese,
-      reading: entry.reading.split(";"),
-      reading_hiragana: entry.reading,
-      kanji: entry.japanese,
-      meanings: meaningsMap.get(entry.id) || [],
-      source: "edict",
-    };
-
-    if (entryCache.size >= MAX_CACHE_SIZE) {
-      const firstKey = entryCache.keys().next().value;
-      if (firstKey) {
-        entryCache.delete(firstKey);
-      }
-    }
-    entryCache.set(id, result);
+    const result = await db.getAllAsync<MeaningEntry>(
+      query,
+      limit ? [wordId, limit] : [wordId]
+    );
 
     return result;
-  });
+  } catch (error) {
+    console.error("Failed to get meanings:", error);
+    return [];
+  }
+}
+
+export async function getExamples(
+  db: SQLite.SQLiteDatabase,
+  wordId: number
+): Promise<ExampleEntry[]> {
+  const result = await db.getAllAsync<ExampleEntry>(
+    "SELECT * FROM examples WHERE word_id = ?",
+    [wordId]
+  );
+  return result;
+}
+
+export async function getDictionaryEntry(
+  db: SQLite.SQLiteDatabase,
+  wordId: number,
+  withMeanings = false,
+  withExamples = false
+): Promise<DictionaryEntry | null> {
+  const word = await db.getFirstAsync<DictionaryEntry>(
+    "SELECT * FROM words WHERE id = ?",
+    [wordId]
+  );
+
+  if (!word) {
+    return null;
+  }
+
+  if (withMeanings) {
+    const meanings = await getMeanings(db, wordId);
+    return { ...word, meanings };
+  }
+
+  if (withExamples) {
+    const examples = await getExamples(db, wordId);
+    return { ...word, examples };
+  }
+
+  return word;
 }
 
 export async function isBookmarked(
   db: SQLite.SQLiteDatabase,
   wordId: number
 ): Promise<boolean> {
-  try {
-    const result = await db.getFirstAsync<{ count: number }>(
-      `SELECT COUNT(*) as count FROM bookmarks WHERE word_id = ?`,
-      [wordId]
-    );
-
-    return Boolean(result && result.count > 0);
-  } catch (error) {
-    console.error("Error checking bookmark status:", error);
-    return false;
-  }
+  const result = await db.getFirstAsync(
+    "SELECT id FROM bookmarks WHERE word_id = ?",
+    [wordId]
+  );
+  return !!result;
 }
 
-export async function addBookmark(
-  db: SQLite.SQLiteDatabase,
-  wordId: number
-): Promise<boolean> {
-  try {
-    await db.execAsync("BEGIN TRANSACTION");
-
-    // Check if exists
-    const exists = await isBookmarked(db, wordId);
-
-    if (!exists) {
-      await db.runAsync(
-        `INSERT INTO bookmarks (word_id, date_added) VALUES (?, ?)`,
-        [wordId, Date.now()]
-      );
-    }
-
-    await db.execAsync("COMMIT");
-    return true;
-  } catch (error) {
-    await db.execAsync("ROLLBACK");
-    console.error("Error in bookmark transaction:", error);
-    return false;
-  }
+export async function addBookmark(db: SQLite.SQLiteDatabase, wordId: number) {
+  await db.runAsync(
+    "INSERT INTO bookmarks (word_id, created_at) VALUES (?, ?)",
+    [wordId, new Date().toISOString()]
+  );
 }
 
 export async function removeBookmark(
   db: SQLite.SQLiteDatabase,
   wordId: number
-): Promise<boolean> {
-  try {
-    await db.execAsync("BEGIN TRANSACTION");
-
-    await db.runAsync(`DELETE FROM bookmarks WHERE word_id = ?`, [wordId]);
-
-    await db.execAsync("COMMIT");
-    return true;
-  } catch (error) {
-    await db.execAsync("ROLLBACK");
-    console.error("Error removing bookmark:", error);
-    return false;
-  }
-}
-
-export interface SearchResults<T> {
-  items: T[];
-  totalCount: number;
-  hasMore: boolean;
-}
-
-export async function searchDictionaryPaginated(
-  db: SQLite.SQLiteDatabase,
-  query: string,
-  page: number = 1,
-  pageSize: number = 20
-): Promise<SearchResults<DictionaryEntry>> {
-  const processedQuery = processSearchQuery(query);
-  const offset = (page - 1) * pageSize;
-  const whereClauses: string[] = [];
-  const params: string[] = [];
-
-  whereClauses.push(`(
-    word LIKE ? OR
-    reading LIKE ? OR
-    kanji LIKE ? OR
-    word LIKE ? OR
-    reading LIKE ? OR
-    kanji LIKE ?
-  )`);
-
-  params.push(
-    `${processedQuery.original}%`,
-    `${processedQuery.original}%`,
-    `${processedQuery.original}%`,
-    `%${processedQuery.original}%`,
-    `%${processedQuery.original}%`,
-    `%${processedQuery.original}%`
-  );
-
-  if (processedQuery.hiragana) {
-    whereClauses.push(`(
-      word LIKE ? OR
-      reading LIKE ? OR
-      reading_hiragana LIKE ? OR
-      word LIKE ? OR
-      reading LIKE ? OR
-      reading_hiragana LIKE ?
-    )`);
-    params.push(
-      `${processedQuery.hiragana}%`,
-      `${processedQuery.hiragana}%`,
-      `${processedQuery.hiragana}%`,
-      `%${processedQuery.hiragana}%`,
-      `%${processedQuery.hiragana}%`,
-      `%${processedQuery.hiragana}%`
-    );
-  }
-
-  if (processedQuery.katakana) {
-    whereClauses.push(`(
-      word LIKE ? OR
-      reading LIKE ? OR
-      word LIKE ? OR
-      reading LIKE ?
-    )`);
-    params.push(
-      `${processedQuery.katakana}%`,
-      `${processedQuery.katakana}%`,
-      `%${processedQuery.katakana}%`,
-      `%${processedQuery.katakana}%`
-    );
-  }
-
-  // Get total count for pagination
-  const countResult = await db.getFirstAsync<{ count: number }>(
-    `SELECT COUNT(DISTINCT id) as count FROM words
-     WHERE (${whereClauses.join(" OR ")})
-     AND length(word) >= ${Math.min(query.length, 2)}`,
-    params
-  );
-
-  const totalCount = countResult?.count || 0;
-
-  // Get paginated results
-  const words = await db.getAllAsync<WordRow>(
-    `
-    SELECT DISTINCT * FROM words
-    WHERE (${whereClauses.join(" OR ")})
-      AND length(word) >= ${Math.min(query.length, 2)}
-    ORDER BY
-      CASE
-        WHEN word = ? THEN 1
-        WHEN reading = ? THEN 2
-        WHEN kanji = ? THEN 3
-        WHEN word LIKE ? THEN 4
-        WHEN reading LIKE ? THEN 5
-        WHEN kanji LIKE ? THEN 6
-        ELSE 7
-      END,
-      length(word)
-    LIMIT ? OFFSET ?
-    `,
-    [
-      ...params,
-      query,
-      query,
-      query,
-      `${query}%`,
-      `${query}%`,
-      `${query}%`,
-      pageSize,
-      offset,
-    ]
-  );
-
-  // Use batch fetching for performance
-  const wordIds = words.map((word) => word.id);
-  const entries = await batchGetDictionaryEntries(db, wordIds);
-
-  return {
-    items: entries,
-    totalCount,
-    hasMore: offset + entries.length < totalCount,
-  };
-}
-
-export async function searchByEnglishWordPaginated(
-  db: SQLite.SQLiteDatabase,
-  query: string,
-  page: number = 1,
-  pageSize: number = 20
-): Promise<SearchResults<DictionaryEntry>> {
-  const offset = (page - 1) * pageSize;
-
-  // Get total count first
-  const countResult = await db.getFirstAsync<{ count: number }>(
-    `SELECT COUNT(DISTINCT words.id) as count FROM words
-     JOIN meanings ON meanings.word_id = words.id
-     WHERE meanings.meaning LIKE ?`,
-    [`%${query}%`]
-  );
-
-  const totalCount = countResult?.count || 0;
-
-  // Get words for current page
-  const words = await db.getAllAsync<WordRow>(
-    `
-    SELECT DISTINCT words.* FROM words
-    JOIN meanings ON meanings.word_id = words.id
-    WHERE meanings.meaning LIKE ?
-    ORDER BY length(words.word)
-    LIMIT ? OFFSET ?
-    `,
-    [`%${query}%`, pageSize, offset]
-  );
-
-  // Use batch fetching for performance
-  const wordIds = words.map((word) => word.id);
-  const entries = await batchGetDictionaryEntries(db, wordIds);
-
-  return {
-    items: entries,
-    totalCount,
-    hasMore: offset + entries.length < totalCount,
-  };
-}
-
-export async function searchDictionaryFTS(
-  db: SQLite.SQLiteDatabase,
-  query: string,
-  limit: number = 50
-): Promise<DictionaryEntry[]> {
-  const processedQuery = processSearchQuery(query);
-  const searchTerms: string[] = [];
-
-  // Build FTS query terms
-  searchTerms.push(`${processedQuery.original}*`); // Prefix matching
-
-  if (processedQuery.hiragana) {
-    searchTerms.push(`${processedQuery.hiragana}*`);
-  }
-
-  if (processedQuery.katakana) {
-    searchTerms.push(`${processedQuery.katakana}*`);
-  }
-
-  // Execute FTS search
-  const ftsQuery = searchTerms.join(" OR ");
-  const wordIds = await db.getAllAsync<{ word_id: number }>(
-    `SELECT word_id FROM dictionary_fts
-     WHERE dictionary_fts MATCH ?
-     ORDER BY rank
-     LIMIT ?`,
-    [ftsQuery, limit]
-  );
-
-  if (wordIds.length === 0) return [];
-
-  // Fetch complete entries
-  const ids = wordIds.map((w) => w.word_id);
-  return await batchGetDictionaryEntries(db, ids);
-}
-
-export async function searchDictionaryFTSPaginated(
-  db: SQLite.SQLiteDatabase,
-  query: string,
-  page: number = 1,
-  pageSize: number = 20
-): Promise<SearchResults<DictionaryEntry>> {
-  const processedQuery = processSearchQuery(query);
-  const offset = (page - 1) * pageSize;
-  const searchTerms: string[] = [];
-
-  // Build FTS query terms
-  searchTerms.push(`${processedQuery.original}*`); // Prefix matching
-
-  if (processedQuery.hiragana) {
-    searchTerms.push(`${processedQuery.hiragana}*`);
-  }
-
-  if (processedQuery.katakana) {
-    searchTerms.push(`${processedQuery.katakana}*`);
-  }
-
-  // Execute FTS search for count
-  const ftsQuery = searchTerms.join(" OR ");
-
-  // Get total count
-  const countResult = await db.getFirstAsync<{ count: number }>(
-    `SELECT COUNT(*) as count
-     FROM dictionary_fts
-     WHERE dictionary_fts MATCH ?`,
-    [ftsQuery]
-  );
-
-  const totalCount = countResult?.count || 0;
-
-  // Get paginated results
-  const wordIds = await db.getAllAsync<{ word_id: number }>(
-    `SELECT word_id FROM dictionary_fts
-     WHERE dictionary_fts MATCH ?
-     ORDER BY rank
-     LIMIT ? OFFSET ?`,
-    [ftsQuery, pageSize, offset]
-  );
-
-  if (wordIds.length === 0) {
-    return { items: [], totalCount, hasMore: false };
-  }
-
-  // Fetch complete entries
-  const ids = wordIds.map((w) => w.word_id);
-  const entries = await batchGetDictionaryEntries(db, ids);
-
-  return {
-    items: entries,
-    totalCount,
-    hasMore: offset + entries.length < totalCount,
-  };
-}
-
-// Helper function to update FTS when dictionary entries change
-export async function updateDictionaryFTS(
-  db: SQLite.SQLiteDatabase,
-  wordId: number
-): Promise<boolean> {
-  try {
-    const word = await db.getFirstAsync<WordRow>(
-      `SELECT * FROM words WHERE id = ?`,
-      [wordId]
-    );
-
-    if (!word) return false;
-
-    const meanings = await db.getAllAsync<MeaningRow>(
-      `SELECT meaning FROM meanings WHERE word_id = ?`,
-      [wordId]
-    );
-
-    const meaningsText = meanings.map((m) => m.meaning).join(" ");
-
-    // Delete any existing entry first
-    await db.runAsync(`DELETE FROM dictionary_fts WHERE word_id = ?`, [wordId]);
-
-    // Insert new entry
-    await db.runAsync(
-      `INSERT INTO dictionary_fts (word_id, word, reading, reading_hiragana, meanings)
-       VALUES (?, ?, ?, ?, ?)`,
-      [wordId, word.word, word.reading, word.reading_hiragana, meaningsText]
-    );
-
-    return true;
-  } catch (error) {
-    console.error("Error updating dictionary FTS:", error);
-    return false;
-  }
+) {
+  await db.runAsync("DELETE FROM bookmarks WHERE word_id = ?", [wordId]);
 }
 
 export async function addToHistory(
   db: SQLite.SQLiteDatabase,
   entry: DictionaryEntry
-): Promise<boolean> {
-  try {
-    let preview = "";
-    if (entry.meanings && entry.meanings.length > 0) {
-      preview = entry.meanings[0].meaning.split(";")[0].trim();
-      if (preview.length > 60) {
-        preview = preview.substring(0, 57) + "...";
-      }
-    }
-
-    const reading = entry.reading.join(", ");
-
-    await db.execAsync("BEGIN TRANSACTION");
-    await db.runAsync("DELETE FROM history WHERE word_id = ?", [entry.id]);
-    await db.runAsync(
-      `INSERT INTO history (word_id, word, reading, preview, timestamp, source)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [entry.id, entry.word, reading, preview, Date.now(), entry.source || null]
-    );
-
-    await db.runAsync(`
-      DELETE FROM history
-      WHERE id IN (
-        SELECT id FROM history
-        ORDER BY timestamp DESC
-        LIMIT -1 OFFSET 100
-      )
-    `);
-
-    await db.execAsync("COMMIT");
-    return true;
-  } catch (error) {
-    await db.execAsync("ROLLBACK");
-    console.error("Error adding to history:", error);
-    return false;
-  }
+) {
+  await db.runAsync("INSERT INTO history (word_id, created_at) VALUES (?, ?)", [
+    entry.id,
+    new Date().toISOString(),
+  ]);
 }
 
 export async function getHistory(
-  db: SQLite.SQLiteDatabase,
-  limit: number = 50
+  db: SQLite.SQLiteDatabase
 ): Promise<HistoryEntry[]> {
-  try {
-    const history = await db.getAllAsync<HistoryEntry>(
-      `SELECT * FROM history ORDER BY timestamp DESC LIMIT ?`,
-      [limit]
-    );
+  const result = await db.getAllAsync<{
+    created_at: string;
+    id: number;
+    reading: string;
+    word: string;
+  }>(
+    `
+    SELECT w.*, h.created_at FROM words w
+    INNER JOIN history h ON w.id = h.word_id
+    ORDER BY h.created_at DESC
+    LIMIT 100
+  `
+  );
 
-    return history;
-  } catch (error) {
-    console.error("Error getting history:", error);
-    return [];
-  }
+  return result.map((e) => ({
+    ...e,
+    createdAt: new Date(e.created_at).toISOString(),
+  }));
 }
 
-export async function clearHistory(db: SQLite.SQLiteDatabase): Promise<boolean> {
-  try {
-    await db.runAsync("DELETE FROM history");
-    return true;
-  } catch (error) {
-    console.error("Error clearing history:", error);
-    return false;
-  }
+export async function clearHistory(db: SQLite.SQLiteDatabase) {
+  await db.runAsync("DELETE FROM history");
 }
 
 export async function removeHistoryById(
   db: SQLite.SQLiteDatabase,
-  id: number
-): Promise<boolean> {
-  try {
-    await db.runAsync("DELETE FROM history WHERE id = ?", [id]);
-    return true;
-  } catch (error) {
-    console.error("Error removing history entry:", error);
-    return false;
+  historyId: number
+) {
+  await db.runAsync("DELETE FROM history WHERE id = ?", [historyId]);
+}
+
+export async function migrateDbIfNeeded(db: SQLite.SQLiteDatabase) {
+  const DATABASE_VERSION = 7;
+  let u = await db.getFirstAsync<{
+    user_version: number;
+  }>("PRAGMA user_version");
+  let currentDbVersion = u?.user_version || 0;
+
+  if (currentDbVersion >= DATABASE_VERSION) {
+    return;
   }
+
+  if (currentDbVersion === 0) {
+    await db.execAsync(`
+      PRAGMA journal_mode = 'wal';
+
+      -- Create words table
+      CREATE TABLE IF NOT EXISTS words (
+        id INTEGER PRIMARY KEY NOT NULL,
+        word TEXT NOT NULL,
+        reading TEXT NOT NULL
+      );
+
+      -- Create meanings table
+      CREATE TABLE IF NOT EXISTS meanings (
+        id INTEGER PRIMARY KEY NOT NULL,
+        word_id INTEGER NOT NULL,
+        meaning TEXT NOT NULL,
+        part_of_speech TEXT,
+        tags TEXT,
+        FOREIGN KEY (word_id) REFERENCES words (id)
+      );
+
+      -- Create examples table
+      CREATE TABLE IF NOT EXISTS examples (
+        id INTEGER PRIMARY KEY NOT NULL,
+        japanese TEXT NOT NULL,
+        english TEXT NOT NULL,
+        parsed_tokens TEXT
+      );
+
+      -- Create bookmarks table
+      CREATE TABLE IF NOT EXISTS bookmarks (
+        id INTEGER PRIMARY KEY NOT NULL,
+        word_id INTEGER NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (word_id) REFERENCES words (id)
+      );
+
+      -- Create history table
+      CREATE TABLE IF NOT EXISTS history (
+        id INTEGER PRIMARY KEY NOT NULL,
+        word_id INTEGER NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (word_id) REFERENCES words (id)
+      );
+
+      -- Create FTS table for meanings to enable full-text search
+      CREATE VIRTUAL TABLE IF NOT EXISTS meanings_fts USING fts5(
+        meaning,
+        content='meanings',
+        content_rowid='id'
+      );
+
+      -- Create triggers to keep FTS table in sync with meanings table
+      CREATE TRIGGER meanings_ai AFTER INSERT ON meanings BEGIN
+        INSERT INTO meanings_fts(rowid, meaning) VALUES (new.id, new.meaning);
+      END;
+
+      CREATE TRIGGER meanings_ad AFTER DELETE ON meanings BEGIN
+        INSERT INTO meanings_fts(meanings_fts, rowid, meaning) VALUES('delete', old.id, old.meaning);
+      END;
+
+      CREATE TRIGGER meanings_au AFTER UPDATE ON meanings BEGIN
+        INSERT INTO meanings_fts(meanings_fts, rowid, meaning) VALUES('delete', old.id, old.meaning);
+        INSERT INTO meanings_fts(rowid, meaning) VALUES (new.id, new.meaning);
+      END;
+
+      -- Create indexes for better search performance
+      CREATE INDEX IF NOT EXISTS idx_words_word ON words(word);
+      CREATE INDEX IF NOT EXISTS idx_words_reading ON words(reading);
+      CREATE INDEX IF NOT EXISTS idx_meanings_word_id ON meanings(word_id);
+
+    `);
+    currentDbVersion = 1;
+  }
+
+  await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
 }

@@ -24,7 +24,7 @@ import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { migrateDbIfNeeded } from "@/services/database";
 
-const DATABASE_PATH = "../assets/db/dict.db";
+const DATABASE_PATH = "../assets/db/jisho.db";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -53,9 +53,9 @@ export default function RootLayout() {
     <GestureHandlerRootView style={styles.container}>
       <Suspense fallback={<Loader />}>
         <SQLiteProvider
-          databaseName="jisho.db"
-          assetSource={{ assetId: require(DATABASE_PATH) }}
+          databaseName="jisho_2.db"
           onInit={migrateDbIfNeeded}
+          assetSource={{ assetId: require(DATABASE_PATH) }}
           useSuspense
         >
           <ThemeProvider

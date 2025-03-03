@@ -14,8 +14,8 @@ import { Colors } from "@/constants/Colors";
 import { useThemeColor } from "@/hooks/useThemeColor";
 import {
   getHistory,
-  HistoryEntry,
   removeHistoryById,
+  type HistoryEntry,
 } from "@/services/database";
 import { HapticTab } from "./HapticTab";
 import { ThemedText } from "./ThemedText";
@@ -33,7 +33,7 @@ export function HistoryList() {
     const grouped: Record<string, HistoryEntry[]> = {};
 
     for (const item of historyItems) {
-      const title = new Date(item.timestamp).toLocaleDateString("en-US", {
+      const title = new Date(item.createdAt).toLocaleDateString("en-US", {
         month: "long",
         day: "numeric",
         year: undefined,
@@ -67,8 +67,6 @@ export function HistoryList() {
   );
 
   const handleRemoveHistoryItem = (item: HistoryEntry) => async () => {
-    console.log("Removing history item:", item);
-
     try {
       await removeHistoryById(db, item.id);
       setHistoryItems((prev) => prev.filter((i) => i.id !== item.id));
@@ -80,7 +78,7 @@ export function HistoryList() {
   const handleWordPress = async (item: HistoryEntry) => {
     router.push({
       pathname: "/word/[id]",
-      params: { id: item.word_id.toString(), title: item.word },
+      params: { id: item.word.toString(), title: item.word },
     });
   };
 
@@ -121,7 +119,7 @@ export function HistoryList() {
             darkColor={Colors.dark.groupedBackground}
           >
             <ThemedText type="defaultSemiBold">{item.word}</ThemedText>
-            <ThemedText type="secondary">{item.preview}</ThemedText>
+            <ThemedText type="secondary">{item.reading}</ThemedText>
           </ThemedView>
           {!isLast ? <View style={styles.separator} /> : null}
         </HapticTab>

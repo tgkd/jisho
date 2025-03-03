@@ -14,7 +14,8 @@ import {
   addBookmark,
   addToHistory,
   DictionaryEntry,
-  ExampleSentence,
+  ExampleEntry,
+  MeaningEntry,
   getDictionaryEntry,
   isBookmarked,
   removeBookmark,
@@ -51,7 +52,8 @@ export default function WordDetailScreen() {
   const params = useLocalSearchParams();
   const title = typeof params.title === "string" ? params.title : "Details";
   const [entry, setEntry] = useState<DictionaryEntry | null>(null);
-  const [examples, setExamples] = useState<ExampleSentence[]>([]);
+  const [examples, setExamples] = useState<ExampleEntry[]>([]);
+  const [meanings, setMeanings] = useState<MeaningEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [bookmarked, setBookmarked] = useState(false);
   const db = useSQLiteContext();
@@ -61,19 +63,14 @@ export default function WordDetailScreen() {
       const result = await getDictionaryEntry(db, Number(params.id), true);
 
       if (result) {
+        setEntry(result);
+
         if ("examples" in result) {
           setExamples(result.examples);
-          setEntry({
-            id: result.id,
-            word: result.word,
-            reading: result.reading,
-            reading_hiragana: result.reading_hiragana,
-            kanji: result.kanji,
-            meanings: result.meanings,
-          });
-        } else {
-          setExamples([]);
-          setEntry(result);
+        }
+
+        if ("meanings" in result) {
+          setMeanings(result.meanings);
         }
       }
 
@@ -166,12 +163,12 @@ export default function WordDetailScreen() {
             {entry.word}
           </ThemedText>
           <ThemedText type="secondary" style={styles.reading}>
-            {`【${entry.reading.join(", ")}】`}
+            {`【${entry.reading}】`}
           </ThemedText>
         </ThemedView>
 
         <Card variant="grouped" style={styles.meaningsSection}>
-          {entry.meanings.map((m, idx) => (
+          {meanings.map((m, idx) => (
             <View key={idx} style={styles.meaningItem}>
               <IconSymbol name="circle.fill" size={6} color={markColor} />
               <View>
@@ -196,10 +193,8 @@ export default function WordDetailScreen() {
             <Card variant="grouped" style={styles.examplesSection}>
               {examples.map((example, idx) => (
                 <View key={idx} style={styles.exampleItem}>
-                  <ThemedText>{example.japanese_text}</ThemedText>
-                  <ThemedText type="secondary">
-                    {example.english_text}
-                  </ThemedText>
+                  <ThemedText>{example.japanese}</ThemedText>
+                  <ThemedText type="secondary">{example.english}</ThemedText>
                 </View>
               ))}
             </Card>

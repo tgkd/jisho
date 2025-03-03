@@ -1,30 +1,18 @@
 import { useSQLiteContext } from "expo-sqlite";
-import { useRef, useState } from "react";
-import { FlatList, StyleSheet, TextInput, View } from "react-native";
+import { useCallback, useState } from "react";
+import { FlatList, StyleSheet, View } from "react-native";
+import { Stack } from "expo-router";
 
-import { HapticTab } from "@/components/HapticTab";
 import { HistoryList } from "@/components/HistoryList";
 import { ListItem } from "@/components/ListItem";
 import { Loader } from "@/components/Loader";
-import { ThemedView } from "@/components/ThemedView";
-import { IconSymbol } from "@/components/ui/IconSymbol";
-import { Colors } from "@/constants/Colors";
-import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
-import { useThemeColor } from "@/hooks/useThemeColor";
-import {
-  DictionaryEntry,
-  searchByEnglishWord,
-  searchDictionary,
-} from "@/services/database";
-import { Stack } from "expo-router";
-import { SearchBarCommands } from "react-native-screens";
 import { ThemedText } from "@/components/ThemedText";
+import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
+import { DictionaryEntry, searchDictionary } from "@/services/database";
 
 type SearchMode = "japanese" | "english";
 
 export default function HomeScreen() {
-  const inputBackground = useThemeColor({}, "secondaryBackground");
-  const inputTextColor = useThemeColor({}, "text");
   const db = useSQLiteContext();
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<DictionaryEntry[]>([]);
@@ -46,11 +34,7 @@ export default function HomeScreen() {
 
     try {
       let searchResults: DictionaryEntry[];
-      if (searchMode === "japanese") {
-        searchResults = await searchDictionary(db, text);
-      } else {
-        searchResults = await searchByEnglishWord(db, text);
-      }
+      searchResults = await searchDictionary(db, text, true);
       setResults(searchResults);
     } catch (error) {
       console.error("Search failed:", error);
@@ -60,11 +44,14 @@ export default function HomeScreen() {
     }
   }, 500);
 
-  const handleChange = (text: string) => {
-    setLoading(true);
-    setSearch(text);
-    handleSearch(text);
-  };
+  const handleChange = useCallback(
+    (text: string) => {
+      setLoading(true);
+      setSearch(text);
+      handleSearch(text);
+    },
+    [handleSearch]
+  );
 
   const showHistory = !search.trim().length && !results.length;
 
