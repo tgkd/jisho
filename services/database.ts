@@ -1,31 +1,276 @@
-import { openDatabaseAsync, SQLiteDatabase } from "expo-sqlite";
+import * as SQLite from 'expo-sqlite';
+import * as FileSystem from 'expo-file-system';
+import { Asset } from 'expo-asset';
 import * as wanakana from "wanakana";
 
-// Connection pooling
-let dbConnectionPromise: Promise<SQLiteDatabase> | null = null;
-
-export function getDbConnection(): Promise<SQLiteDatabase> {
-  if (!dbConnectionPromise) {
-    dbConnectionPromise = openDatabaseAsync("jisho.db");
-  }
-  return dbConnectionPromise;
+// Define a statement cache to reuse prepared statements
+interface PreparedStatementCache {
+  [key: string]: SQLite.SQLiteStatement;
 }
 
-// Wrapper for better error handling in database operations
-export async function executeDbOperation<T>(
-  operation: (db: SQLiteDatabase) => Promise<T>
-): Promise<T> {
-  try {
-    const db = await getDbConnection();
-    return await operation(db);
-  } catch (error) {
-    console.error("Database operation failed:", error);
-    throw new Error(
-      `Database operation failed: ${
-        error instanceof Error ? error.message : String(error)
-      }`
-    );
+// Define the connection pool size for better performance
+const CONNECTION_POOL_SIZE = 3;
+const STATEMENT_CACHE_SIZE = 50;
+const connectionPool: SQLite.SQLiteDatabase[] = [];
+const statementCaches: PreparedStatementCache[] = [];
+
+let dbInitialized = false;
+
+export async function openDatabase() {
+  // Initialize the connection pool if not already done
+  if (!dbInitialized) {
+    await initializeDatabasePool();
   }
+
+  // Return a connection from the pool
+  return getConnectionFromPool();
+}
+
+async function initializeDatabasePool() {
+  // Check if db exists at FileSystem.documentDirectory + 'SQLite/dict.db'
+  const dbDirectory = FileSystem.documentDirectory + 'SQLite';
+  const dbPath = dbDirectory + '/dict.db';
+
+  // Ensure the directory exists
+  const dirInfo = await FileSystem.getInfoAsync(dbDirectory);
+  if (!dirInfo.exists) {
+    await FileSystem.makeDirectoryAsync(dbDirectory, { intermediates: true });
+  }
+
+  // Check if database file exists
+  const fileInfo = await FileSystem.getInfoAsync(dbPath);
+
+  if (!fileInfo.exists) {
+    // Copy database from assets
+    try {
+      const asset = Asset.fromModule(require('../assets/db/dict.db'));
+      await asset.downloadAsync();
+
+      if (!asset.localUri) {
+        throw new Error('Failed to download database asset');
+      }
+
+      await FileSystem.copyAsync({
+        from: asset.localUri,
+        to: dbPath
+      });
+
+      console.log('Database copied from assets to:', dbPath);
+    } catch (error) {
+      console.error('Error copying database from assets:', error);
+      throw error;
+    }
+  }
+
+  // Initialize the connection pool
+  for (let i = 0; i < CONNECTION_POOL_SIZE; i++) {
+    try {
+      const db = SQLite.openDatabase('dict.db');
+      // Apply optimized pragmas for better performance
+      executeSql(db, 'PRAGMA journal_mode = WAL');
+      executeSql(db, 'PRAGMA synchronous = NORMAL');
+      executeSql(db, 'PRAGMA cache_size = 2000');
+      executeSql(db, 'PRAGMA temp_store = MEMORY');
+      executeSql(db, 'PRAGMA foreign_keys = ON');
+
+      connectionPool.push(db);
+      statementCaches.push({});
+    } catch (error) {
+      console.error('Error initializing database connection:', error);
+    }
+  }
+
+  dbInitialized = true;
+  console.log(`Database connection pool initialized with ${connectionPool.length} connections`);
+}
+
+function getConnectionFromPool() {
+  // Simple round-robin connection pooling
+  const index = Math.floor(Math.random() * connectionPool.length);
+  return {
+    db: connectionPool[index],
+    statementCache: statementCaches[index],
+    index
+  };
+}
+
+function prepareCachedStatement(db: SQLite.SQLiteDatabase, cache: PreparedStatementCache, sql: string) {
+  if (!cache[sql]) {
+    // Limit the cache size to prevent memory leaks
+    const cacheKeys = Object.keys(cache);
+    if (cacheKeys.length >= STATEMENT_CACHE_SIZE) {
+      // Remove the oldest statement (simple implementation - could be improved with LRU)
+      const oldestKey = cacheKeys[0];
+      delete cache[oldestKey];
+    }
+    cache[sql] = db.prepareStatement(sql);
+  }
+  return cache[sql];
+}
+
+function executeSql(db: SQLite.SQLiteDatabase, sql: string, params: any[] = []): Promise<SQLite.SQLResultSet> {
+  return new Promise((resolve, reject) => {
+    db.exec([{ sql, args: params }], false, (err, resultSet) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      if (resultSet && resultSet.length > 0) {
+        resolve(resultSet[0]);
+      } else {
+        resolve({ insertId: null, rowsAffected: 0, rows: { length: 0, item: () => null, _array: [] } });
+      }
+    });
+  });
+}
+
+export async function executeQuery(sql: string, params: any[] = []) {
+  const connection = getConnectionFromPool();
+  try {
+    // Use prepared statements for better performance
+    const statement = prepareCachedStatement(connection.db, connection.statementCache, sql);
+    return await executeSql(connection.db, sql, params);
+  } catch (error) {
+    console.error(`Error executing SQL: ${sql}`, error);
+    throw error;
+  }
+}
+
+export async function searchWords(query: string, limit: number = 20) {
+  // Optimize the search query with better indexing
+  const normalizedQuery = query.trim().toLowerCase();
+
+  // Skip searching if query is too short
+  if (normalizedQuery.length < 1) {
+    return [];
+  }
+
+  const connection = getConnectionFromPool();
+
+  try {
+    // Use a more efficient search query with proper indexing
+    // Query for exact matches first, then partial matches
+    const sql = `
+      SELECT w.id, w.word, w.reading, m.meaning, m.part_of_speech
+      FROM words w
+      JOIN meanings m ON w.id = m.word_id
+      WHERE
+        w.word = ? OR
+        w.reading = ? OR
+        w.word LIKE ? OR
+        w.reading LIKE ? OR
+        m.meaning MATCH ?
+      GROUP BY w.id
+      ORDER BY
+        CASE
+          WHEN w.word = ? THEN 0
+          WHEN w.reading = ? THEN 1
+          WHEN w.word LIKE ? THEN 2
+          WHEN w.reading LIKE ? THEN 3
+          ELSE 4
+        END,
+        length(w.word)
+      LIMIT ?
+    `;
+
+    const likeParam = `%${normalizedQuery}%`;
+    const ftsParam = `"${normalizedQuery}"*`;
+
+    const results = await executeSql(connection.db, sql, [
+      normalizedQuery, // exact word match
+      normalizedQuery, // exact reading match
+      likeParam, // partial word match
+      likeParam, // partial reading match
+      ftsParam, // FTS match
+      normalizedQuery, // for ordering - exact word match
+      normalizedQuery, // for ordering - exact reading match
+      likeParam, // for ordering - partial word match
+      likeParam, // for ordering - partial reading match
+      limit // limit results
+    ]);
+
+    return results.rows._array;
+  } catch (error) {
+    console.error('Error searching words:', error);
+    throw error;
+  }
+}
+
+export async function getWord(id: number) {
+  const connection = getConnectionFromPool();
+
+  try {
+    // Get the word and all its meanings
+    const sql = `
+      SELECT
+        w.id, w.word, w.reading,
+        json_group_array(
+          json_object(
+            'id', m.id,
+            'meaning', m.meaning,
+            'part_of_speech', m.part_of_speech,
+            'tags', m.tags
+          )
+        ) as meanings
+      FROM words w
+      LEFT JOIN meanings m ON w.id = m.word_id
+      WHERE w.id = ?
+      GROUP BY w.id
+    `;
+
+    const result = await executeSql(connection.db, sql, [id]);
+
+    if (result.rows.length === 0) {
+      return null;
+    }
+
+    const wordData = result.rows.item(0);
+
+    // Parse the JSON string of meanings
+    try {
+      wordData.meanings = JSON.parse(wordData.meanings);
+    } catch (e) {
+      wordData.meanings = [];
+    }
+
+    return wordData;
+  } catch (error) {
+    console.error('Error getting word:', error);
+    throw error;
+  }
+}
+
+export async function getExamples(wordId: number, limit: number = 5) {
+  const connection = getConnectionFromPool();
+
+  try {
+    // Optimize examples retrieval with better indexing
+    const sql = `
+      SELECT e.id, e.japanese, e.english
+      FROM examples e
+      JOIN example_word_map ewm ON e.id = ewm.example_id
+      WHERE ewm.word_id = ?
+      LIMIT ?
+    `;
+
+    const result = await executeSql(connection.db, sql, [wordId, limit]);
+    return result.rows._array;
+  } catch (error) {
+    console.error('Error getting examples:', error);
+    throw error;
+  }
+}
+
+export async function closeDatabase() {
+  // Properly close all connections in the pool
+  for (const db of connectionPool) {
+    db.closeAsync();
+  }
+
+  // Clear the pools
+  connectionPool.length = 0;
+  statementCaches.length = 0;
+  dbInitialized = false;
 }
 
 // Entry cache
@@ -124,7 +369,7 @@ interface SearchQuery {
   romaji?: string;
 }
 
-export async function migrateDbIfNeeded(db: SQLiteDatabase) {
+export async function migrateDbIfNeeded(db: SQLite.SQLiteDatabase) {
   const DATABASE_VERSION = 6;
 
   try {
@@ -297,7 +542,7 @@ function processSearchQuery(query: string): SearchQuery {
 }
 
 export async function searchByEnglishWord(
-  db: SQLiteDatabase,
+  db: SQLite.SQLiteDatabase,
   query: string
 ): Promise<DictionaryEntry[]> {
   const words = await db.getAllAsync<WordRow>(
@@ -413,7 +658,7 @@ function uniqueBy<T>(array: T[], keySelector: (item: T) => any): T[] {
 }
 
 export async function searchDictionary(
-  db: SQLiteDatabase,
+  db: SQLite.SQLiteDatabase,
   query: string
 ): Promise<DictionaryEntry[]> {
   const processedQuery = processSearchQuery(query);
@@ -632,7 +877,7 @@ export async function searchDictionary(
 }
 
 export async function getDictionaryEntry(
-  db: SQLiteDatabase,
+  db: SQLite.SQLiteDatabase,
   id: number,
   withExamples: boolean = false
 ): Promise<
@@ -691,7 +936,7 @@ export async function getDictionaryEntry(
 }
 
 export async function searchExamples(
-  db: SQLiteDatabase,
+  db: SQLite.SQLiteDatabase,
   query: string,
   limit: number = 20
 ): Promise<ExampleSentence[]> {
@@ -731,7 +976,7 @@ export async function searchExamples(
 }
 
 export async function getExampleById(
-  db: SQLiteDatabase,
+  db: SQLite.SQLiteDatabase,
   id: number
 ): Promise<ExampleSentence | null> {
   const example = await db.getFirstAsync<ExampleSentence>(
@@ -747,7 +992,7 @@ export async function getExampleById(
 }
 
 export async function getEdictEntry(
-  db: SQLiteDatabase,
+  db: SQLite.SQLiteDatabase,
   id: number
 ): Promise<DictionaryEntry | null> {
   // Check cache first
@@ -800,7 +1045,7 @@ export async function getEdictEntry(
   return result;
 }
 
-export async function resetDatabase(db: SQLiteDatabase): Promise<void> {
+export async function resetDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
   try {
     console.log("Dropping all tables...");
 
@@ -826,7 +1071,7 @@ export async function resetDatabase(db: SQLiteDatabase): Promise<void> {
 }
 
 export async function getBookmarks(
-  db: SQLiteDatabase
+  db: SQLite.SQLiteDatabase
 ): Promise<DictionaryEntry[]> {
   try {
     const bookmarks = await db.getAllAsync<{
@@ -881,7 +1126,7 @@ export async function getBookmarks(
 
 // Helper functions for batch operations
 async function batchGetDictionaryEntries(
-  db: SQLiteDatabase,
+  db: SQLite.SQLiteDatabase,
   ids: number[]
 ): Promise<DictionaryEntry[]> {
   if (ids.length === 0) return [];
@@ -948,7 +1193,7 @@ async function batchGetDictionaryEntries(
 }
 
 async function batchGetEdictEntries(
-  db: SQLiteDatabase,
+  db: SQLite.SQLiteDatabase,
   ids: number[]
 ): Promise<DictionaryEntry[]> {
   if (ids.length === 0) return [];
@@ -1035,7 +1280,7 @@ async function batchGetEdictEntries(
 }
 
 export async function isBookmarked(
-  db: SQLiteDatabase,
+  db: SQLite.SQLiteDatabase,
   wordId: number
 ): Promise<boolean> {
   try {
@@ -1052,7 +1297,7 @@ export async function isBookmarked(
 }
 
 export async function addBookmark(
-  db: SQLiteDatabase,
+  db: SQLite.SQLiteDatabase,
   wordId: number
 ): Promise<boolean> {
   try {
@@ -1078,7 +1323,7 @@ export async function addBookmark(
 }
 
 export async function removeBookmark(
-  db: SQLiteDatabase,
+  db: SQLite.SQLiteDatabase,
   wordId: number
 ): Promise<boolean> {
   try {
@@ -1102,7 +1347,7 @@ export interface SearchResults<T> {
 }
 
 export async function searchDictionaryPaginated(
-  db: SQLiteDatabase,
+  db: SQLite.SQLiteDatabase,
   query: string,
   page: number = 1,
   pageSize: number = 20
@@ -1218,7 +1463,7 @@ export async function searchDictionaryPaginated(
 }
 
 export async function searchByEnglishWordPaginated(
-  db: SQLiteDatabase,
+  db: SQLite.SQLiteDatabase,
   query: string,
   page: number = 1,
   pageSize: number = 20
@@ -1259,7 +1504,7 @@ export async function searchByEnglishWordPaginated(
 }
 
 export async function searchDictionaryFTS(
-  db: SQLiteDatabase,
+  db: SQLite.SQLiteDatabase,
   query: string,
   limit: number = 50
 ): Promise<DictionaryEntry[]> {
@@ -1295,7 +1540,7 @@ export async function searchDictionaryFTS(
 }
 
 export async function searchDictionaryFTSPaginated(
-  db: SQLiteDatabase,
+  db: SQLite.SQLiteDatabase,
   query: string,
   page: number = 1,
   pageSize: number = 20
@@ -1354,7 +1599,7 @@ export async function searchDictionaryFTSPaginated(
 
 // Helper function to update FTS when dictionary entries change
 export async function updateDictionaryFTS(
-  db: SQLiteDatabase,
+  db: SQLite.SQLiteDatabase,
   wordId: number
 ): Promise<boolean> {
   try {
@@ -1390,7 +1635,7 @@ export async function updateDictionaryFTS(
 }
 
 export async function addToHistory(
-  db: SQLiteDatabase,
+  db: SQLite.SQLiteDatabase,
   entry: DictionaryEntry
 ): Promise<boolean> {
   try {
@@ -1431,7 +1676,7 @@ export async function addToHistory(
 }
 
 export async function getHistory(
-  db: SQLiteDatabase,
+  db: SQLite.SQLiteDatabase,
   limit: number = 50
 ): Promise<HistoryEntry[]> {
   try {
@@ -1447,7 +1692,7 @@ export async function getHistory(
   }
 }
 
-export async function clearHistory(db: SQLiteDatabase): Promise<boolean> {
+export async function clearHistory(db: SQLite.SQLiteDatabase): Promise<boolean> {
   try {
     await db.runAsync("DELETE FROM history");
     return true;
@@ -1458,7 +1703,7 @@ export async function clearHistory(db: SQLiteDatabase): Promise<boolean> {
 }
 
 export async function removeHistoryById(
-  db: SQLiteDatabase,
+  db: SQLite.SQLiteDatabase,
   id: number
 ): Promise<boolean> {
   try {

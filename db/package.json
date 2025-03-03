@@ -1,0 +1,30 @@
+{
+  "name": "jisho-migration",
+  "version": "1.0.0",
+  "description": "Migration tool for Japanese dictionary data to SQLite",
+  "main": "index.js",
+  "scripts": {
+    "migrate": "node index.js migrate",
+    "compress": "node index.js compress",
+    "search": "node index.js search",
+    "test": "jest"
+  },
+  "dependencies": {
+    "better-sqlite3": "^9.4.1",
+    "commander": "^11.1.0",
+    "fs-extra": "^11.2.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/*.test.js"
+    ],
+    "roots": [
+      "test"
+    ],
+    "verbose": true
+  }
+}
