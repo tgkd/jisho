@@ -132,187 +132,6 @@ async function insertMeanings(db, wordId, senses) {
   }
 }
 
-async function importEdictToSqlite(edictPath, outputDb) {
-  const db = new sqlite3.Database(outputDb);
-  console.log("Importing EDICT dictionary...");
-
-  return new Promise(async (resolve, reject) => {
-    try {
-      // Create edict tables if they don't exist
-      await new Promise((resolve, reject) => {
-        db.serialize(() => {
-          // Drop existing tables if they exist
-          db.run("DROP TABLE IF EXISTS edict_fts");
-          db.run("DROP TABLE IF EXISTS edict_entries");
-          db.run("DROP TABLE IF EXISTS edict_meanings");
-
-          // Create entries table
-          db.run(`
-            CREATE TABLE edict_entries (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              japanese TEXT NOT NULL,
-              reading TEXT
-            )
-          `);
-
-          // Create meanings table with indices for English search
-          db.run(`
-            CREATE TABLE edict_meanings (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              entry_id INTEGER NOT NULL,
-              part_of_speech TEXT,
-              english_definition TEXT NOT NULL,
-              FOREIGN KEY (entry_id) REFERENCES edict_entries (id)
-            )
-          `);
-
-          // Create indices
-          db.run("CREATE INDEX idx_edict_japanese ON edict_entries(japanese)");
-          db.run("CREATE INDEX idx_edict_reading ON edict_entries(reading)");
-          db.run(
-            "CREATE VIRTUAL TABLE edict_fts USING fts5(english_definition, meaning_id UNINDEXED)"
-          );
-
-          resolve();
-        });
-      });
-
-      // Read EDICT file content
-      const buffer = await fs.promises.readFile(edictPath);
-      const fileContent = iconv.decode(buffer, "euc-jp");
-
-      const lines = fileContent
-        .split("\n")
-        .filter((line) => line.trim() && !line.startsWith(";"));
-
-      console.log(`Found ${lines.length} EDICT entries to process`);
-
-      // Start transaction
-      await new Promise((resolve, reject) => {
-        db.run("BEGIN TRANSACTION", (err) => {
-          if (err) reject(err);
-          else resolve();
-        });
-      });
-
-      const entryStmt = db.prepare(
-        "INSERT INTO edict_entries (japanese, reading) VALUES (?, ?)"
-      );
-
-      const meaningStmt = db.prepare(
-        "INSERT INTO edict_meanings (entry_id, part_of_speech, english_definition) VALUES (?, ?, ?)"
-      );
-
-      const ftsStmt = db.prepare(
-        "INSERT INTO edict_fts (english_definition, meaning_id) VALUES (?, ?)"
-      );
-
-      let processed = 0;
-      const batchSize = 1000;
-
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
-
-        try {
-          // Parse EDICT entry format: JAPANESE [READING] /(POS) definition/
-          const entryMatch = line.match(/^(.+?) \[(.+?)\] \/(.+)\/$/);
-          if (!entryMatch) continue;
-
-          const [, japanese, reading, definitionsPart] = entryMatch;
-
-          // Insert entry
-          await new Promise((resolve, reject) => {
-            entryStmt.run(japanese, reading, function (err) {
-              if (err) reject(err);
-              else resolve(this.lastID);
-            });
-          }).then(async (entryId) => {
-            // Split definitions at forward slashes that aren't part of tags
-            const definitions = definitionsPart
-              .split("/")
-              .filter((d) => d.trim());
-            let currentPos = "";
-
-            for (const def of definitions) {
-              // Check if this is a part of speech marker
-              const posMatch = def.match(/^\(([^)]+)\)$/);
-              if (posMatch) {
-                currentPos = posMatch[1];
-                continue;
-              }
-
-              // Extract POS from beginning of definition
-              let defText = def;
-              let pos = currentPos;
-
-              const inlinePosMatcher = def.match(/^\(([^)]+)\)\s+(.+)$/);
-              if (inlinePosMatcher) {
-                pos = inlinePosMatcher[1];
-                defText = inlinePosMatcher[2];
-              }
-
-              // Insert meaning
-              const meaningId = await new Promise((resolve, reject) => {
-                meaningStmt.run(entryId, pos, defText, function (err) {
-                  if (err) reject(err);
-                  else resolve(this.lastID);
-                });
-              });
-
-              // Insert into FTS table for full-text search
-              await new Promise((resolve, reject) => {
-                ftsStmt.run(defText, meaningId, (err) => {
-                  if (err) reject(err);
-                  else resolve();
-                });
-              });
-            }
-          });
-
-          processed++;
-
-          // Log progress periodically
-          if (processed % batchSize === 0 || processed === lines.length) {
-            console.log(
-              `Processed ${processed}/${lines.length} EDICT entries (${(
-                (processed / lines.length) *
-                100
-              ).toFixed(2)}%)`
-            );
-          }
-        } catch (e) {
-          console.error(`Error processing EDICT line ${i + 1}:`, e);
-        }
-      }
-
-      // Finalize statements
-      await Promise.all([
-        new Promise((r) => entryStmt.finalize(r)),
-        new Promise((r) => meaningStmt.finalize(r)),
-        new Promise((r) => ftsStmt.finalize(r)),
-      ]);
-
-      // Commit transaction
-      await new Promise((resolve, reject) => {
-        db.run("COMMIT", (err) => {
-          if (err) reject(err);
-          else resolve();
-        });
-      });
-
-      console.log(`Successfully imported ${processed} EDICT entries`);
-      resolve();
-    } catch (err) {
-      // Rollback on error
-      db.run("ROLLBACK", () => {
-        console.error("Error importing EDICT:", err);
-        reject(err);
-      });
-    }
-  });
-}
-
 async function loadExamples(db, examplesPath) {
   console.log("Loading examples file...");
   const fileContent = await fs.promises.readFile(examplesPath, "utf8");
@@ -530,6 +349,21 @@ async function convertToSqlite(ljsonPath, indexPath, examplesPath, outputDb) {
     console.log(`Meanings in database: ${meaningCount}`);
     console.log(`Example sentences: ${exampleCount}`);
     console.log(`Errors encountered: ${errors}`);
+
+    // Run VACUUM to optimize the database
+    console.log("Running VACUUM to optimize the database...");
+    await new Promise((resolve, reject) => {
+      db.run("VACUUM", (err) => {
+        if (err) {
+          console.error("Error during VACUUM:", err.message);
+          reject(err);
+        } else {
+          console.log("Database optimized successfully");
+          resolve();
+        }
+      });
+    });
+
   } catch (err) {
     console.error("Fatal error:", err);
     throw err;
@@ -537,8 +371,6 @@ async function convertToSqlite(ljsonPath, indexPath, examplesPath, outputDb) {
     db.close();
   }
 }
-
-// ... keep existing promisify and main execution code ...
 
 function promisify(fn) {
   return (...args) => {
@@ -553,16 +385,13 @@ function promisify(fn) {
 
 (async () => {
   try {
-    /* await convertToSqlite(
+    await convertToSqlite(
       path.resolve(__dirname, "../data/words.ljson"),
       path.resolve(__dirname, "../data/words.idx"),
       path.resolve(__dirname, "../data/examples.utf"),
-      path.resolve(__dirname, "../assets/db/dict.db")
-    ); */
-    await importEdictToSqlite(
-      path.resolve(__dirname, "../data/edict"),
-      path.resolve(__dirname, "../assets/db/dict.db")
+      path.resolve(__dirname, "../assets/db/dict_2.db")
     );
+
     console.log("Conversion completed successfully");
   } catch (err) {
     console.error("Error during conversion:", err);

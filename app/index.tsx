@@ -1,39 +1,27 @@
 import { useSQLiteContext } from "expo-sqlite";
-import { useRef, useState } from "react";
-import { FlatList, StyleSheet, TextInput, View } from "react-native";
+import { useState } from "react";
+import { FlatList, StyleSheet, View } from "react-native";
+import { Stack } from "expo-router";
 
-import { HapticTab } from "@/components/HapticTab";
 import { HistoryList } from "@/components/HistoryList";
 import { ListItem } from "@/components/ListItem";
 import { Loader } from "@/components/Loader";
-import { ThemedView } from "@/components/ThemedView";
-import { IconSymbol } from "@/components/ui/IconSymbol";
-import { Colors } from "@/constants/Colors";
+import { ThemedText } from "@/components/ThemedText";
 import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
-import { useThemeColor } from "@/hooks/useThemeColor";
 import {
   DictionaryEntry,
-  searchByEnglishWord,
+  WordMeaning,
   searchDictionary,
 } from "@/services/database";
-import { Stack } from "expo-router";
-import { SearchBarCommands } from "react-native-screens";
-import { ThemedText } from "@/components/ThemedText";
-
-type SearchMode = "japanese" | "english";
 
 export default function HomeScreen() {
-  const inputBackground = useThemeColor({}, "secondaryBackground");
-  const inputTextColor = useThemeColor({}, "text");
   const db = useSQLiteContext();
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<DictionaryEntry[]>([]);
-  const [searchMode, setSearchMode] = useState<SearchMode>("japanese");
   const [search, setSearch] = useState("");
-
-  const toggleSearchMode = () => {
-    setSearchMode((prev) => (prev === "japanese" ? "english" : "japanese"));
-  };
+  const [meaningsMap, setMeaningsMap] = useState<Map<number, WordMeaning[]>>(
+    new Map()
+  );
 
   const handleSearch = useDebouncedCallback(async (query: string) => {
     const text = query.trim();
@@ -45,13 +33,9 @@ export default function HomeScreen() {
     }
 
     try {
-      let searchResults: DictionaryEntry[];
-      if (searchMode === "japanese") {
-        searchResults = await searchDictionary(db, text);
-      } else {
-        searchResults = await searchByEnglishWord(db, text);
-      }
-      setResults(searchResults);
+      const searchResults = await searchDictionary(db, text);
+
+      setResults(searchResults.words);
     } catch (error) {
       console.error("Search failed:", error);
       setResults([]);
@@ -74,10 +58,7 @@ export default function HomeScreen() {
         options={{
           headerLargeTitle: true,
           headerSearchBarOptions: {
-            placeholder:
-              searchMode === "japanese"
-                ? "Search in Japanese..."
-                : "Search in English...",
+            placeholder: "Search in Japanese...",
             onChangeText: (e) => handleChange(e.nativeEvent.text),
             autoCapitalize: "none",
           },
@@ -90,7 +71,12 @@ export default function HomeScreen() {
           contentInsetAdjustmentBehavior="automatic"
           data={results}
           renderItem={({ index, item }) => (
-            <ListItem item={item} index={index} total={results?.length || 0} />
+            <ListItem
+              item={item}
+              meanings={meaningsMap.get(item.id)}
+              index={index}
+              total={results?.length || 0}
+            />
           )}
           keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={styles.scrollContainer}

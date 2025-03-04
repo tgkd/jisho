@@ -18,6 +18,7 @@ import {
   getDictionaryEntry,
   isBookmarked,
   removeBookmark,
+  WordMeaning,
 } from "@/services/database";
 
 const PARTS_OF_SPEECH: Record<string, string> = {
@@ -50,8 +51,11 @@ export default function WordDetailScreen() {
   const markColor = useThemeColor({}, "text");
   const params = useLocalSearchParams();
   const title = typeof params.title === "string" ? params.title : "Details";
-  const [entry, setEntry] = useState<DictionaryEntry | null>(null);
-  const [examples, setExamples] = useState<ExampleSentence[]>([]);
+  const [entry, setEntry] = useState<{
+    word: DictionaryEntry;
+    meanings: WordMeaning[];
+    examples: ExampleSentence[];
+  } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [bookmarked, setBookmarked] = useState(false);
   const db = useSQLiteContext();
@@ -61,26 +65,10 @@ export default function WordDetailScreen() {
       const result = await getDictionaryEntry(db, Number(params.id), true);
 
       if (result) {
-        if ("examples" in result) {
-          setExamples(result.examples);
-          setEntry({
-            id: result.id,
-            word: result.word,
-            reading: result.reading,
-            reading_hiragana: result.reading_hiragana,
-            kanji: result.kanji,
-            meanings: result.meanings,
-          });
-        } else {
-          setExamples([]);
-          setEntry(result);
-        }
-      }
-
-      if (result) {
-        const bookmarkStatus = await isBookmarked(db, result.id);
+        setEntry(result);
+        const bookmarkStatus = await isBookmarked(db, result.word.id);
         setBookmarked(bookmarkStatus);
-        await addToHistory(db, result);
+        await addToHistory(db, result.word);
       }
     } catch (error) {
       console.error("Failed to load dictionary entry:", error);
@@ -100,9 +88,9 @@ export default function WordDetailScreen() {
 
     try {
       if (bookmarked) {
-        await removeBookmark(db, entry.id);
+        await removeBookmark(db, entry.word.id);
       } else {
-        await addBookmark(db, entry.id);
+        await addBookmark(db, entry.word.id);
       }
       setBookmarked((prev) => !prev);
     } catch (error) {
@@ -163,10 +151,10 @@ export default function WordDetailScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <ThemedView style={styles.headerSection}>
           <ThemedText type="title" style={styles.word}>
-            {entry.word}
+            {entry.word.word}
           </ThemedText>
           <ThemedText type="secondary" style={styles.reading}>
-            {`【${entry.reading.join(", ")}】`}
+            {`【${entry.word.reading}】`}
           </ThemedText>
         </ThemedView>
 
@@ -178,9 +166,9 @@ export default function WordDetailScreen() {
                 <ThemedText style={styles.meaningText}>
                   {m.meaning.replaceAll(";", ", ")}
                 </ThemedText>
-                {m.part_of_speech && PARTS_OF_SPEECH[m.part_of_speech] ? (
+                {m.partOfSpeech && PARTS_OF_SPEECH[m.partOfSpeech] ? (
                   <ThemedText type="secondary">
-                    {PARTS_OF_SPEECH[m.part_of_speech]}
+                    {PARTS_OF_SPEECH[m.partOfSpeech]}
                   </ThemedText>
                 ) : null}
               </View>
@@ -188,18 +176,16 @@ export default function WordDetailScreen() {
           ))}
         </Card>
 
-        {examples.length ? (
+        {entry.examples.length ? (
           <>
             <ThemedText type="title" style={styles.sectionTitle}>
               {"Example Sentences"}
             </ThemedText>
             <Card variant="grouped" style={styles.examplesSection}>
-              {examples.map((example, idx) => (
+              {entry.examples.map((e, idx) => (
                 <View key={idx} style={styles.exampleItem}>
-                  <ThemedText>{example.japanese_text}</ThemedText>
-                  <ThemedText type="secondary">
-                    {example.english_text}
-                  </ThemedText>
+                  <ThemedText>{e.japaneseText}</ThemedText>
+                  <ThemedText type="secondary">{e.englishText}</ThemedText>
                 </View>
               ))}
             </Card>

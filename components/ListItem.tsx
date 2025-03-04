@@ -13,46 +13,27 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { Colors } from "@/constants/Colors";
 import { useThemeColor } from "@/hooks/useThemeColor";
-import { DictionaryEntry } from "@/services/database";
+import { DictionaryEntry, WordMeaning } from "@/services/database";
 import { HapticTab } from "./HapticTab";
 import { IconSymbol } from "./ui/IconSymbol";
 
-/*
-{
-  "id": 106891,
-  "word": "すんばらしい",
-  "reading": [
-    "すばらしい",
-    "すんばらしい"
-  ],
-  "reading_hiragana": "すばらしい",
-  "kanji": "素晴らしい;素晴しい;素薔薇しい",
-  "meanings": [
-    {
-      "meaning": "wonderful;splendid;magnificent",
-      "part_of_speech": "adj-i",
-      "field": "",
-      "misc": "",
-      "info": null
-    }
-  ]
-}
-
-*/
-
 const ACTION_WIDTH = 40;
+
+interface Props {
+  item: DictionaryEntry;
+  index: number;
+  total: number;
+  onRightPress?: () => void;
+  meanings?: WordMeaning[];
+}
 
 export function ListItem({
   item,
   index,
   total,
+  meanings,
   onRightPress,
-}: {
-  item: DictionaryEntry;
-  index: number;
-  total: number;
-  onRightPress?: () => void;
-}) {
+}: Props) {
   const isFirst = index === 0;
   const isLast = index === total - 1;
 
@@ -62,12 +43,13 @@ export function ListItem({
       params: { id: item.id.toString(), title: item.word },
     });
   };
-  const meanings = item.meanings
-    .map((m) => ({
-      text: m.meaning.replaceAll(";", ", "),
-      partOfSpeech: m.part_of_speech,
-    }))
-    .filter((m) => m.text.length > 0);
+  const examples =
+    meanings
+      ?.map((m) => ({
+        text: m.meaning.replaceAll(";", ", "),
+        partOfSpeech: m.partOfSpeech,
+      }))
+      .filter((m) => m.text.length > 0) ?? [];
 
   return (
     <ReanimatedSwipeable
@@ -91,11 +73,9 @@ export function ListItem({
         >
           <View style={styles.titleRow}>
             <ThemedText type="defaultSemiBold">{item.word}</ThemedText>
-            <ThemedText type="secondary">
-              {`【${item.reading.join(", ")}】`}
-            </ThemedText>
+            <ThemedText type="secondary">{`【${item.reading}】`}</ThemedText>
           </View>
-          {meanings.map((m, idx) => (
+          {examples.map((m, idx) => (
             <View key={idx}>
               <ThemedText type="secondary">{m.text}</ThemedText>
             </View>
