@@ -2,9 +2,9 @@ import { Stack, useFocusEffect } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useState } from "react";
 import { FlatList, StyleSheet } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as wanakana from "wanakana";
 
-import { ListItem } from "@/components/ListItem";
+import { BookmarkListItem } from "@/components/ListItem";
 import { ThemedText } from "@/components/ThemedText";
 import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
 import {
@@ -14,7 +14,6 @@ import {
 } from "@/services/database";
 
 export default function BookmarksScreen() {
-  const insets = useSafeAreaInsets();
   const [search, setSearch] = useState("");
   const [bookmarks, setBookmarks] = useState<DictionaryEntry[]>([]);
   const [filteredBookmarks, setFilteredBookmarks] = useState<DictionaryEntry[]>(
@@ -50,26 +49,21 @@ export default function BookmarksScreen() {
       return;
     }
 
-    const filtered = bookmarks.filter((item) => {
-      // Search in word
-      const matchWord = item.word.toLowerCase().includes(text);
+    const hiraganaText = wanakana.isRomaji(text)
+      ? wanakana.toHiragana(text)
+      : text;
 
-      // Search in kanji (which is a string, not an array)
-      const matchKanji = item.kanji
-        ? item.kanji.toLowerCase().includes(text)
-        : false;
+    const filtered = bookmarks.filter((b) => {
+      const matchWord = b.word.toLowerCase().includes(text);
+      const matchKanji = b.kanji ? b.kanji.toLowerCase().includes(text) : false;
+      const matchReading =
+        b.reading.includes(text) || b.reading.includes(hiraganaText);
+      let matchMeaning = false;
+      if ("meaning" in b && typeof b.meaning === "string") {
+        matchMeaning = b.meaning.toLowerCase().includes(text);
+      }
 
-      // Search in reading (array of strings)
-      const matchReading = item.reading.some((r) =>
-        r.toLowerCase().includes(text)
-      );
-
-      // Search in meanings (array of objects with meaning property)
-      const matchMeanings = item.meanings.some((m) =>
-        m.meaning.toLowerCase().includes(text)
-      );
-
-      return matchWord || matchKanji || matchReading || matchMeanings;
+      return matchWord || matchKanji || matchReading || matchMeaning;
     });
 
     setFilteredBookmarks(filtered);
@@ -82,8 +76,8 @@ export default function BookmarksScreen() {
 
   const handleRemoveBookmark = async (id: string | number) => {
     await removeBookmark(db, id as number);
-    setBookmarks((prev) => prev.filter((item) => item.id !== id));
-    setFilteredBookmarks((prev) => prev.filter((item) => item.id !== id));
+    setBookmarks((prev) => prev.filter((b) => b.id !== id));
+    setFilteredBookmarks((prev) => prev.filter((b) => b.id !== id));
   };
 
   const renderListHeader = () => {
@@ -127,7 +121,7 @@ export default function BookmarksScreen() {
         contentInsetAdjustmentBehavior="automatic"
         data={filteredBookmarks}
         renderItem={({ index, item }) => (
-          <ListItem
+          <BookmarkListItem
             item={item}
             index={index}
             total={filteredBookmarks.length}
@@ -143,11 +137,6 @@ export default function BookmarksScreen() {
         initialNumToRender={10}
         maxToRenderPerBatch={10}
         windowSize={5}
-        ListEmptyComponent={
-          <ThemedText textAlign="center" type="secondary">
-            {"No bookmarks yet"}
-          </ThemedText>
-        }
       />
     </>
   );

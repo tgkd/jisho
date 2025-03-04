@@ -1,6 +1,6 @@
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 
 import { HapticTab } from "@/components/HapticTab";
@@ -20,31 +20,7 @@ import {
   removeBookmark,
   WordMeaning,
 } from "@/services/database";
-
-const PARTS_OF_SPEECH: Record<string, string> = {
-  n: "Noun",
-  v1: "Ichidan verb",
-  v5: "Godan verb",
-  "adj-i": "I-adjective",
-  "adj-na": "Na-adjective",
-  "adj-t": "Taru adjective",
-  adv: "Adverb",
-  exp: "Expression",
-  int: "Interjection",
-  num: "Number",
-  pref: "Prefix",
-  suf: "Suffix",
-  vs: "Suru verb",
-  v5r: "Godan verb (irregular)",
-  vz: "Ichidan verb (zuru)",
-  vi: "Intransitive verb",
-  vk: "Kuru verb",
-  vn: "Irregular nu verb",
-  vr: "Ru verb",
-  "vs-c": "Suru verb - special class",
-  "vs-i": "Suru verb - irregular",
-  "vs-s": "Suru verb - special class",
-};
+import { deduplicateEn, formatEn, formatJp } from "@/services/parse";
 
 export default function WordDetailScreen() {
   const tintColor = useThemeColor({}, "tint");
@@ -59,6 +35,14 @@ export default function WordDetailScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [bookmarked, setBookmarked] = useState(false);
   const db = useSQLiteContext();
+
+  const details = useMemo(
+    () =>
+      entry?.meanings
+        ? deduplicateEn(entry.meanings.map((m) => formatEn(m.meaning, "none")))
+        : [],
+    [entry]
+  );
 
   const initEntry = async () => {
     try {
@@ -153,25 +137,16 @@ export default function WordDetailScreen() {
           <ThemedText type="title" style={styles.word}>
             {entry.word.word}
           </ThemedText>
-          <ThemedText type="secondary" style={styles.reading}>
-            {`【${entry.word.reading}】`}
+          <ThemedText type="secondary">
+            {formatJp(entry.word.reading, true)}
           </ThemedText>
         </ThemedView>
 
         <Card variant="grouped" style={styles.meaningsSection}>
-          {entry.meanings.map((m, idx) => (
-            <View key={idx} style={styles.meaningItem}>
-              <IconSymbol name="circle.fill" size={6} color={markColor} />
-              <View>
-                <ThemedText style={styles.meaningText}>
-                  {m.meaning.replaceAll(";", ", ")}
-                </ThemedText>
-                {m.partOfSpeech && PARTS_OF_SPEECH[m.partOfSpeech] ? (
-                  <ThemedText type="secondary">
-                    {PARTS_OF_SPEECH[m.partOfSpeech]}
-                  </ThemedText>
-                ) : null}
-              </View>
+          {details.map((m, idx) => (
+            <View key={idx} style={styles.row}>
+              <IconSymbol name="circle.fill" size={8} color={markColor} />
+              <ThemedText key={idx}>{m}</ThemedText>
             </View>
           ))}
         </Card>
@@ -207,30 +182,22 @@ const styles = StyleSheet.create({
   headerSection: {
     alignItems: "center",
     paddingVertical: 24,
+    gap: 8,
   },
   word: {
     fontSize: 34,
     fontWeight: "700",
     letterSpacing: 0.41,
   },
-  reading: {
-    fontSize: 17,
-    marginTop: 4,
-  },
   meaningsSection: {
     gap: 8,
     borderRadius: 10,
     padding: 16,
   },
-  meaningItem: {
+  row: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-  },
-  meaningText: {
-    flex: 1,
-    fontSize: 17,
-    lineHeight: 22,
+    gap: 8,
   },
   loadingContainer: {
     flex: 1,

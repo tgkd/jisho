@@ -16,24 +16,73 @@ import { useThemeColor } from "@/hooks/useThemeColor";
 import { DictionaryEntry, WordMeaning } from "@/services/database";
 import { HapticTab } from "./HapticTab";
 import { IconSymbol } from "./ui/IconSymbol";
+import { deduplicateEn, formatEn, formatJp } from "@/services/parse";
 
 const ACTION_WIDTH = 40;
 
-interface Props {
-  item: DictionaryEntry;
-  index: number;
-  total: number;
-  onRightPress?: () => void;
-  meanings?: WordMeaning[];
-}
-
-export function ListItem({
+export function SearchListItem({
   item,
   index,
   total,
   meanings,
+}: {
+  item: DictionaryEntry;
+  index: number;
+  total: number;
+  meanings?: WordMeaning[];
+}) {
+  const isFirst = index === 0;
+  const isLast = index === total - 1;
+  const details = meanings
+    ? deduplicateEn(meanings.map((m) => formatEn(m.meaning, "none")))
+    : [];
+
+  const handleWordPress = (item: DictionaryEntry) => {
+    router.push({
+      pathname: "/word/[id]",
+      params: { id: item.id.toString(), title: item.word },
+    });
+  };
+
+  return (
+    <>
+      <HapticTab onPress={() => handleWordPress(item)}>
+        <ThemedView
+          style={[
+            styles.resultItem,
+            isFirst && styles.firstRadius,
+            isLast && styles.lastRadius,
+          ]}
+          lightColor={Colors.light.groupedBackground}
+          darkColor={Colors.dark.groupedBackground}
+        >
+          <View style={styles.titleRow}>
+            <ThemedText type="defaultSemiBold">{item.word}</ThemedText>
+            <ThemedText type="secondary">{formatJp(item.reading)}</ThemedText>
+          </View>
+          {details.map((m, idx) => (
+            <ThemedText key={idx} type="secondary">
+              {m}
+            </ThemedText>
+          ))}
+        </ThemedView>
+      </HapticTab>
+      {isLast ? null : <View style={styles.separator} />}
+    </>
+  );
+}
+
+export function BookmarkListItem({
+  item,
+  index,
+  total,
   onRightPress,
-}: Props) {
+}: {
+  item: DictionaryEntry & { meaning?: string };
+  index: number;
+  total: number;
+  onRightPress: () => void;
+}) {
   const isFirst = index === 0;
   const isLast = index === total - 1;
 
@@ -43,20 +92,12 @@ export function ListItem({
       params: { id: item.id.toString(), title: item.word },
     });
   };
-  const examples =
-    meanings
-      ?.map((m) => ({
-        text: m.meaning.replaceAll(";", ", "),
-        partOfSpeech: m.partOfSpeech,
-      }))
-      .filter((m) => m.text.length > 0) ?? [];
 
   return (
     <ReanimatedSwipeable
       friction={2}
       rightThreshold={ACTION_WIDTH}
       enableTrackpadTwoFingerGesture
-      enabled={Boolean(onRightPress)}
       renderRightActions={(_, drag, swipe) => (
         <RightAction drag={drag} swipe={swipe} onPress={onRightPress} />
       )}
@@ -71,15 +112,12 @@ export function ListItem({
           lightColor={Colors.light.groupedBackground}
           darkColor={Colors.dark.groupedBackground}
         >
-          <View style={styles.titleRow}>
-            <ThemedText type="defaultSemiBold">{item.word}</ThemedText>
-            <ThemedText type="secondary">{`【${item.reading}】`}</ThemedText>
-          </View>
-          {examples.map((m, idx) => (
-            <View key={idx}>
-              <ThemedText type="secondary">{m.text}</ThemedText>
-            </View>
-          ))}
+          <ThemedText type="defaultSemiBold">{item.word}</ThemedText>
+          <ThemedText type="secondary">
+            {item.meaning
+              ? formatEn(item.meaning, "rows")
+              : formatJp(item.reading)}
+          </ThemedText>
         </ThemedView>
       </HapticTab>
       {isLast ? null : <View style={styles.separator} />}

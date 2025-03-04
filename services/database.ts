@@ -60,6 +60,7 @@ export type HistoryEntry = {
   createdAt: number;
   word: string;
   reading: string;
+  meaning: string;
 };
 
 interface SearchQuery {
@@ -384,9 +385,15 @@ export async function getDictionaryEntry(
     );
 
     if (withExamples) {
-      const examples = await db.getAllAsync<ExampleSentence>(
-        "SELECT * FROM examples WHERE example_id = ?",
-        [id]
+      const examples = await db.getAllAsync<DBExampleSentence>(
+        `
+        SELECT id, japanese_text, english_text, tokens, example_id
+        FROM examples
+        WHERE japanese_text LIKE ? OR japanese_text LIKE ?
+        ORDER BY length(japanese_text)
+        LIMIT 5
+        `,
+        [`%${word.word}%`, `%${word.reading}%`]
       );
 
       return {
@@ -399,7 +406,12 @@ export async function getDictionaryEntry(
           wordId: id,
           partOfSpeech: m.part_of_speech || null,
         })),
-        examples,
+        examples: examples.map((e) => ({
+          ...e,
+          japaneseText: e.japanese_text,
+          englishText: e.english_text,
+          exampleId: e.example_id || null,
+        })),
       };
     }
 
@@ -449,15 +461,20 @@ export async function resetDatabase(db: SQLiteDatabase): Promise<void> {
 
 export async function getBookmarks(
   db: SQLiteDatabase
-): Promise<DictionaryEntry[]> {
+): Promise<Array<DictionaryEntry & { meaning?: string }>> {
   try {
-    const res = db.getAllAsync<DictionaryEntry>(
-      `SELECT words.* FROM words
-     JOIN bookmarks ON bookmarks.word_id = words.id
-     ORDER BY bookmarks.created_at DESC`
+    const res = await db.getAllAsync<DBDictEntry & { meaning?: string }>(
+      `SELECT words.*,
+          (SELECT meaning FROM meanings WHERE word_id = words.id LIMIT 1) as meaning
+       FROM words
+       JOIN bookmarks ON bookmarks.word_id = words.id
+       ORDER BY bookmarks.created_at DESC`
     );
 
-    return res;
+    return res.map((w) => ({
+      ...w,
+      readingHiragana: w.reading_hiragana,
+    }));
   } catch (error) {
     console.error("Error getting bookmarks:", error);
     return [];
@@ -508,22 +525,33 @@ export async function getHistory(
   db: SQLiteDatabase,
   limit = 100
 ): Promise<HistoryEntry[]> {
-  const result = await db.getAllAsync<DBHistoryEntry>(
+  const result = await db.getAllAsync<
+    DBHistoryEntry & { meaning?: string; history_id?: number }
+  >(
     `
-    SELECT w.*, h.created_at, h.word_id FROM words w
+    SELECT
+      w.id,
+      w.word,
+      w.reading,
+      h.id as history_id,
+      h.created_at,
+      h.word_id,
+      (SELECT meaning FROM meanings WHERE word_id = w.id LIMIT 1) as meaning
+    FROM words w
     INNER JOIN history h ON w.id = h.word_id
     ORDER BY h.created_at DESC
     LIMIT ?
-  `,
+    `,
     [limit]
   );
 
   return result.map((e) => ({
+    id: e.history_id || e.id,
     word: e.word,
     reading: e.reading,
-    id: e.id,
     createdAt: e.created_at,
     wordId: e.word_id,
+    meaning: e.meaning || "",
   }));
 }
 

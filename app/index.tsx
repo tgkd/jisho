@@ -4,7 +4,7 @@ import { FlatList, StyleSheet, View } from "react-native";
 import { Stack } from "expo-router";
 
 import { HistoryList } from "@/components/HistoryList";
-import { ListItem } from "@/components/ListItem";
+import { SearchListItem } from "@/components/ListItem";
 import { Loader } from "@/components/Loader";
 import { ThemedText } from "@/components/ThemedText";
 import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
@@ -36,6 +36,7 @@ export default function HomeScreen() {
       const searchResults = await searchDictionary(db, text);
 
       setResults(searchResults.words);
+      setMeaningsMap(searchResults.meanings);
     } catch (error) {
       console.error("Search failed:", error);
       setResults([]);
@@ -71,7 +72,7 @@ export default function HomeScreen() {
           contentInsetAdjustmentBehavior="automatic"
           data={results}
           renderItem={({ index, item }) => (
-            <ListItem
+            <SearchListItem
               item={item}
               meanings={meaningsMap.get(item.id)}
               index={index}

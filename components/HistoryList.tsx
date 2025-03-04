@@ -1,7 +1,7 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useMemo, useState } from "react";
-import { StyleSheet, View, SectionList } from "react-native";
+import { SectionList, StyleSheet, View } from "react-native";
 import ReanimatedSwipeable, {
   SwipeableMethods,
 } from "react-native-gesture-handler/ReanimatedSwipeable";
@@ -16,8 +16,8 @@ import {
   getHistory,
   HistoryEntry,
   removeHistoryById,
-  resetDatabase,
 } from "@/services/database";
+import { formatEn } from "@/services/parse";
 import { HapticTab } from "./HapticTab";
 import { ThemedText } from "./ThemedText";
 import { ThemedView } from "./ThemedView";
@@ -122,7 +122,9 @@ export function HistoryList() {
             darkColor={Colors.dark.groupedBackground}
           >
             <ThemedText type="defaultSemiBold">{item.word}</ThemedText>
-            <ThemedText type="secondary">{item.reading}</ThemedText>
+            <ThemedText type="secondary">
+              {formatEn(item.meaning, "none", { truncateAll: 30 })}
+            </ThemedText>
           </ThemedView>
           {!isLast ? <View style={styles.separator} /> : null}
         </HapticTab>
