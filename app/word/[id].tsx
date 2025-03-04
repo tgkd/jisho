@@ -21,30 +21,6 @@ import {
   removeBookmark,
 } from "@/services/database";
 
-const PARTS_OF_SPEECH: Record<string, string> = {
-  n: "Noun",
-  v1: "Ichidan verb",
-  v5: "Godan verb",
-  "adj-i": "I-adjective",
-  "adj-na": "Na-adjective",
-  "adj-t": "Taru adjective",
-  adv: "Adverb",
-  exp: "Expression",
-  int: "Interjection",
-  num: "Number",
-  pref: "Prefix",
-  suf: "Suffix",
-  vs: "Suru verb",
-  v5r: "Godan verb (irregular)",
-  vz: "Ichidan verb (zuru)",
-  vi: "Intransitive verb",
-  vk: "Kuru verb",
-  vn: "Irregular nu verb",
-  vr: "Ru verb",
-  "vs-c": "Suru verb - special class",
-  "vs-i": "Suru verb - irregular",
-  "vs-s": "Suru verb - special class",
-};
 
 export default function WordDetailScreen() {
   const tintColor = useThemeColor({}, "tint");
@@ -175,11 +151,6 @@ export default function WordDetailScreen() {
                 <ThemedText style={styles.meaningText}>
                   {m.meaning.replaceAll(";", ", ")}
                 </ThemedText>
-                {m.part_of_speech && PARTS_OF_SPEECH[m.part_of_speech] ? (
-                  <ThemedText type="secondary">
-                    {PARTS_OF_SPEECH[m.part_of_speech]}
-                  </ThemedText>
-                ) : null}
               </View>
             </View>
           ))}

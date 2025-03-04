@@ -13,9 +13,9 @@ import { ThemedView } from "@/components/ThemedView";
 import { Colors } from "@/constants/Colors";
 import { useThemeColor } from "@/hooks/useThemeColor";
 import { DictionaryEntry } from "@/services/database";
+import { removeMarkers } from "@/services/parsing";
 import { HapticTab } from "./HapticTab";
 import { IconSymbol } from "./ui/IconSymbol";
-import { MarkersText } from "./MarkersText";
 
 const ACTION_WIDTH = 40;
 
@@ -64,11 +64,17 @@ export function ListItem({
           darkColor={Colors.dark.groupedBackground}
         >
           <View style={styles.titleRow}>
-            <ThemedText type="defaultSemiBold">{item.word}</ThemedText>
-            <MarkersText text={item.reading} />
+            <ThemedText type="defaultSemiBold">
+              {removeMarkers(item.word)}
+            </ThemedText>
+            <ThemedText type="secondary">
+              {removeMarkers(item.reading)}
+            </ThemedText>
           </View>
           {meanings.map((m) => (
-            <MarkersText key={m.id} textType="secondary" text={m.meaning} />
+            <ThemedText key={m.id} type="secondary">
+              {removeMarkers(m.meaning)}
+            </ThemedText>
           ))}
         </ThemedView>
       </HapticTab>

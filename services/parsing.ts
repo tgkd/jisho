@@ -97,7 +97,9 @@ export interface MarkerWithPosition {
 }
 
 export function extractMarkers(text: string): MarkerWithPosition[] {
-  if (!text) return [];
+  if (!text) {
+    return [];
+  }
 
   const result: MarkerWithPosition[] = [];
   const markerPattern = /\(([^)]+)\)/g;
@@ -126,6 +128,12 @@ export function extractMarkers(text: string): MarkerWithPosition[] {
  * @returns Text with marker annotations removed: "すみません; スミマセン"
  */
 export function removeMarkers(text: string): string {
-  if (!text) return "";
-  return text.replace(/\([^)]+\)/g, "");
+  if (!text) {
+    return "";
+  }
+
+  return text
+    .replace(/\([^)]+\)/g, "")
+    .replace(/;/g, "; ")
+    .trim();
 }

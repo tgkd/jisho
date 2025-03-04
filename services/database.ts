@@ -44,9 +44,9 @@ export type DictionaryEntry =
 
 export type MeaningEntry = {
   id: number;
-  word_id: number;
+  wordId: number;
   meaning: string;
-  part_of_speech: string;
+  partOfSpeech: string;
   tags: string;
 };
 
@@ -54,7 +54,7 @@ export type ExampleEntry = {
   id: number;
   japanese: string;
   english: string;
-  parsed_tokens: string;
+  parsedTokens: string;
 };
 
 type SearchQuery = {
@@ -64,7 +64,10 @@ type SearchQuery = {
   romaji?: string;
 };
 
-export type HistoryEntry = DictionaryEntry & { createdAt: string };
+export type HistoryEntry = DictionaryEntry & {
+  createdAt: string;
+  wordId: number;
+};
 
 function processSearchQuery(query: string): SearchQuery {
   const result: SearchQuery = { original: query };
@@ -97,80 +100,46 @@ export async function searchDictionary(
 
     const sq = processSearchQuery(text);
 
-    // First try for exact matches only
     const exactSql = `
       SELECT DISTINCT w.*,
       CASE
         WHEN w.word = ? THEN 1
-        WHEN w.reading = ? THEN 2
-        WHEN w.reading = ? THEN 3
-        WHEN w.reading = ? THEN 4
+        WHEN w.reading LIKE ? THEN 2
+        WHEN w.reading LIKE ? THEN 3
+        WHEN w.reading LIKE ? THEN 4
         ELSE 5
       END as match_rank
       FROM words w
-      WHERE w.word = ?
-      OR w.reading = ?
-      OR w.reading = ?
-      OR w.reading = ?
+      WHERE
+        (${sq.hiragana ? "w.word = ? OR " : ""} ${
+      sq.katakana ? "w.word = ? OR " : ""
+    } 0=1)
+        OR w.reading LIKE ?
+        OR w.reading LIKE ?
+        OR w.reading LIKE ?
       ORDER BY match_rank ASC
       LIMIT 100
     `;
 
     const exactParams = [
-      // Parameters for the CASE statement (exact match ranking)
-      sq.original,
-      sq.original,
-      sq.hiragana || sq.original,
-      sq.katakana || sq.original,
+      // Parameters for the CASE statement (match ranking)
+      sq.hiragana || sq.katakana || "", // for word exact match
+      `${sq.original}`, // reading equals exactly
+      `${sq.original};%`, // reading starts with term followed by semicolon
+      `%;${sq.original};%`, // reading contains term surrounded by semicolons
 
-      // Parameters for the WHERE clause (exact matches only)
-      sq.original,
-      sq.original,
-      sq.hiragana || sq.original,
-      sq.katakana || sq.original,
+      // Parameters for the WHERE clause
+      ...(sq.hiragana ? [sq.hiragana] : []), // word in hiragana if available
+      ...(sq.katakana ? [sq.katakana] : []), // word in katakana if available
+
+      `%${sq.original}%`, // reading contains original
+      sq.hiragana ? `%${sq.hiragana}%` : `%${sq.original}%`, // reading contains hiragana
+      sq.katakana ? `%${sq.katakana}%` : `%${sq.original}%`, // reading contains katakana
     ];
 
+    console.log("Exact search:", exactSql, exactParams);
+
     let result = await db.getAllAsync<DictionaryEntry>(exactSql, exactParams);
-
-    // If no exact matches found, try partial matches
-    if (result.length === 0) {
-      const partialSql = `
-        SELECT DISTINCT w.*,
-        CASE
-          WHEN w.word LIKE ? THEN 1
-          WHEN w.reading LIKE ? THEN 2
-          WHEN w.reading LIKE ? THEN 3
-          WHEN w.reading LIKE ? THEN 4
-          ELSE 5
-        END as match_rank
-        FROM words w
-        WHERE w.word LIKE ?
-        OR w.reading LIKE ?
-        OR w.reading LIKE ?
-        OR w.reading LIKE ?
-        ORDER BY match_rank ASC
-        LIMIT 100
-      `;
-
-      const searchPattern = `%${sq.original}%`;
-      const startPattern = `${sq.original}%`;
-
-      const partialParams = [
-        // Parameters for the CASE statement (partial match ranking)
-        startPattern,
-        startPattern,
-        sq.hiragana ? `${sq.hiragana}%` : startPattern,
-        sq.katakana ? `${sq.katakana}%` : startPattern,
-
-        // Parameters for the WHERE clause
-        searchPattern,
-        searchPattern,
-        sq.hiragana ? `%${sq.hiragana}%` : searchPattern,
-        sq.katakana ? `%${sq.katakana}%` : searchPattern,
-      ];
-
-      result = await db.getAllAsync<DictionaryEntry>(partialSql, partialParams);
-    }
 
     if (withMeanings) {
       const resWithMeanings = await Promise.all(
@@ -294,32 +263,44 @@ export async function addToHistory(
   db: SQLite.SQLiteDatabase,
   entry: DictionaryEntry
 ) {
-  await db.runAsync("INSERT INTO history (word_id, created_at) VALUES (?, ?)", [
-    entry.id,
-    new Date().toISOString(),
-  ]);
+  try {
+    await db.runAsync("DELETE FROM history WHERE word_id = ?", [entry.id]);
+
+    await db.runAsync(
+      "INSERT INTO history (word_id, created_at) VALUES (?, ?)",
+      [entry.id, new Date().toISOString()]
+    );
+  } catch (error) {
+    console.error("Failed to add to history:", error);
+  }
 }
 
 export async function getHistory(
-  db: SQLite.SQLiteDatabase
+  db: SQLite.SQLiteDatabase,
+  limit = 100
 ): Promise<HistoryEntry[]> {
   const result = await db.getAllAsync<{
-    created_at: string;
     id: number;
-    reading: string;
     word: string;
+    reading: string;
+    created_at: string;
+    word_id: number;
   }>(
     `
-    SELECT w.*, h.created_at FROM words w
+    SELECT w.*, h.created_at, h.word_id FROM words w
     INNER JOIN history h ON w.id = h.word_id
     ORDER BY h.created_at DESC
-    LIMIT 100
-  `
+    LIMIT ?
+  `,
+    [limit]
   );
 
   return result.map((e) => ({
-    ...e,
+    word: e.word,
+    reading: e.reading,
+    id: e.id,
     createdAt: new Date(e.created_at).toISOString(),
+    wordId: e.word_id,
   }));
 }
 
@@ -331,7 +312,13 @@ export async function removeHistoryById(
   db: SQLite.SQLiteDatabase,
   historyId: number
 ) {
-  await db.runAsync("DELETE FROM history WHERE id = ?", [historyId]);
+  try {
+    await db.runAsync("DELETE FROM history WHERE id = ?", [historyId]);
+    return true;
+  } catch (error) {
+    console.error("Failed to remove history item:", error);
+    return false;
+  }
 }
 
 export async function migrateDbIfNeeded(db: SQLite.SQLiteDatabase) {

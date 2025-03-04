@@ -13,6 +13,7 @@ import Animated, {
 import { Colors } from "@/constants/Colors";
 import { useThemeColor } from "@/hooks/useThemeColor";
 import {
+  clearHistory,
   getHistory,
   removeHistoryById,
   type HistoryEntry,
@@ -21,6 +22,7 @@ import { HapticTab } from "./HapticTab";
 import { ThemedText } from "./ThemedText";
 import { ThemedView } from "./ThemedView";
 import { IconSymbol } from "./ui/IconSymbol";
+import { removeMarkers } from "@/services/parsing";
 
 const ACTION_WIDTH = 40;
 
@@ -67,18 +69,19 @@ export function HistoryList() {
   );
 
   const handleRemoveHistoryItem = (item: HistoryEntry) => async () => {
-    try {
-      await removeHistoryById(db, item.id);
-      setHistoryItems((prev) => prev.filter((i) => i.id !== item.id));
-    } catch (error) {
-      console.error("Failed to remove history item:", error);
-    }
+      console.log("Removing history item:", item);
+
+      const res = await removeHistoryById(db, item.id);
+      if (res) {
+        setHistoryItems((prev) => prev.filter((i) => i.id !== item.id));
+
+      }
   };
 
   const handleWordPress = async (item: HistoryEntry) => {
     router.push({
       pathname: "/word/[id]",
-      params: { id: item.word.toString(), title: item.word },
+      params: { id: item.wordId.toString(), title: item.word },
     });
   };
 
@@ -118,8 +121,12 @@ export function HistoryList() {
             lightColor={Colors.light.groupedBackground}
             darkColor={Colors.dark.groupedBackground}
           >
-            <ThemedText type="defaultSemiBold">{item.word}</ThemedText>
-            <ThemedText type="secondary">{item.reading}</ThemedText>
+            <ThemedText type="defaultSemiBold">
+              {removeMarkers(item.word)}
+            </ThemedText>
+            <ThemedText type="secondary">
+              {removeMarkers(item.reading)}
+            </ThemedText>
           </ThemedView>
           {!isLast ? <View style={styles.separator} /> : null}
         </HapticTab>
