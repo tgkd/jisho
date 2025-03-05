@@ -1,10 +1,16 @@
-import { Stack, useFocusEffect } from "expo-router";
+import { router, Stack, useFocusEffect } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useState } from "react";
-import { FlatList, StyleSheet } from "react-native";
+import { FlatList, StyleSheet, View } from "react-native";
+import ReanimatedSwipeable, {
+  SwipeableMethods,
+} from "react-native-gesture-handler/ReanimatedSwipeable";
+import Animated, {
+  SharedValue,
+  useAnimatedStyle,
+} from "react-native-reanimated";
 import * as wanakana from "wanakana";
 
-import { BookmarkListItem } from "@/components/ListItem";
 import { ThemedText } from "@/components/ThemedText";
 import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
 import {
@@ -12,6 +18,13 @@ import {
   removeBookmark,
   type DictionaryEntry,
 } from "@/services/database";
+
+import { HapticTab } from "@/components/HapticTab";
+import { ThemedView } from "@/components/ThemedView";
+import { IconSymbol } from "@/components/ui/IconSymbol";
+import { Colors } from "@/constants/Colors";
+import { useThemeColor } from "@/hooks/useThemeColor";
+import { formatEn, formatJp } from "@/services/parse";
 
 export default function BookmarksScreen() {
   const [search, setSearch] = useState("");
@@ -129,7 +142,6 @@ export default function BookmarksScreen() {
           />
         )}
         keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.scrollContainer}
         ListHeaderComponent={renderListHeader}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
@@ -142,12 +154,104 @@ export default function BookmarksScreen() {
   );
 }
 
+const ACTION_WIDTH = 60;
+
+function BookmarkListItem({
+  item,
+  index,
+  total,
+  onRightPress,
+}: {
+  item: DictionaryEntry & { meaning?: string };
+  index: number;
+  total: number;
+  onRightPress: () => void;
+}) {
+  const isLast = index === total - 1;
+
+  const handleWordPress = (item: DictionaryEntry) => {
+    router.push({
+      pathname: "/word/[id]",
+      params: { id: item.id.toString(), title: item.word },
+    });
+  };
+
+  return (
+    <ReanimatedSwipeable
+      friction={2}
+      rightThreshold={ACTION_WIDTH}
+      enableTrackpadTwoFingerGesture
+      renderRightActions={(_, drag, swipe) => (
+        <RightAction drag={drag} swipe={swipe} onPress={onRightPress} />
+      )}
+    >
+      <HapticTab onPress={() => handleWordPress(item)}>
+        <ThemedView
+          style={styles.item}
+          lightColor={Colors.light.groupedBackground}
+          darkColor={Colors.dark.groupedBackground}
+        >
+          <ThemedText type="defaultSemiBold">{item.word}</ThemedText>
+          <ThemedText type="secondary">
+            {item.meaning
+              ? formatEn(item.meaning, "none", { truncateAll: 30 })
+              : formatJp(item.reading)}
+          </ThemedText>
+        </ThemedView>
+      </HapticTab>
+      {isLast ? null : <View style={styles.separator} />}
+    </ReanimatedSwipeable>
+  );
+}
+
+function RightAction({
+  drag,
+  swipe,
+  onPress,
+}: {
+  drag: SharedValue<number>;
+  swipe: SwipeableMethods;
+  onPress?: () => void;
+}) {
+  const bgColor = useThemeColor({}, "error");
+
+  const styleAnimation = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateX: drag.value + ACTION_WIDTH }],
+    };
+  });
+
+  const handlePress = () => {
+    swipe.close();
+    onPress?.();
+  };
+
+  return (
+    <Animated.View
+      style={[styleAnimation, styles.rightAction, { backgroundColor: bgColor }]}
+    >
+      <HapticTab onPress={handlePress}>
+        <IconSymbol color={"white"} name="trash" size={24} />
+      </HapticTab>
+    </Animated.View>
+  );
+}
 const styles = StyleSheet.create({
-  container: {
-    flexGrow: 1,
+  item: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
   },
-  scrollContainer: {
-    paddingVertical: 24,
-    paddingHorizontal: 16,
+  separator: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: Colors.light.separator,
+    marginHorizontal: 8,
+  },
+  rightAction: {
+    alignItems: "center",
+    justifyContent: "center",
+    width: ACTION_WIDTH,
   },
 });
