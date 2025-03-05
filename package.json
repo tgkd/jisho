@@ -47,7 +47,8 @@
     "react-native-uitextview": "^1.4.0",
     "react-native-web": "~0.19.13",
     "react-native-webview": "13.12.5",
-    "wanakana": "^5.3.1"
+    "wanakana": "^5.3.1",
+    "expo-clipboard": "~7.0.1"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

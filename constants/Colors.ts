@@ -25,6 +25,7 @@ export const Colors = {
     link: tintColorLight,
     accentForeground: "#FFFFFF",
     error: errorRedLight,
+    highlight: "rgba(255, 215, 0, 1)",
   },
   dark: {
     text: "#FFFFFF",
@@ -42,5 +43,6 @@ export const Colors = {
     link: tintColorDark,
     accentForeground: "#FFFFFF",
     error: errorRedDark,
+    highlight: "rgb(212, 181, 1)",
   },
 };

@@ -259,10 +259,11 @@ export async function searchDictionary(
 
   const words = await db.getAllAsync<DBDictEntry>(
     `
-    SELECT DISTINCT * FROM words
+    SELECT * FROM words
     WHERE
       ${whereClauses.join(" OR ")}
       AND length(word) >= ${Math.min(query.length, 2)}
+    GROUP BY word
     ORDER BY
       CASE
         WHEN word = ? THEN 1

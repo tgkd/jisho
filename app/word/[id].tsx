@@ -21,6 +21,7 @@ import {
   WordMeaning,
 } from "@/services/database";
 import { deduplicateEn, formatEn, formatJp } from "@/services/parse";
+import { HighlightText } from "@/components/HighlightText";
 
 export default function WordDetailScreen() {
   const tintColor = useThemeColor({}, "tint");
@@ -159,7 +160,7 @@ export default function WordDetailScreen() {
             <Card variant="grouped" style={styles.examplesSection}>
               {entry.examples.map((e, idx) => (
                 <View key={idx} style={styles.exampleItem}>
-                  <ThemedText>{e.japaneseText}</ThemedText>
+                  <HighlightText text={e.japaneseText} highlight={entry.word.word} />
                   <ThemedText type="secondary">{e.englishText}</ThemedText>
                 </View>
               ))}

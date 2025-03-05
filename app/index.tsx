@@ -1,12 +1,14 @@
-import { useSQLiteContext } from "expo-sqlite";
-import { useState } from "react";
-import { FlatList, StyleSheet, View } from "react-native";
 import { Stack } from "expo-router";
+import { useSQLiteContext } from "expo-sqlite";
+import { useRef, useState } from "react";
+import { FlatList, StyleSheet, View } from "react-native";
+import { SearchBarCommands } from "react-native-screens";
 
 import { HistoryList } from "@/components/HistoryList";
 import { SearchListItem } from "@/components/ListItem";
 import { Loader } from "@/components/Loader";
 import { ThemedText } from "@/components/ThemedText";
+import { useClipboardInit } from "@/hooks/useClipboardInit";
 import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
 import {
   DictionaryEntry,
@@ -22,6 +24,7 @@ export default function HomeScreen() {
   const [meaningsMap, setMeaningsMap] = useState<Map<number, WordMeaning[]>>(
     new Map()
   );
+  const searchBarRef = useRef<SearchBarCommands>(null);
 
   const handleSearch = useDebouncedCallback(async (query: string) => {
     const text = query.trim();
@@ -51,6 +54,10 @@ export default function HomeScreen() {
     handleSearch(text);
   };
 
+  useClipboardInit((t) => {
+    searchBarRef.current?.setText(t);
+  });
+
   const showHistory = !search.trim().length && !results.length;
 
   return (
@@ -62,6 +69,9 @@ export default function HomeScreen() {
             placeholder: "Search in Japanese...",
             onChangeText: (e) => handleChange(e.nativeEvent.text),
             autoCapitalize: "none",
+            ref: searchBarRef,
+            hideWhenScrolling: true,
+            shouldShowHintSearchIcon: true,
           },
         }}
       />

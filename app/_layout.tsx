@@ -22,7 +22,7 @@ import { Loader } from "@/components/Loader";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
-import { migrateDbIfNeeded } from "@/services/database";
+import { migrateDbIfNeeded, resetDatabase } from "@/services/database";
 
 const DATABASE_PATH = "../assets/db/dict_2.db";
 

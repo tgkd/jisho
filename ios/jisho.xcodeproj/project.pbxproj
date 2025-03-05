@@ -355,7 +355,7 @@
 					"FB_SONARKIT_ENABLED=1",
 				);
 				INFOPLIST_FILE = jisho/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = _test;
+				INFOPLIST_KEY_CFBundleDisplayName = "言葉";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -398,7 +398,7 @@
 				DEVELOPMENT_TEAM = "";
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = ULU867Y7LC;
 				INFOPLIST_FILE = jisho/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = _test;
+				INFOPLIST_KEY_CFBundleDisplayName = "言葉";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
