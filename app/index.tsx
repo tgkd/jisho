@@ -3,18 +3,23 @@ import { useSQLiteContext } from "expo-sqlite";
 import { useRef, useState } from "react";
 import { FlatList, StyleSheet, View } from "react-native";
 import { SearchBarCommands } from "react-native-screens";
+import * as wanakana from "wanakana";
+import * as Clipboard from "expo-clipboard";
 
-import { HistoryList } from "@/components/HistoryList";
-import { SearchListItem } from "@/components/ListItem";
-import { Loader } from "@/components/Loader";
+import { router } from "expo-router";
+
 import { ThemedText } from "@/components/ThemedText";
-import { useClipboardInit } from "@/hooks/useClipboardInit";
+import { ThemedView } from "@/components/ThemedView";
+import { Colors } from "@/constants/Colors";
+import { useThemeColor } from "@/hooks/useThemeColor";
+import { DictionaryEntry, WordMeaning } from "@/services/database";
+import { deduplicateEn, formatEn, formatJp } from "@/services/parse";
+import { HistoryList } from "@/components/HistoryList";
+import { Loader } from "@/components/Loader";
 import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
-import {
-  DictionaryEntry,
-  WordMeaning,
-  searchDictionary,
-} from "@/services/database";
+import { searchDictionary } from "@/services/database";
+import { HapticTab, HIT_SLOP } from "@/components/HapticTab";
+import { IconSymbol } from "@/components/ui/IconSymbol";
 
 export default function HomeScreen() {
   const db = useSQLiteContext();
@@ -54,10 +59,25 @@ export default function HomeScreen() {
     handleSearch(text);
   };
 
-  useClipboardInit((t) => {
-    searchBarRef.current?.setText(t);
-  });
+  const checkClipboardContent = async () => {
+    try {
+      if (!Clipboard.isPasteButtonAvailable) {
+        return;
+      }
+      const text = await Clipboard.getStringAsync();
 
+      if (text && wanakana.isJapanese(text)) {
+        searchBarRef.current?.setText(text);
+        handleChange(text);
+      }
+    } catch (error) {
+      console.error("Error accessing clipboard:", error);
+    }
+  };
+
+  const onFocus = () => {
+    checkClipboardContent();
+  };
   const showHistory = !search.trim().length && !results.length;
 
   return (
@@ -71,6 +91,7 @@ export default function HomeScreen() {
             autoCapitalize: "none",
             ref: searchBarRef,
             shouldShowHintSearchIcon: true,
+            onFocus,
           },
         }}
       />
@@ -116,23 +137,65 @@ export default function HomeScreen() {
   );
 }
 
+export function SearchListItem({
+  item,
+  index,
+  total,
+  meanings,
+}: {
+  item: DictionaryEntry;
+  index: number;
+  total: number;
+  meanings?: WordMeaning[];
+}) {
+  const iconColor = useThemeColor({}, "secondaryText");
+  const isFirst = index === 0;
+  const isLast = index === total - 1;
+  const details = (
+    meanings
+      ? deduplicateEn(meanings.map((m) => formatEn(m.meaning, "none")))
+      : []
+  ).join(", ");
+
+  const handleWordPress = (item: DictionaryEntry) => {
+    router.push({
+      pathname: "/word/[id]",
+      params: { id: item.id.toString(), title: item.word },
+    });
+  };
+
+  return (
+    <HapticTab onPress={() => handleWordPress(item)}>
+      <ThemedView
+        style={[
+          styles.item,
+          isFirst && styles.firstRadius,
+          isLast && styles.lastRadius,
+        ]}
+        lightColor={Colors.light.groupedBackground}
+        darkColor={Colors.dark.groupedBackground}
+      >
+        <View style={styles.col}>
+          <View style={styles.titleRow}>
+            <ThemedText type="defaultSemiBold">{item.word}</ThemedText>
+            <ThemedText type="secondary">{formatJp(item.reading)}</ThemedText>
+          </View>
+          <ThemedText numberOfLines={1} type="secondary">
+            {details}
+          </ThemedText>
+        </View>
+        <IconSymbol color={iconColor} name="chevron.right" size={16} />
+      </ThemedView>
+
+      {isLast ? null : <View style={styles.separator} />}
+    </HapticTab>
+  );
+}
+
 const styles = StyleSheet.create({
   scrollContainer: {
     paddingVertical: 24,
     paddingHorizontal: 16,
-  },
-  searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 16,
-    gap: 8,
-  },
-  searchInput: {
-    flex: 1,
-    height: 38,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    fontSize: 17,
   },
   headerContainer: {
     flexDirection: "row",
@@ -140,27 +203,42 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: 12,
   },
-  statusText: {
-    fontSize: 14,
-    marginRight: 8,
-  },
-  headerLoader: {
-    width: 14,
-    height: 14,
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingTop: 32,
-  },
   emptyContainer: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     paddingTop: 32,
   },
-  emptyListContent: {
-    flexGrow: 1,
+  col: {
+    flexDirection: "column",
+    alignItems: "flex-start",
+    justifyContent: "center",
+    maxWidth: "90%",
+  },
+  item: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 4,
+    padding: 12,
+  },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+  separator: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: Colors.light.separator,
+    marginHorizontal: 8,
+  },
+  firstRadius: {
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 10,
+  },
+  lastRadius: {
+    borderBottomLeftRadius: 10,
+    borderBottomRightRadius: 10,
   },
 });
