@@ -23,7 +23,7 @@ import { ThemedText } from "./ThemedText";
 import { ThemedView } from "./ThemedView";
 import { IconSymbol } from "./ui/IconSymbol";
 
-const ACTION_WIDTH = 40;
+const ACTION_WIDTH = 60;
 
 export function HistoryList() {
   const router = useRouter();
@@ -94,7 +94,6 @@ export function HistoryList() {
     index: number;
     section: { data: HistoryEntry[] };
   }) => {
-    const isFirst = index === 0;
     const isLast = index === section.data.length - 1;
 
     return (
@@ -113,11 +112,7 @@ export function HistoryList() {
       >
         <HapticTab onPress={() => handleWordPress(item)}>
           <ThemedView
-            style={[
-              styles.resultItem,
-              isFirst && styles.firstRowStyle,
-              isLast && styles.lastRowStyle,
-            ]}
+            style={styles.item}
             lightColor={Colors.light.groupedBackground}
             darkColor={Colors.dark.groupedBackground}
           >
@@ -126,7 +121,7 @@ export function HistoryList() {
               {formatEn(item.meaning, "none", { truncateAll: 30 })}
             </ThemedText>
           </ThemedView>
-          {!isLast ? <View style={styles.separator} /> : null}
+          {isLast ? null : <View style={styles.separator} />}
         </HapticTab>
       </ReanimatedSwipeable>
     );
@@ -139,9 +134,13 @@ export function HistoryList() {
       keyExtractor={(i) => i.id.toString()}
       renderItem={renderHistoryItem}
       renderSectionHeader={({ section: { title } }) => (
-        <ThemedText style={styles.sectionTitle} type="secondary">
-          {title}
-        </ThemedText>
+        <ThemedView
+          style={styles.sectionTitle}
+          lightColor={Colors.light.groupedBackground}
+          darkColor={Colors.dark.groupedBackground}
+        >
+          <ThemedText type="secondary">{title}</ThemedText>
+        </ThemedView>
       )}
       maxToRenderPerBatch={5}
       windowSize={5}
@@ -150,7 +149,6 @@ export function HistoryList() {
       removeClippedSubviews
       initialNumToRender={5}
       stickySectionHeadersEnabled={false}
-      contentContainerStyle={styles.container}
     />
   );
 }
@@ -164,7 +162,7 @@ function RightAction({
   swipe: SwipeableMethods;
   onPress: () => void;
 }) {
-  const iconColor = useThemeColor({}, "error");
+  const bgColor = useThemeColor({}, "error");
 
   const styleAnimation = useAnimatedStyle(() => {
     return {
@@ -178,45 +176,28 @@ function RightAction({
   };
 
   return (
-    <Animated.View style={[styleAnimation, styles.rightAction]}>
+    <Animated.View
+      style={[styleAnimation, styles.rightAction, { backgroundColor: bgColor }]}
+    >
       <HapticTab onPress={handlePress}>
-        <IconSymbol color={iconColor} name="trash.circle.fill" size={32} />
+        <IconSymbol color={"white"} name="trash.fill" size={24} />
       </HapticTab>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    paddingBottom: 24,
-    paddingTop: 8,
-    paddingHorizontal: 16,
-  },
-  resultItem: {
+  item: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    paddingVertical: 12,
+    paddingVertical: 16,
     paddingHorizontal: 8,
-  },
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    flexWrap: "wrap",
   },
   separator: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: Colors.light.separator,
-    marginHorizontal: 8,
-  },
-  firstRowStyle: {
-    borderTopLeftRadius: 10,
-    borderTopRightRadius: 10,
-  },
-  lastRowStyle: {
-    borderBottomLeftRadius: 10,
-    borderBottomRightRadius: 10,
+    marginLeft: 8,
   },
 
   rightAction: {
@@ -226,7 +207,8 @@ const styles = StyleSheet.create({
   },
 
   sectionTitle: {
-    marginVertical: 8,
-    paddingHorizontal: 8,
+    padding: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.light.separator,
   },
 });
