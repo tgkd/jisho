@@ -1,3 +1,13 @@
+import {
+  stripOkurigana,
+  tokenize,
+  isKanji,
+  isKana,
+  isHiragana,
+  isKatakana,
+
+} from "wanakana";
+
 type Marker = "numbered" | "bullet" | "dash" | "rows" | "none";
 
 type Divider = "comma" | "semicolon" | "dot" | "none";
@@ -125,6 +135,7 @@ export function formatJp(
   return result;
 }
 
+
 const PARTS_OF_SPEECH: Record<string, string> = {
   n: "Noun",
   v1: "Ichidan verb",
@@ -149,3 +160,188 @@ const PARTS_OF_SPEECH: Record<string, string> = {
   "vs-i": "Suru verb - irregular",
   "vs-s": "Suru verb - special class",
 };
+
+export type FuriPair = [furigana: string, text: string];
+type FuriLocation = [[start: number, end: number], content: string];
+
+/**
+ * Combines furigana with kanji into an array of string pairs.
+ * @param  {String} word vocab kanji word
+ * @param  {String} reading vocab kana reading
+ * @param  {String|Object} furi furigana placement info
+ * @return {Array} furigana/kanji pairs
+ * @example
+ * combineFuri('お世辞', 'おせじ', '1:せ;2:じ')
+ * // => [['', 'お'], ['せ', '世'], ['じ', '辞']]
+ * combineFuri('大人しい', 'おとなしい') // smart fallbacks
+ * // => [['おとな', '大人'], ['', 'しい']]
+ * combineFuri('使い方', 'つかいかた') // smart fallbacks
+ * // => [['つか', '使'], ['', 'い'], ['かた', '方']]
+ *
+ * // special compound readings (義訓/熟字訓) are spread across relevant kanji
+ * combineFuri('胡座', 'あぐら', '0:あぐら')
+ * // => [['あぐら', '胡座']]
+ */
+export function combineFuri(word = "", reading = "", furi = "") {
+  const furiLocs = parseFuri(furi);
+  // 義訓/熟字訓 words with a single furi loc: 今日 "0:きょう"
+  const isSpecialReading = furiLocs.length === 1 && [...word].every(isKanji);
+  const isKanaWord = [...word].every(isKana);
+  const isWanikaniMadness =
+    [...reading].some(isHiragana) && [...reading].some(isKatakana);
+
+  if (word === reading || isKanaWord) {
+    return [["", word]];
+  }
+
+  if (!furi || isSpecialReading || isWanikaniMadness) {
+    return basicFuri(word, reading);
+  }
+
+  return generatePairs(word, furiLocs);
+}
+
+/**
+ * Displays simple furigana by removing redundant kana
+ * @param  {String} [word=''] 'お見舞い'
+ * @param  {String} [reading=''] 'おみまい'
+ * @return {Array} [['', 'お'], ['見舞', 'みま'], ['', 'い']]
+ */
+export function basicFuri(word = "", reading = "") {
+  if ([...word].every((c) => !isKana(c))) {
+    return [[reading, word]];
+  }
+
+  const [bikago, okurigana] = [
+    reading.slice(
+      0,
+      word.length -
+        stripOkurigana(word, { leading: true, matchKanji: undefined }).length
+    ),
+    reading.slice(
+      stripOkurigana(reading, { matchKanji: word, leading: undefined }).length
+    ),
+  ];
+
+  const innerWordTokens = tokenize(
+    removeExtraneousKana(word, bikago, okurigana)
+  );
+  let innerReadingChars = removeExtraneousKana(reading, bikago, okurigana);
+
+  const kanjiOddKanaEvenRegex = RegExp(
+    innerWordTokens
+      .map((c) => (isKanji(c as string) ? "(.*)" : `(${c})`))
+      .join("")
+  );
+
+  [, ...innerReadingChars] =
+    innerReadingChars.match(kanjiOddKanaEvenRegex) || [];
+
+  const ret = zip(innerReadingChars, innerWordTokens).map(
+    ([reading, word = ""]) =>
+      !reading || reading === word ? ["", word] : [reading, word]
+  );
+
+  if (bikago) {
+    ret.unshift(["", bikago]);
+  }
+
+  if (okurigana) {
+    ret.push(["", okurigana]);
+  }
+
+  return ret;
+}
+
+function removeExtraneousKana(str = "", leading = "", trailing = "") {
+  return str
+    .replace(RegExp(`^${leading}`), "")
+    .replace(RegExp(`${trailing}$`), "");
+}
+
+export function parseFuri(
+  data: string | Record<string, string>
+): FuriLocation[] {
+  if (typeof data === "object") {
+    return Object.entries(data).map(([start, content]) => [
+      [Number(start), Number(start) + 1],
+      content,
+    ]);
+  }
+
+  return data.split(";").map((entry) => {
+    const [indexes, content] = entry.split(":");
+    const [start, end] = indexes.split("-").map(Number);
+    return [[start, end ? end + 1 : start + 1], content];
+  });
+}
+
+/**
+ * Generates array pairs via furigana location data
+ * @param  {String} word 'お世辞'
+ * @param  {Array} furiLocs [[[1, 2], 'せ'], [[2, 3], 'じ']]
+ * @return {Array} [['', 'お'], ['せ', '世'], ['じ', '辞']]
+ */
+export function generatePairs(
+  word = "",
+  furiLocs: FuriLocation[] = []
+): FuriPair[] {
+  let prevCharEnd = 0;
+
+  return furiLocs.reduce((pairs, [[start, end], furiText], index, source) => {
+    if (start !== prevCharEnd) {
+      pairs.push(["", word.slice(prevCharEnd, start)]);
+    }
+
+    pairs.push([furiText, word.slice(start, end)]);
+
+    if (end < word.length && !source[index + 1]) {
+      pairs.push(["", word.slice(end)]);
+    }
+
+    prevCharEnd = end;
+    return pairs;
+  }, [] as FuriPair[]);
+}
+
+/**
+ * Combines elements from multiple arrays into arrays of corresponding elements.
+ * Strings are treated as arrays of characters.
+ * @param  {...Array|string} arrays - Arrays or strings to zip together
+ * @return {Array} Array of arrays containing corresponding elements
+ * @throws {Error} If no arguments are provided
+ * @example
+ * zip([1, 2, 3], ['a', 'b', 'c']) // [[1, 'a'], [2, 'b'], [3, 'c']]
+ * zip([1, 2], ['a', 'b'], [true, false]) // [[1, 'a', true], [2, 'b', false]]
+ * zip([1, 2, 3], ['a', 'b']) // [[1, 'a'], [2, 'b'], [3, undefined]]
+ * zip('abc', 'xyz') // [['a', 'x'], ['b', 'y'], ['c', 'z']]
+ * zip('abc', [1, 2, 3]) // [['a', 1], ['b', 2], ['c', 3]]
+ */
+export function zip(...arrays: (any[] | string)[]): any[][] {
+  if (arrays.length === 0) {
+    throw new Error("At least one array or string argument is required");
+  }
+
+  // Convert strings to arrays of characters
+  const processedArrays = arrays.map((arr) =>
+    typeof arr === "string" ? [...arr] : arr
+  );
+
+  const maxLength = Math.max(
+    ...processedArrays
+      .filter((arr) => Array.isArray(arr))
+      .map((arr) => arr.length)
+  );
+
+  const result = [];
+
+  for (let i = 0; i < maxLength; i++) {
+    const row = [];
+    for (const arr of processedArrays) {
+      row.push(arr ? arr[i] : undefined);
+    }
+    result.push(row);
+  }
+
+  return result;
+}

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 
 import { HapticTab } from "@/components/HapticTab";
+import { HighlightText } from "@/components/HighlightText";
 import { Loader } from "@/components/Loader";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -21,7 +22,6 @@ import {
   WordMeaning,
 } from "@/services/database";
 import { deduplicateEn, formatEn, formatJp } from "@/services/parse";
-import { HighlightText } from "@/components/HighlightText";
 
 export default function WordDetailScreen() {
   const tintColor = useThemeColor({}, "tint");
@@ -160,8 +160,13 @@ export default function WordDetailScreen() {
             <Card variant="grouped" style={styles.examplesSection}>
               {entry.examples.map((e, idx) => (
                 <View key={idx} style={styles.exampleItem}>
-                  <HighlightText text={e.japaneseText} highlight={entry.word.word} />
-                  <ThemedText type="secondary">{e.englishText}</ThemedText>
+                  <HighlightText
+                    text={e.japaneseText}
+                    highlight={entry.word.word}
+                  />
+                  <ThemedText size="sm" type="secondary">
+                    {e.englishText}
+                  </ThemedText>
                 </View>
               ))}
             </Card>
@@ -223,7 +228,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   exampleItem: {
-    gap: 8,
+    gap: 4,
   },
   examplesLoading: {
     marginTop: 24,

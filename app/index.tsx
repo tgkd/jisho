@@ -70,7 +70,6 @@ export default function HomeScreen() {
             onChangeText: (e) => handleChange(e.nativeEvent.text),
             autoCapitalize: "none",
             ref: searchBarRef,
-            hideWhenScrolling: true,
             shouldShowHintSearchIcon: true,
           },
         }}

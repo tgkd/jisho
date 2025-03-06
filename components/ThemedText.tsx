@@ -9,6 +9,7 @@ export type ThemedTextProps = TextProps & {
   lightColor?: string;
   darkColor?: string;
   textAlign?: "auto" | "left" | "right" | "center" | "justify";
+  size?: "lg" | "md" | "sm" | "xs";
   type?:
     | "default"
     | "title"
@@ -25,6 +26,7 @@ export function ThemedText({
   type = "default",
   selectable = true,
   textAlign,
+  size,
   ...rest
 }: ThemedTextProps) {
   const colorType = useMemo(() => {
@@ -50,6 +52,19 @@ export function ThemedText({
     "text"
   );
 
+  const sizeStyle = useMemo(() => {
+    switch (size) {
+      case "md":
+        return styles.md;
+      case "sm":
+        return styles.sm;
+      case "xs":
+        return styles.xs;
+      default:
+        return styles.default;
+    }
+  }, [size]);
+
   return (
     <Text
       style={[
@@ -60,6 +75,7 @@ export function ThemedText({
         type === "subtitle" ? styles.subtitle : undefined,
         type === "link" ? [styles.link, { color: linkColor }] : undefined,
         textAlign ? { textAlign } : undefined,
+        size ? sizeStyle : undefined,
         style,
       ]}
       selectable={selectable}
@@ -94,5 +110,17 @@ const styles = StyleSheet.create({
   link: {
     fontSize: 17,
     lineHeight: 22,
+  },
+  md: {
+    fontSize: 15,
+    lineHeight: 20,
+  },
+  sm: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  xs: {
+    fontSize: 11,
+    lineHeight: 16,
   },
 });
