@@ -5,7 +5,9 @@ import {
   isKana,
   isHiragana,
   isKatakana,
-
+  toKatakana,
+  toHiragana,
+  toKana,
 } from "wanakana";
 
 type Marker = "numbered" | "bullet" | "dash" | "rows" | "none";
@@ -134,7 +136,6 @@ export function formatJp(
 
   return result;
 }
-
 
 const PARTS_OF_SPEECH: Record<string, string> = {
   n: "Noun",
@@ -302,6 +303,83 @@ export function generatePairs(
     prevCharEnd = end;
     return pairs;
   }, [] as FuriPair[]);
+}
+
+export type ReadingToken = {
+  text: string;
+  reading?: string;
+  form?: string;
+};
+
+/**
+ * Parses a Japanese text breakdown into structured JSON format without references
+ * @param {string} input - The breakdown text
+ * @return {Array} - Array of parsed tokens
+ */
+function parseJapaneseBreakdown(input: string): ReadingToken[] {
+  const result = [];
+  const words = input.split(" ");
+
+  for (let word of words) {
+    if (!word.trim()) continue;
+
+    const token = {} as ReadingToken;
+    let remaining = word;
+
+    // Extract kanji readings in parentheses like 彼(かれ)
+    const readingMatch = remaining.match(/([^\(]+)\(([^\)]+)\)/);
+    if (readingMatch) {
+      token.text = readingMatch[1];
+      token.reading = readingMatch[2];
+      remaining = remaining.replace(/\([^\)]+\)/, "");
+    } else {
+      // If no reading parentheses, the whole text might be the token
+      const textMatch = remaining.match(/^([^{[\]~]+)/);
+      if (textMatch) {
+        token.text = textMatch[1];
+        remaining = remaining.replace(textMatch[1], "");
+      }
+    }
+
+    // Remove reference numbers in square brackets like [01]
+    remaining = remaining.replace(/\[\d+\]/, "");
+
+    // Extract dictionary/alternative forms in curly brackets like {忙しかった}
+    const formMatch = remaining.match(/{([^}]+)}/);
+    if (formMatch) {
+      token.form = formMatch[1];
+      remaining = remaining.replace(/{[^}]+}/, "");
+    }
+
+    // Remove tildes that indicate compound words
+    remaining = remaining.replace(/~/g, "");
+
+    // Remove special reference numbers with hashtags
+    remaining = remaining.replace(/(#\d+)/, "");
+
+    // Clean up any remaining text
+    remaining = remaining.trim();
+    if (remaining && !token.text) {
+      token.text = remaining;
+    }
+
+    if (Object.keys(token).length > 0) {
+      result.push(token);
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Process multiple lines of Japanese breakdown text
+ * @param {string} text - Multiple lines of breakdown text
+ * @return {Array} - Array of parsed lines
+ */
+export function processJpExampleText(text: string | undefined) {
+  if (!text) return [];
+  const lines = text.split("\n").filter((l) => l.trim());
+  return lines.flatMap((l) => parseJapaneseBreakdown(l));
 }
 
 /**

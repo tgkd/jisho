@@ -1,25 +1,28 @@
+import * as Clipboard from "expo-clipboard";
 import { Stack } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useRef, useState } from "react";
 import { FlatList, StyleSheet, View } from "react-native";
 import { SearchBarCommands } from "react-native-screens";
 import * as wanakana from "wanakana";
-import * as Clipboard from "expo-clipboard";
 
 import { router } from "expo-router";
 
-import { ThemedText } from "@/components/ThemedText";
-import { ThemedView } from "@/components/ThemedView";
-import { Colors } from "@/constants/Colors";
-import { useThemeColor } from "@/hooks/useThemeColor";
-import { DictionaryEntry, WordMeaning } from "@/services/database";
-import { deduplicateEn, formatEn, formatJp } from "@/services/parse";
+import { HapticTab } from "@/components/HapticTab";
 import { HistoryList } from "@/components/HistoryList";
 import { Loader } from "@/components/Loader";
-import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
-import { searchDictionary } from "@/services/database";
-import { HapticTab, HIT_SLOP } from "@/components/HapticTab";
+import { ThemedText } from "@/components/ThemedText";
+import { ThemedView } from "@/components/ThemedView";
 import { IconSymbol } from "@/components/ui/IconSymbol";
+import { Colors } from "@/constants/Colors";
+import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
+import { useThemeColor } from "@/hooks/useThemeColor";
+import {
+  DictionaryEntry,
+  searchDictionary,
+  WordMeaning,
+} from "@/services/database";
+import { deduplicateEn, formatEn, formatJp } from "@/services/parse";
 
 export default function HomeScreen() {
   const db = useSQLiteContext();
