@@ -5,12 +5,14 @@ import { useColorScheme } from "@/hooks/useColorScheme";
 
 export type CardProps = ThemedViewProps & {
   variant?: "grouped" | "plain";
+  gap?: number;
 };
 
 export function Card({
   style,
   variant = "plain",
   children,
+  gap = 8,
   ...props
 }: CardProps) {
   const colorScheme = useColorScheme() ?? "light";
@@ -20,7 +22,7 @@ export function Card({
       : Colors[colorScheme].secondaryBackground; // Changed to use secondaryBackground (white in light mode)
 
   return (
-    <ThemedView style={[styles.card, { backgroundColor }, style]} {...props}>
+    <ThemedView style={[styles.card, { backgroundColor, gap }, style]} {...props}>
       {children}
     </ThemedView>
   );
@@ -30,5 +32,6 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 10,
     padding: 16,
+    gap: 8,
   },
 });

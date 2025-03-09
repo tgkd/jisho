@@ -1,5 +1,6 @@
 import { SQLiteDatabase } from "expo-sqlite";
 import * as wanakana from "wanakana";
+import { AiExample } from "./request";
 
 type DBDictEntry = {
   id: number;
@@ -71,7 +72,7 @@ interface SearchQuery {
 }
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
-  const DATABASE_VERSION = 4;
+  const DATABASE_VERSION = 5;
 
   try {
     const versionResult = await db.getFirstAsync<{ user_version: number }>(
@@ -162,6 +163,16 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
 
       await db.execAsync(`PRAGMA user_version = 4`);
       currentDbVersion = 4;
+    }
+
+    if (currentDbVersion < 5) {
+      await db.execAsync(`
+        ALTER TABLE examples ADD COLUMN word_id INTEGER;
+        CREATE INDEX IF NOT EXISTS idx_example_word_id ON examples(word_id);
+      `);
+
+      await db.execAsync(`PRAGMA user_version = 5`);
+      currentDbVersion = 5;
     }
 
     console.log(
@@ -324,8 +335,33 @@ export async function searchDictionary(
 export async function searchExamples(
   db: SQLiteDatabase,
   query: string,
-  limit: number = 20
+  limit: number = 20,
+  wordId?: number
 ): Promise<ExampleSentence[]> {
+  // If wordId is provided, search by word_id first
+  if (wordId !== undefined) {
+    const examplesByWordId = await db.getAllAsync<DBExampleSentence>(
+      `
+      SELECT id, japanese_text, english_text, tokens, example_id
+      FROM examples
+      WHERE word_id = ?
+      LIMIT ?
+      `,
+      [wordId, limit]
+    );
+
+    // If we found examples by word_id, return them
+    if (examplesByWordId && examplesByWordId.length > 0) {
+      return examplesByWordId.map((e) => ({
+        ...e,
+        japaneseText: e.japanese_text,
+        englishText: e.english_text,
+        exampleId: e.example_id || null,
+      }));
+    }
+  }
+
+  // Otherwise, fall back to text search
   const processedQuery = processSearchQuery(query);
   const whereClauses: string[] = [];
   const params: string[] = [];
@@ -348,7 +384,7 @@ export async function searchExamples(
     params.push(`%${processedQuery.original}%`);
   }
 
-  const examples = await db.getAllAsync<ExampleSentence>(
+  const examples = await db.getAllAsync<DBExampleSentence>(
     `
     SELECT id, japanese_text, english_text, tokens, example_id
     FROM examples
@@ -358,7 +394,36 @@ export async function searchExamples(
     [...params, limit]
   );
 
-  return examples;
+  return examples.map((e) => ({
+    ...e,
+    japaneseText: e.japanese_text,
+    englishText: e.english_text,
+    exampleId: e.example_id || null,
+  }));
+}
+
+async function addExample(
+  wId: number,
+  jt: string,
+  et: string,
+  db: SQLiteDatabase
+) {
+  try {
+    await db.runAsync(
+      "INSERT INTO examples (japanese_text, english_text, word_id) VALUES (?, ?, ?)",
+      [jt, et, wId]
+    );
+  } catch (error) {
+    console.error("Failed to add example:", error);
+  }
+}
+
+export async function addExamplesList(
+  wId: number,
+  examples: AiExample[],
+  db: SQLiteDatabase
+) {
+  await Promise.all(examples.map((e) => addExample(wId, e.jp, e.en, db)));
 }
 
 export async function getDictionaryEntry(
@@ -386,6 +451,38 @@ export async function getDictionaryEntry(
     );
 
     if (withExamples) {
+      const examplesByWordId = await db.getAllAsync<DBExampleSentence>(
+        `
+        SELECT id, japanese_text, english_text, tokens, example_id
+        FROM examples
+        WHERE word_id = ?
+        ORDER BY length(japanese_text)
+        LIMIT 5
+        `,
+        [id]
+      );
+
+      if (examplesByWordId && examplesByWordId.length > 0) {
+        return {
+          word: {
+            ...word,
+            readingHiragana: word?.reading_hiragana || null,
+          },
+          meanings: meanings.map((m) => ({
+            ...m,
+            wordId: id,
+            partOfSpeech: m.part_of_speech || null,
+          })),
+          examples: examplesByWordId.map((e) => ({
+            ...e,
+            japaneseText: e.japanese_text,
+            englishText: e.english_text,
+            exampleId: e.example_id || null,
+          })),
+        };
+      }
+
+      // Fall back to text search
       const examples = await db.getAllAsync<DBExampleSentence>(
         `
         SELECT id, japanese_text, english_text, tokens, example_id

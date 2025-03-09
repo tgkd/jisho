@@ -45,7 +45,8 @@ function createTables(db) {
           japanese_text TEXT,
           english_text TEXT,
           tokens TEXT,
-          example_id TEXT
+          example_id TEXT,
+          word_id INTEGER
         )
       `);
 
@@ -55,6 +56,7 @@ function createTables(db) {
       db.run("CREATE INDEX idx_position ON words(position)");
       db.run("CREATE INDEX idx_kanji ON words(kanji)");
       db.run("CREATE INDEX idx_japanese_text ON examples(japanese_text)");
+      db.run("CREATE INDEX idx_example_word_id ON examples(word_id)");
 
       console.log("Tables and indexes created successfully");
       resolve();
@@ -201,8 +203,8 @@ async function loadExamples(db, examplesPath) {
 
       try {
         const stmt = db.prepare(`
-          INSERT INTO examples (japanese_text, english_text, tokens, example_id)
-          VALUES (?, ?, ?, ?)
+          INSERT INTO examples (japanese_text, english_text, tokens, example_id, word_id)
+          VALUES (?, ?, ?, ?, NULL)
         `);
 
         for (const example of examples) {

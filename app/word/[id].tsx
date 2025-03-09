@@ -1,7 +1,13 @@
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import {
+  LayoutAnimation,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+} from "react-native";
 
 import { HapticTab } from "@/components/HapticTab";
 import { HighlightText } from "@/components/HighlightText";
@@ -13,6 +19,7 @@ import { IconSymbol } from "@/components/ui/IconSymbol";
 import { useThemeColor } from "@/hooks/useThemeColor";
 import {
   addBookmark,
+  addExamplesList,
   addToHistory,
   DictionaryEntry,
   ExampleSentence,
@@ -22,7 +29,7 @@ import {
   WordMeaning,
 } from "@/services/database";
 import { deduplicateEn, formatEn, formatJp } from "@/services/parse";
-import { AiExample, getAiExamples } from "@/services/request";
+import { AiExample, getAiExamples, craeteWordPrompt } from "@/services/request";
 import { useFetch } from "@/hooks/useFetch";
 
 export default function WordDetailScreen() {
@@ -38,7 +45,6 @@ export default function WordDetailScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [bookmarked, setBookmarked] = useState(false);
   const db = useSQLiteContext();
-  const aiex = useFetch<AiExample[]>(getAiExamples(entry?.word.word));
 
   const details = useMemo(
     () =>
@@ -146,7 +152,7 @@ export default function WordDetailScreen() {
           </ThemedText>
         </ThemedView>
 
-        <Card variant="grouped" style={styles.meaningsSection}>
+        <Card variant="grouped">
           {details.map((m, idx) => (
             <View key={idx} style={styles.row}>
               <IconSymbol name="circle.fill" size={8} color={markColor} />
@@ -154,64 +160,77 @@ export default function WordDetailScreen() {
             </View>
           ))}
         </Card>
-
-        {entry.examples.length ? (
-          <>
-            <ThemedText type="title" style={styles.sectionTitle}>
-              {"Example Sentences"}
-            </ThemedText>
-            <Card variant="grouped" style={styles.examplesSection}>
-              {entry.examples.map((e, idx) => (
-                <View key={idx} style={styles.exampleItem}>
-                  <HighlightText
-                    text={e.japaneseText}
-                    highlight={entry.word.word}
-                  />
-                  <ThemedText size="sm" type="secondary">
-                    {e.englishText}
-                  </ThemedText>
-                </View>
-              ))}
-            </Card>
-          </>
-        ) : null}
-
-        <Pressable
-          style={styles.examplesLoading}
-          disabled={aiex.isLoading}
-          onPress={aiex.fetchData}
-        >
-          <ThemedText>{aiex.isLoading ? "Loading..." : "AI 🤖"}</ThemedText>
-        </Pressable>
-
-        {Array.isArray(aiex.response) ? (
-          <>
-            <ThemedText type="title" style={styles.sectionTitle}>
-              {"AI Generated Examples"}
-            </ThemedText>
-            <Card variant="grouped" style={styles.examplesSection}>
-              {aiex.response.map((e, idx) => (
-                <View key={idx} style={styles.exampleItem}>
-                  <ThemedText>{e.jp}</ThemedText>
-                  <ThemedText size="sm" type="secondary">
-                    {e.en}
-                  </ThemedText>
-                  {e.expl && (
-                    <ThemedText
-                      size="sm"
-                      type="secondary"
-                      style={styles.explanation}
-                    >
-                      {e.expl}
-                    </ThemedText>
-                  )}
-                </View>
-              ))}
-            </Card>
-          </>
-        ) : null}
+        <ExamplesView entry={entry} />
       </ScrollView>
     </ThemedView>
+  );
+}
+
+function ExamplesView({
+  entry,
+}: {
+  entry: {
+    word: DictionaryEntry;
+    meanings: WordMeaning[];
+    examples: ExampleSentence[];
+  } | null;
+}) {
+  const db = useSQLiteContext();
+  const aiex = useFetch<AiExample[]>(
+    getAiExamples(craeteWordPrompt(entry)),
+    (data) => {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      if (entry) {
+        addExamplesList(entry.word.id, data, db);
+      }
+    }
+  );
+
+  const listItems = useMemo(() => {
+    if (aiex.response) {
+      return aiex.response.map((e) => ({
+        jp: e.jp,
+        en: e.en,
+        reading: e.jp_reading,
+      }));
+    } else if (entry) {
+      return entry.examples.map((e) => ({
+        jp: e.japaneseText,
+        en: e.englishText,
+        reading: "",
+      }));
+    } else {
+      return [];
+    }
+  }, [aiex.response, entry]);
+
+  if (!entry) {
+    return null;
+  }
+
+  return (
+    <>
+      <ThemedText type="title" style={styles.sectionTitle}>
+        {"Examples"}
+      </ThemedText>
+      <Card variant="grouped">
+        {listItems.map((e, idx) => (
+          <View key={idx} style={styles.exampleItem}>
+            <HighlightText text={e.jp} highlight={entry.word.word} />
+            <ThemedText size="sm" type="secondary">
+              {e.en}
+            </ThemedText>
+          </View>
+        ))}
+      </Card>
+      <Pressable
+        style={styles.examplesLoading}
+        disabled={aiex.isLoading}
+        onPress={aiex.fetchData}
+      >
+        <ThemedText>{aiex.isLoading ? "Loading..." : "AI 🤖"}</ThemedText>
+      </Pressable>
+    </>
   );
 }
 
@@ -232,11 +251,6 @@ const styles = StyleSheet.create({
     fontSize: 34,
     fontWeight: "700",
     letterSpacing: 0.41,
-  },
-  meaningsSection: {
-    gap: 8,
-    borderRadius: 10,
-    padding: 16,
   },
   row: {
     flexDirection: "row",
@@ -260,21 +274,11 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "600",
   },
-  examplesSection: {
-    gap: 24,
-    borderRadius: 10,
-    padding: 16,
-  },
   exampleItem: {
     gap: 4,
   },
   examplesLoading: {
-    marginTop: 24,
     alignItems: "center",
     paddingVertical: 16,
-  },
-  explanation: {
-    fontStyle: "italic",
-    marginTop: 4,
   },
 });

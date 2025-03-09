@@ -15,11 +15,15 @@ interface UseFetchResult<T> {
  * @param fetchFn - Function that performs the fetch operation and returns a Response
  * @returns Object containing parsed response, error, abort function, loading state, and manual fetch function
  */
-export const useFetch = <T>(fetchFn: FetchFunction): UseFetchResult<T> => {
+export const useFetch = <T>(
+  fetchFn: FetchFunction,
+  onSuccess?: (data: T) => void
+): UseFetchResult<T> => {
   const [response, setResponse] = useState<T | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [abortController, setAbortController] = useState<AbortController | null>(null);
+  const [abortController, setAbortController] =
+    useState<AbortController | null>(null);
 
   const abort = useCallback(() => {
     if (abortController) {
@@ -46,6 +50,7 @@ export const useFetch = <T>(fetchFn: FetchFunction): UseFetchResult<T> => {
 
       const data = (await res.json()) as T;
       setResponse(data);
+      onSuccess?.(data);
     } catch (err) {
       if (err instanceof Error && err.name !== "AbortError") {
         setError(err as Error);

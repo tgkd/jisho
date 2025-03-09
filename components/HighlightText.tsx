@@ -24,7 +24,47 @@ export function HighlightText({
     const highlights = Array.isArray(highlight) ? highlight : [highlight];
     let currentText = text;
 
-    const processText = (currentPart: string, term: string) => {
+    // Split text by brackets to identify protected regions
+    const splitByBrackets = (text: string) => {
+      const result: { text: string; protected: boolean }[] = [];
+      let inBrackets = false;
+      let currentSegment = "";
+
+      for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+
+        if (char === "[") {
+          if (currentSegment) {
+            result.push({ text: currentSegment, protected: inBrackets });
+          }
+          inBrackets = true;
+          currentSegment = "[";
+        } else if (char === "]" && inBrackets) {
+          currentSegment += "]";
+          result.push({ text: currentSegment, protected: true });
+          inBrackets = false;
+          currentSegment = "";
+        } else {
+          currentSegment += char;
+        }
+      }
+
+      if (currentSegment) {
+        result.push({ text: currentSegment, protected: inBrackets });
+      }
+
+      return result;
+    };
+
+    const processText = (
+      currentPart: string,
+      term: string,
+      isProtected: boolean
+    ) => {
+      if (isProtected) {
+        return [{ text: currentPart, highlight: false }];
+      }
+
       const regex = new RegExp(
         `(${term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`,
         caseSensitive ? "g" : "gi"
@@ -59,27 +99,35 @@ export function HighlightText({
       return segments;
     };
 
-    // Process text for each highlight term
-    let segments = [{ text: currentText, highlight: false }];
+    const textSegments = splitByBrackets(currentText);
+    let segments = textSegments.map((segment) => ({
+      text: segment.text,
+      highlight: false,
+      protected: segment.protected,
+    }));
 
     for (const term of highlights) {
       if (!term) continue;
 
       const newSegments = [];
       for (const segment of segments) {
-        if (segment.highlight) {
-          // Already highlighted segments remain unchanged
+        if (segment.highlight || segment.protected) {
           newSegments.push(segment);
         } else {
-          // Process non-highlighted segments
-          const processedSegments = processText(segment.text, term);
-          newSegments.push(...processedSegments);
+          const processedSegments = processText(
+            segment.text,
+            term,
+            segment.protected
+          );
+          newSegments.push(
+            ...processedSegments.map((s) => ({ ...s, protected: false }))
+          );
         }
       }
       segments = newSegments;
     }
 
-    return segments;
+    return segments.map(({ text, highlight }) => ({ text, highlight }));
   }, [text, highlight, caseSensitive]);
 
   return (
