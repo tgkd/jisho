@@ -1,7 +1,7 @@
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useMemo, useState } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import { HapticTab } from "@/components/HapticTab";
 import { HighlightText } from "@/components/HighlightText";
@@ -22,6 +22,8 @@ import {
   WordMeaning,
 } from "@/services/database";
 import { deduplicateEn, formatEn, formatJp } from "@/services/parse";
+import { AiExample, getAiExamples } from "@/services/request";
+import { useFetch } from "@/hooks/useFetch";
 
 export default function WordDetailScreen() {
   const tintColor = useThemeColor({}, "tint");
@@ -36,6 +38,7 @@ export default function WordDetailScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [bookmarked, setBookmarked] = useState(false);
   const db = useSQLiteContext();
+  const aiex = useFetch<AiExample[]>(getAiExamples(entry?.word.word));
 
   const details = useMemo(
     () =>
@@ -172,6 +175,41 @@ export default function WordDetailScreen() {
             </Card>
           </>
         ) : null}
+
+        <Pressable
+          style={styles.examplesLoading}
+          disabled={aiex.isLoading}
+          onPress={aiex.fetchData}
+        >
+          <ThemedText>{aiex.isLoading ? "Loading..." : "AI 🤖"}</ThemedText>
+        </Pressable>
+
+        {Array.isArray(aiex.response) ? (
+          <>
+            <ThemedText type="title" style={styles.sectionTitle}>
+              {"AI Generated Examples"}
+            </ThemedText>
+            <Card variant="grouped" style={styles.examplesSection}>
+              {aiex.response.map((e, idx) => (
+                <View key={idx} style={styles.exampleItem}>
+                  <ThemedText>{e.jp}</ThemedText>
+                  <ThemedText size="sm" type="secondary">
+                    {e.en}
+                  </ThemedText>
+                  {e.expl && (
+                    <ThemedText
+                      size="sm"
+                      type="secondary"
+                      style={styles.explanation}
+                    >
+                      {e.expl}
+                    </ThemedText>
+                  )}
+                </View>
+              ))}
+            </Card>
+          </>
+        ) : null}
       </ScrollView>
     </ThemedView>
   );
@@ -234,5 +272,9 @@ const styles = StyleSheet.create({
     marginTop: 24,
     alignItems: "center",
     paddingVertical: 16,
+  },
+  explanation: {
+    fontStyle: "italic",
+    marginTop: 4,
   },
 });
