@@ -222,6 +222,9 @@ function ExamplesView({
             </ThemedText>
           </View>
         ))}
+        {listItems.length === 0 ? (
+          <ThemedText type="secondary">{"No examples found"}</ThemedText>
+        ) : null}
       </Card>
       <Pressable
         style={styles.examplesLoading}

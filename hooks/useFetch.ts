@@ -62,3 +62,66 @@ export const useFetch = <T>(
 
   return { response, error, abort, isLoading, fetchData };
 };
+
+export const useTextStream = (
+  fetchFn: (...args: any[]) => Promise<Response>,
+  onChunk: (chunk: string) => void
+) => {
+  const [fullText, setFullText] = useState<string>("");
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const fetchData = async (...args: any[]) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const response = await fetchFn(args);
+      if (!response.ok) {
+        throw new Error(
+          `HTTP error: ${response.status} ${response.statusText}`
+        );
+      }
+
+      const reader = response.body?.getReader();
+
+      if (!reader) {
+        const text = await response.text();
+        onChunk(text);
+        return text;
+      }
+
+      const decoder = new TextDecoder();
+      let fullText = "";
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+
+          if (done) {
+            break;
+          }
+
+          const chunk = decoder.decode(value, { stream: true });
+          fullText += chunk;
+          onChunk(chunk);
+        }
+
+        const remaining = decoder.decode();
+        if (remaining) {
+          fullText += remaining;
+          onChunk(remaining);
+        }
+
+        setFullText(fullText);
+      } catch (error) {
+        throw new Error(`Stream reading error: ${error}`);
+      }
+    } catch (error) {
+      setError(error as Error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { fetchData, isLoading, error, fullText };
+};

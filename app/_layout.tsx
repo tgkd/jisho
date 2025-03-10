@@ -1,4 +1,3 @@
-import "react-native-reanimated";
 import {
   DarkTheme,
   DefaultTheme,
@@ -12,17 +11,18 @@ import { StatusBar } from "expo-status-bar";
 import { Suspense, useEffect } from "react";
 import { StyleSheet } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import "react-native-reanimated";
 import {
   configureReanimatedLogger,
   ReanimatedLogLevel,
 } from "react-native-reanimated";
 
-import { HapticTab } from "@/components/HapticTab";
 import { Loader } from "@/components/Loader";
+import { PopupMenu } from "@/components/PopupMenu";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
-import { migrateDbIfNeeded, resetDatabase } from "@/services/database";
+import { migrateDbIfNeeded } from "@/services/database";
 
 const DATABASE_PATH = "../assets/db/dict_2.db";
 
@@ -72,6 +72,7 @@ export default function RootLayout() {
                 })}
               />
               <Stack.Screen name="bookmarks" />
+              <Stack.Screen name="explore" />
             </Stack>
             <StatusBar style="auto" />
           </ThemeProvider>
@@ -88,14 +89,32 @@ function BookmarksButton() {
     router.push("/bookmarks");
   };
 
+  const navigateToExplore = () => {
+    router.push("/explore");
+  };
+
   return (
-    <HapticTab onPress={navigateToBookmarks}>
-      <IconSymbol
-        color={Colors.light.tint}
-        name="bookmark.circle.fill"
-        size={32}
-      />
-    </HapticTab>
+    <PopupMenu
+      buttonView={
+        <IconSymbol
+          color={Colors.light.tint}
+          name="ellipsis.circle"
+          size={32}
+        />
+      }
+      items={[
+        {
+          label: "Bookmarks",
+          onPress: navigateToBookmarks,
+          icon: "bookmark",
+        },
+        {
+          label: "Explore",
+          onPress: navigateToExplore,
+          icon: "magnifyingglass",
+        },
+      ]}
+    />
   );
 }
 

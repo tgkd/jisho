@@ -45,11 +45,8 @@ export function getAiExamples(
   };
 }
 
-export function getAiExplanation(
-  prompt: string,
-  provider: "cf" | "open" = "open"
-) {
-  return function (signal?: AbortSignal | null) {
+export function getAiExplanation(signal?: AbortSignal | null) {
+  return function (prompt: string, provider: "cf" | "open" = "open") {
     if (!prompt) {
       return Promise.resolve(new Response());
     }
@@ -61,6 +58,9 @@ export function getAiExplanation(
           Authorization: `Basic ${btoa(
             `${process.env.EXPO_PUBLIC_AUTH_USERNAME}:${process.env.EXPO_PUBLIC_AUTH_PASSWORD}`
           )}`,
+          Accept: "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
         },
         credentials: "include",
       }
