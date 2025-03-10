@@ -1,3 +1,4 @@
+import { fetch } from "expo/fetch";
 import { DictionaryEntry, ExampleSentence, WordMeaning } from "./database";
 
 export type AiExample = {

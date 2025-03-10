@@ -71,8 +71,14 @@ export default function RootLayout() {
                   headerRight: () => <BookmarksButton />,
                 })}
               />
-              <Stack.Screen name="bookmarks" />
-              <Stack.Screen name="explore" />
+              <Stack.Screen
+                name="bookmarks"
+                options={{ headerTitle: "しおり" }}
+              />
+              <Stack.Screen
+                name="explore"
+                options={{ headerTitle: "質問" }}
+              />
             </Stack>
             <StatusBar style="auto" />
           </ThemeProvider>
@@ -104,12 +110,12 @@ function BookmarksButton() {
       }
       items={[
         {
-          label: "Bookmarks",
+          label: "しおり",
           onPress: navigateToBookmarks,
           icon: "bookmark",
         },
         {
-          label: "Explore",
+          label: "質問",
           onPress: navigateToExplore,
           icon: "magnifyingglass",
         },

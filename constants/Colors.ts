@@ -26,6 +26,7 @@ export const Colors = {
     accentForeground: "#FFFFFF",
     error: errorRedLight,
     highlight: "rgba(255, 215, 0, 1)",
+    disabled: "#C7C7CC",
   },
   dark: {
     text: "#FFFFFF",
@@ -44,5 +45,6 @@ export const Colors = {
     accentForeground: "#FFFFFF",
     error: errorRedDark,
     highlight: "rgb(212, 181, 1)",
+    disabled: "#38383A",
   },
 };

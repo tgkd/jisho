@@ -19,6 +19,7 @@ import { useThemeColor } from "@/hooks/useThemeColor";
 import { HIT_SLOP } from "../HapticTab";
 import { ThemedText } from "../ThemedText";
 import { IconSymbol, IconSymbolName } from "../ui/IconSymbol";
+import { Colors } from "@/constants/Colors";
 
 interface Props {
   items: Array<{
@@ -117,7 +118,7 @@ function PopupMenuImpl({ items, buttonView }: Props) {
                   style={styles.row}
                 >
                   <ThemedText>{item.label}</ThemedText>
-                  <IconSymbol color={iconColor} name={item.icon} size={16} />
+                  <IconSymbol color={iconColor} name={item.icon} size={20} />
                 </TouchableOpacity>
                 {index < items.length - 1 ? (
                   <View style={styles.divider} />
@@ -156,8 +157,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
   row: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    padding: 12,
     width: "100%",
     flexDirection: "row",
     alignItems: "center",
@@ -167,6 +167,6 @@ const styles = StyleSheet.create({
   divider: {
     width: "100%",
     height: StyleSheet.hairlineWidth,
-    backgroundColor: "rgba(0, 0, 0, 0.1)",
+    backgroundColor: Colors.light.separator,
   },
 });

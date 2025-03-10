@@ -1,7 +1,5 @@
 import { useState, useCallback } from "react";
 
-type FetchFunction = (signal?: AbortSignal | null) => Promise<Response>;
-
 interface UseFetchResult<T> {
   response: T | null;
   error: Error | null;
@@ -10,13 +8,8 @@ interface UseFetchResult<T> {
   fetchData: () => Promise<void>;
 }
 
-/**
- * Custom hook for handling fetch requests with JSON parsing and abort capability
- * @param fetchFn - Function that performs the fetch operation and returns a Response
- * @returns Object containing parsed response, error, abort function, loading state, and manual fetch function
- */
 export const useFetch = <T>(
-  fetchFn: FetchFunction,
+  fetchFn: (signal?: AbortSignal | null) => Promise<any>,
   onSuccess?: (data: T) => void
 ): UseFetchResult<T> => {
   const [response, setResponse] = useState<T | null>(null);
@@ -32,7 +25,6 @@ export const useFetch = <T>(
   }, [abortController]);
 
   const fetchData = useCallback(async () => {
-    // Abort any existing request
     abort();
 
     const controller = new AbortController();
@@ -64,7 +56,7 @@ export const useFetch = <T>(
 };
 
 export const useTextStream = (
-  fetchFn: (...args: any[]) => Promise<Response>,
+  fetchFn: (...args: any[]) => Promise<any>,
   onChunk: (chunk: string) => void
 ) => {
   const [fullText, setFullText] = useState<string>("");
@@ -83,7 +75,6 @@ export const useTextStream = (
       }
 
       const reader = response.body?.getReader();
-
       if (!reader) {
         const text = await response.text();
         onChunk(text);
