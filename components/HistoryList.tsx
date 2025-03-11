@@ -1,7 +1,7 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useMemo, useState } from "react";
-import { SectionList, StyleSheet, View } from "react-native";
+import { SectionList, StyleSheet, Text, View } from "react-native";
 import ReanimatedSwipeable, {
   SwipeableMethods,
 } from "react-native-gesture-handler/ReanimatedSwipeable";
@@ -121,7 +121,10 @@ export function HistoryList() {
             lightColor={Colors.light.groupedBackground}
             darkColor={Colors.dark.groupedBackground}
           >
-            <ThemedText type="defaultSemiBold">{item.word}</ThemedText>
+            <Text numberOfLines={1}>
+              <ThemedText type="defaultSemiBold">{item.word + " "}</ThemedText>
+              <ThemedText size="sm">{item.reading}</ThemedText>
+            </Text>
             <ThemedText type="secondary">
               {formatEn(item.meaning, "none", { truncateAll: 30 })}
             </ThemedText>
@@ -193,17 +196,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   resultItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
+    flexDirection: "column",
+    flexWrap: "wrap",
     paddingVertical: 12,
     paddingHorizontal: 8,
-  },
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    flexWrap: "wrap",
+    gap: 4,
   },
   separator: {
     height: StyleSheet.hairlineWidth,
