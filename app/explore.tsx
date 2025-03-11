@@ -1,12 +1,12 @@
-import { useRef, useState } from "react";
+import { memo, useCallback, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   StyleSheet,
   TextInput,
-  View
+  View,
 } from "react-native";
-import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import Markdown from "react-native-markdown-display";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -23,40 +23,30 @@ const ICON_SIZE = 36;
 
 export default function ExploreScreen() {
   const insets = useSafeAreaInsets();
-  const iconC = useThemeColor({}, "tint");
-  const inputC = useThemeColor({}, "text");
-  const inputBg = useThemeColor({}, "background");
   const markdownStyles = useMdStyles();
-
-  const [search, setSearch] = useState("");
   const [results, setResults] = useState("");
-  const inputRef = useRef<TextInput>(null);
-
   const stream = useTextStream(getAiExplanation(), (chunk) => {
     setResults((t) => t + chunk);
   });
-  const loading = stream.isLoading;
 
-  const handleSearch = async () => {
-    inputRef.current?.blur();
-    const text = search.trim();
+  const handleSubmit = useCallback(
+    async (query: string) => {
+      const text = query.trim();
 
-    if (text.length === 0) {
-      setResults("");
-      return;
-    }
+      if (text.length === 0) {
+        setResults("");
+        return;
+      }
 
-    try {
-      await stream.fetchData(search);
-    } catch (error) {
-      console.error("Search failed:", error);
-      setResults("");
-    }
-  };
-
-  const handleChange = (text: string) => {
-    setSearch(text);
-  };
+      try {
+        await stream.fetchData(query);
+      } catch (error) {
+        console.error("Search failed:", error);
+        setResults("");
+      }
+    },
+    [stream]
+  );
 
   return (
     <ThemedView
@@ -64,49 +54,70 @@ export default function ExploreScreen() {
       darkColor={Colors.dark.background}
       style={styles.container}
     >
-      <View style={styles.contentContainer}>
-        <KeyboardAwareScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContainer}
-          contentInsetAdjustmentBehavior="automatic"
-          keyboardShouldPersistTaps="handled"
-        >
-          {results.length ? (
-            <Markdown style={markdownStyles}>{results}</Markdown>
-          ) : (
-            <ThemedText type="secondary" textAlign="center">
-              {"Ask a question or paste some text to get started"}
-            </ThemedText>
-          )}
-        </KeyboardAwareScrollView>
-      </View>
+      <ScrollView
+        contentContainerStyle={styles.scrollContainer}
+        contentInsetAdjustmentBehavior="automatic"
+        keyboardShouldPersistTaps="handled"
+      >
+        {results.length ? (
+          <Markdown style={markdownStyles}>{results}</Markdown>
+        ) : (
+          <ThemedText type="secondary" textAlign="center">
+            {"Ask a question or paste some text to get started"}
+          </ThemedText>
+        )}
+      </ScrollView>
 
+      <FooterView handleSubmit={handleSubmit} loading={stream.isLoading} />
+    </ThemedView>
+  );
+}
+
+const FooterView = memo(
+  ({
+    handleSubmit,
+    loading,
+  }: {
+    handleSubmit: (value: string) => Promise<void>;
+    loading: boolean;
+  }) => {
+    const insets = useSafeAreaInsets();
+    const iconC = useThemeColor({}, "tint");
+    const inputC = useThemeColor({}, "text");
+    const inputBg = useThemeColor({}, "background");
+    const inputRef = useRef<TextInput>(null);
+    const [value, setValue] = useState("");
+
+    const handlePress = () => {
+      handleSubmit(value);
+      inputRef.current?.blur();
+    };
+
+    return (
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.footerAvoidingView}
-        keyboardVerticalOffset={insets.bottom + ICON_SIZE}
+        keyboardVerticalOffset={88}
       >
         <ThemedView
-          style={[styles.footer, { paddingBottom: insets.bottom }]}
+          style={styles.footer}
           lightColor={Colors.light.secondaryBackground}
           darkColor={Colors.dark.secondaryBackground}
         >
           <View style={styles.footerContainer}>
             <TextInput
-              multiline
+              onChangeText={setValue}
               ref={inputRef}
+              value={value}
               style={[
                 styles.textArea,
                 { color: inputC, backgroundColor: inputBg },
               ]}
               placeholder="Ask something..."
-              value={search}
-              onChangeText={handleChange}
-              clearButtonMode="while-editing"
+              multiline
               numberOfLines={4}
             />
             <View style={styles.buttons}>
-              <HapticTab onPress={handleSearch} disabled={loading}>
+              <HapticTab onPress={handlePress} disabled={loading}>
                 <IconSymbol
                   color={loading ? Colors.light.disabled : iconC}
                   name="arrow.up.circle.fill"
@@ -117,24 +128,12 @@ export default function ExploreScreen() {
           </View>
         </ThemedView>
       </KeyboardAvoidingView>
-    </ThemedView>
-  );
-}
+    );
+  }
+);
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-  },
-  contentContainer: {
-    flex: 1,
-  },
-  footerAvoidingView: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  scroll: {
     flex: 1,
   },
   scrollContainer: {
@@ -143,12 +142,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   textArea: {
-    flex: 1,
+    flexGrow: 1,
     padding: 10,
     borderRadius: 12,
     fontSize: 16,
+    maxHeight: 200,
   },
   footer: {
+    paddingBottom: 12,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     shadowColor: "#000",
