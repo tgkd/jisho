@@ -1,7 +1,7 @@
 import { Stack, useFocusEffect } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useState } from "react";
-import { FlatList, StyleSheet } from "react-native";
+import { FlatList, StyleSheet, Text } from "react-native";
 import * as wanakana from "wanakana";
 
 import { router } from "expo-router";
@@ -201,10 +201,13 @@ function BookmarkListItem({
           darkColor={Colors.dark.groupedBackground}
         >
           <View style={styles.col}>
-            <ThemedText type="defaultSemiBold">{item.word}</ThemedText>
+            <Text numberOfLines={1}>
+              <ThemedText type="defaultSemiBold">{item.word + " "}</ThemedText>
+              <ThemedText size="sm">{item.reading}</ThemedText>
+            </Text>
             <ThemedText type="secondary">
               {item.meaning
-                ? formatEn(item.meaning, "rows")
+                ? formatEn(item.meaning, "none")
                 : formatJp(item.reading)}
             </ThemedText>
           </View>
@@ -261,6 +264,8 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     justifyContent: "center",
     maxWidth: "90%",
+    flexWrap: "wrap",
+    gap: 4,
   },
   row: {
     flexDirection: "row",
@@ -272,7 +277,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     gap: 4,
-    padding: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
   },
   titleRow: {
     flexDirection: "row",

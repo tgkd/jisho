@@ -72,6 +72,7 @@ export default function HomeScreen() {
       if (text && wanakana.isJapanese(text)) {
         searchBarRef.current?.setText(text);
         handleChange(text);
+        await Clipboard.setStringAsync("");
       }
     } catch (error) {
       console.error("Error accessing clipboard:", error);

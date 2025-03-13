@@ -64,6 +64,17 @@ export type HistoryEntry = {
   meaning: string;
 };
 
+type DBChat = {
+  id: number;
+  request: string;
+  response: string;
+  created_at: string;
+};
+
+export type Chat = Omit<DBChat, "created_at"> & {
+  createdAt: string;
+};
+
 interface SearchQuery {
   original: string;
   hiragana?: string;
@@ -72,7 +83,7 @@ interface SearchQuery {
 }
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
-  const DATABASE_VERSION = 5;
+  const DATABASE_VERSION = 6;
 
   try {
     const versionResult = await db.getFirstAsync<{ user_version: number }>(
@@ -173,6 +184,22 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
 
       await db.execAsync(`PRAGMA user_version = 5`);
       currentDbVersion = 5;
+    }
+
+    if (currentDbVersion < 6) {
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS chats (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          request TEXT NOT NULL,
+          response TEXT NOT NULL,
+          created_at TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_chats_created_at ON chats(created_at);
+      `);
+
+      await db.execAsync(`PRAGMA user_version = 6`);
+      currentDbVersion = 6;
     }
 
     console.log(
@@ -544,6 +571,7 @@ export async function resetDatabase(db: SQLiteDatabase): Promise<void> {
       DROP TABLE IF EXISTS edict_entries;
       DROP TABLE IF EXISTS bookmarks;
       DROP TABLE IF EXISTS history;
+      DROP TABLE IF EXISTS chats;
     `);
 
     await db.execAsync(`PRAGMA user_version = 0`);
@@ -666,3 +694,70 @@ export async function removeHistoryById(db: SQLiteDatabase, historyId: number) {
     return false;
   }
 }
+
+export async function getChats(
+  db: SQLiteDatabase,
+  limit = 50,
+  offset = 0
+): Promise<Chat[]> {
+  try {
+    const chats = await db.getAllAsync<DBChat>(
+      `SELECT * FROM chats ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+      [limit, offset]
+    );
+
+    return chats.map((c) => ({
+      ...c,
+      createdAt: c.created_at,
+    }));
+  } catch (error) {
+    console.error("Failed to get chats:", error);
+    return [];
+  }
+}
+
+export async function addChat(
+  db: SQLiteDatabase,
+  request: string,
+  response: string
+): Promise<boolean> {
+  try {
+    await db.runAsync(
+      "INSERT INTO chats (request, response, created_at) VALUES (?, ?, ?)",
+      [request, response, new Date().toISOString()]
+    );
+    return true;
+  } catch (error) {
+    console.error("Failed to add chat:", error);
+    return false;
+  }
+}
+
+export async function removeChatById(
+  db: SQLiteDatabase,
+  chatId: number
+): Promise<boolean> {
+  try {
+    await db.runAsync("DELETE FROM chats WHERE id = ?", [chatId]);
+    return true;
+  } catch (error) {
+    console.error("Failed to remove chat:", error);
+    return false;
+  }
+}
+
+export async function clearChats(db: SQLiteDatabase): Promise<boolean> {
+  try {
+    await db.runAsync("DELETE FROM chats");
+    return true;
+  } catch (error) {
+    console.error("Failed to clear chats:", error);
+    return false;
+  }
+}
+
+type Chats = {
+  request: string;
+  response: string;
+  created_at: string;
+};

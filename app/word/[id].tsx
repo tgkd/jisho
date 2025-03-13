@@ -231,7 +231,7 @@ function ExamplesView({
         disabled={aiex.isLoading}
         onPress={aiex.fetchData}
       >
-        <ThemedText>{aiex.isLoading ? "Loading..." : "AI 🤖"}</ThemedText>
+        <ThemedText>{aiex.isLoading ? "Loading..." : "✨🤖✨"}</ThemedText>
       </Pressable>
     </>
   );

@@ -4,6 +4,7 @@ import {
   ThemeProvider,
 } from "@react-navigation/native";
 import { useFonts } from "expo-font";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 import { Stack, useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { SQLiteProvider } from "expo-sqlite";
@@ -61,25 +62,28 @@ export default function RootLayout() {
           <ThemeProvider
             value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
           >
-            <Stack>
-              <Stack.Screen
-                name="index"
-                options={() => ({
-                  headerTitle: "Search",
-                  headerTitleStyle: styles.headerTitle,
-                  headerBackTitleStyle: styles.headerBackTitle,
-                  headerRight: () => <BookmarksButton />,
-                })}
-              />
-              <Stack.Screen
-                name="bookmarks"
-                options={{ headerTitle: "しおり" }}
-              />
-              <Stack.Screen
-                name="explore"
-                options={{ headerTitle: "質問" }}
-              />
-            </Stack>
+            <KeyboardProvider>
+              <Stack>
+                <Stack.Screen
+                  name="index"
+                  options={() => ({
+                    headerTitle: "Search",
+                    headerTitleStyle: styles.headerTitle,
+                    headerBackTitleStyle: styles.headerBackTitle,
+                    headerRight: () => <BookmarksButton />,
+                  })}
+                />
+                <Stack.Screen
+                  name="bookmarks"
+                  options={{ headerTitle: "しおり" }}
+                />
+                <Stack.Screen
+                  name="explore"
+                  options={{ headerTitle: "質問" }}
+                />
+              </Stack>
+            </KeyboardProvider>
+
             <StatusBar style="auto" />
           </ThemeProvider>
         </SQLiteProvider>
@@ -117,7 +121,7 @@ function BookmarksButton() {
         {
           label: "質問",
           onPress: navigateToExplore,
-          icon: "magnifyingglass",
+          icon: "sparkles",
         },
       ]}
     />
