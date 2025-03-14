@@ -83,7 +83,7 @@ interface SearchQuery {
 }
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
-  const DATABASE_VERSION = 6;
+  const DATABASE_VERSION = 7;
 
   try {
     const versionResult = await db.getFirstAsync<{ user_version: number }>(
@@ -202,6 +202,11 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
       currentDbVersion = 6;
     }
 
+    if (currentDbVersion < 7) {
+      await db.execAsync(`PRAGMA user_version = 7`);
+      currentDbVersion = 7;
+    }
+
     console.log(
       `Database migrations completed. Current version: ${currentDbVersion}`
     );
@@ -227,6 +232,12 @@ function processSearchQuery(query: string): SearchQuery {
   }
 
   return result;
+}
+
+function tokenizeJp(text: string) {
+  const tokens = wanakana.tokenize(text);
+
+  return tokens.map((t) => (typeof t === "string" ? t : t.value));
 }
 
 export async function searchDictionary(
@@ -295,7 +306,7 @@ export async function searchDictionary(
     );
   }
 
-  const words = await db.getAllAsync<DBDictEntry>(
+  let words = await db.getAllAsync<DBDictEntry>(
     `
     SELECT * FROM words
     WHERE
@@ -317,6 +328,42 @@ export async function searchDictionary(
     `,
     [...params, query, query, query, `${query}%`, `${query}%`, `${query}%`]
   );
+
+  // Add fallback to search by Japanese tokens if no results found
+  if (words.length === 0 && wanakana.isJapanese(query)) {
+    const tokens = tokenizeJp(query);
+    if (tokens.length > 0) {
+      const tokenWhereClauses = [];
+      const tokenParams = [];
+
+      for (const token of tokens) {
+        if (token.length < 2) continue; // Skip very short tokens
+
+        tokenWhereClauses.push(`(
+          word LIKE ? OR
+          reading LIKE ? OR
+          kanji LIKE ?
+        )`);
+
+        tokenParams.push(`%${token}%`, `%${token}%`, `%${token}%`);
+      }
+
+      if (tokenWhereClauses.length > 0) {
+        const tokenResults = await db.getAllAsync<DBDictEntry>(
+          `
+          SELECT * FROM words
+          WHERE ${tokenWhereClauses.join(" OR ")}
+          GROUP BY word
+          ORDER BY length(word)
+          LIMIT 30
+          `,
+          tokenParams
+        );
+
+        words = [...words, ...tokenResults];
+      }
+    }
+  }
 
   let entries: DictionaryEntry[] = words.map((word) => ({
     ...word,

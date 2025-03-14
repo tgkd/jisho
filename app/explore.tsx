@@ -81,9 +81,13 @@ export default function ExploreScreen() {
       style={styles.container}
     >
       <ScrollView
+        style={styles.list}
         contentContainerStyle={styles.scrollContainer}
         keyboardDismissMode="on-drag"
+        removeClippedSubviews={false}
       >
+        <ChatsHistory chats={chatsHistory} handleDelete={handleDelete} />
+
         {messages.map((m, idx) => (
           <Card
             key={idx}
@@ -93,6 +97,7 @@ export default function ExploreScreen() {
             <Markdown style={markdownStyles}>{m}</Markdown>
           </Card>
         ))}
+
         {currentResponse.length ? (
           <Card
             lightColor={Colors.light.secondaryBackground}
@@ -101,9 +106,7 @@ export default function ExploreScreen() {
             <Markdown style={markdownStyles}>{currentResponse}</Markdown>
           </Card>
         ) : null}
-        {chatsHistory.length && !messages.length && !currentResponse.length ? (
-          <ChatsHistory chats={chatsHistory} handleDelete={handleDelete} />
-        ) : null}
+
         {!messages.length && !chatsHistory.length ? (
           <ThemedText textAlign="center" type="secondary">
             {"Ask me anything"}
@@ -119,10 +122,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  list: {
+    height: "100%",
+  },
   scrollContainer: {
     paddingTop: 24,
-    paddingBottom: 96,
+    paddingBottom: 8,
     paddingHorizontal: 16,
-    gap: 8
+    gap: 8,
   },
 });

@@ -1,16 +1,13 @@
 import { getStringAsync, isPasteButtonAvailable } from "expo-clipboard";
 import { memo, useRef, useState } from "react";
 import { StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
-import {
-  KeyboardAvoidingView,
-  useGenericKeyboardHandler,
-} from "react-native-keyboard-controller";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useGenericKeyboardHandler } from "react-native-keyboard-controller";
 import Animated, {
   interpolate,
   useAnimatedStyle,
   useSharedValue,
 } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { HapticTab } from "@/components/HapticTab";
 import { ThemedText } from "@/components/ThemedText";
@@ -81,57 +78,51 @@ export const ChatFooterView = memo(
     );
 
     return (
+      <Animated.View
+        style={[
+          animatedStyle,
+          styles.footerContainer,
+          { backgroundColor: bg, paddingBottom: instets.bottom },
+        ]}
+      >
+        <TextInput
+          scrollEnabled={false}
+          multiline
+          numberOfLines={4}
+          onChangeText={setValue}
+          ref={inputRef}
+          value={value}
+          style={[styles.textArea, { color: inputC, backgroundColor: inputBg }]}
+          placeholder="What does りんご mean?"
+        />
+        <View style={styles.buttons}>
+          {isPasteButtonAvailable ? (
+            <TouchableOpacity
+              onPress={handlePasteClipboard}
+              style={styles.paste}
+            >
+              <IconSymbol color={iconC} name="doc.on.clipboard" size={16} />
+              <ThemedText size="sm" style={{ color: iconC }}>
+                {"Paste"}
+              </ThemedText>
+            </TouchableOpacity>
+          ) : null}
 
-        <Animated.View
-          style={[
-            animatedStyle,
-            styles.footerContainer,
-            { backgroundColor: bg, paddingBottom: instets.bottom },
-          ]}
-        >
-          <TextInput
-            scrollEnabled={false}
-            multiline
-            numberOfLines={4}
-            onChangeText={setValue}
-            ref={inputRef}
-            value={value}
-            style={[
-              styles.textArea,
-              { color: inputC, backgroundColor: inputBg },
-            ]}
-            placeholder="What does りんご mean?"
-          />
-          <View style={styles.buttons}>
-            {isPasteButtonAvailable ? (
-              <TouchableOpacity
-                onPress={handlePasteClipboard}
-                style={styles.paste}
-              >
-                <IconSymbol color={iconC} name="doc.on.clipboard" size={16} />
-                <ThemedText size="sm" style={{ color: iconC }}>
-                  {"Paste"}
-                </ThemedText>
-              </TouchableOpacity>
-            ) : null}
-
-            <HapticTab onPress={handlePress} disabled={loading}>
-              <IconSymbol
-                color={loading ? Colors.light.disabled : iconC}
-                name="arrow.up.circle.fill"
-                size={ICON_SIZE}
-              />
-            </HapticTab>
-          </View>
-        </Animated.View>
-
+          <HapticTab onPress={handlePress} disabled={loading}>
+            <IconSymbol
+              color={loading ? Colors.light.disabled : iconC}
+              name="arrow.up.circle.fill"
+              size={ICON_SIZE}
+            />
+          </HapticTab>
+        </View>
+      </Animated.View>
     );
   }
 );
 
 const styles = StyleSheet.create({
   footerContainer: {
-    minHeight: HEIGHT,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     shadowColor: "#000",
