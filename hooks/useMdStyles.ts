@@ -10,118 +10,129 @@ export function useMdStyles() {
 
   return {
     // Core text styles
-    text: {
+    body: {
       color: textColor,
-      fontSize: 15, // reduced from 17
-      lineHeight: 20, // reduced from 22
+      fontSize: 15,
+      lineHeight: 20,
       fontFamily: Platform.OS === "ios" ? "-apple-system" : "System",
       fontWeight: "400",
     },
     // Headings with SF Pro Display-like styling
-    h1: {
-      fontSize: 28, // reduced from 34
-      lineHeight: 34, // reduced from 41
-      marginTop: 24, // reduced from 30
-      marginBottom: 10, // reduced from 12
+    heading1: {
+      fontSize: 28,
+      lineHeight: 34,
+      marginTop: 24,
+      marginBottom: 10,
       fontWeight: "700",
-      letterSpacing: 0.35, // slightly reduced
+      letterSpacing: 0.37,
       color: textColor,
     },
-    h2: {
-      fontSize: 24, // reduced from 28
-      lineHeight: 30, // reduced from 34
-      marginTop: 20, // reduced from 24
-      marginBottom: 8, // reduced from 10
+    heading2: {
+      fontSize: 24,
+      lineHeight: 30,
+      marginTop: 20,
+      marginBottom: 8,
       fontWeight: "700",
-      letterSpacing: 0.33, // slightly reduced
+      letterSpacing: 0.35,
       color: textColor,
     },
-    h3: {
-      fontSize: 20, // reduced from 22
-      lineHeight: 25, // reduced from 28
-      marginTop: 18, // reduced from 20
-      marginBottom: 6, // reduced from 8
+    heading3: {
+      fontSize: 20,
+      lineHeight: 24,
+      marginTop: 16,
+      marginBottom: 6,
       fontWeight: "600",
-      letterSpacing: 0.31, // slightly reduced
+      letterSpacing: 0.33,
       color: textColor,
     },
-    h4: {
-      fontSize: 17, // reduced from 20
-      lineHeight: 22, // reduced from 25
-      marginTop: 14, // reduced from 16
-      marginBottom: 6, // reduced from 8
+    heading4: {
+      fontSize: 18,
+      lineHeight: 22,
+      marginTop: 14,
+      marginBottom: 6,
       fontWeight: "600",
-      letterSpacing: 0.28, // slightly reduced
+      letterSpacing: 0.3,
       color: textColor,
     },
-    h5: {
-      fontSize: 15, // reduced from 17
-      lineHeight: 20, // reduced from 22
-      marginTop: 10, // reduced from 12
-      marginBottom: 5, // reduced from 6
+    heading5: {
+      fontSize: 16,
+      lineHeight: 20,
+      marginTop: 10,
+      marginBottom: 5,
       fontWeight: "600",
       color: textColor,
     },
-    h6: {
-      fontSize: 14, // reduced from 15
-      lineHeight: 18, // reduced from 20
-      marginTop: 10, // reduced from 12
-      marginBottom: 5, // reduced from 6
+    heading6: {
+      fontSize: 14,
+      lineHeight: 18,
+      marginTop: 10,
+      marginBottom: 5,
       fontWeight: "600",
       color: textColor,
     },
     // Paragraph spacing
     paragraph: {
       marginTop: 0,
-      marginBottom: 10, // reduced from 12
+      marginBottom: 10,
     },
     // Lists
-    list: {
-      marginBottom: 10, // reduced from 12
+    bullet_list: {
+      marginBottom: 10,
+    },
+    ordered_list: {
+      marginBottom: 10,
     },
     // List items styling
-    li: {
-      marginBottom: 3, // reduced from 4
+    list_item: {
+      marginBottom: 3,
       flexDirection: "row",
     },
     bullet_list_icon: {
-      fontSize: 15, // reduced from 17
-      lineHeight: 20, // reduced from 22
-      marginRight: 6, // reduced from 8
+      fontSize: 15,
+      lineHeight: 20,
+      marginRight: 6,
     },
     bullet_list_content: {
       flex: 1,
     },
     ordered_list_icon: {
-      fontSize: 15, // reduced from 17
-      lineHeight: 20, // reduced from 22
-      marginRight: 6, // reduced from 8
+      fontSize: 15,
+      lineHeight: 20,
+      marginRight: 6,
       color: textSecondaryColor,
     },
     ordered_list_content: {
       flex: 1,
     },
     // Code blocks
-    code: {
+    fence: {
       backgroundColor: codeBackgroundColor,
-      borderRadius: 5, // reduced from 6
-      padding: 8, // reduced from 10
-      marginVertical: 10, // reduced from 12
+      borderRadius: 5,
+      padding: 8,
+      marginVertical: 10,
     },
-    codespan: {
+    code_inline: {
       backgroundColor: codeBackgroundColor,
-      borderRadius: 3, // reduced from 4
-      paddingHorizontal: 3, // reduced from 4
-      paddingVertical: 1, // reduced from 2
+      borderRadius: 3,
+      paddingHorizontal: 3,
+      paddingVertical: 1,
       fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-      fontSize: 13, // reduced from 15
+      fontSize: 13,
+    },
+    code_block: {
+      backgroundColor: codeBackgroundColor,
+      borderRadius: 5,
+      padding: 8,
+      marginVertical: 10,
+      fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+      fontSize: 13,
     },
     // Blockquote
     blockquote: {
-      borderLeftWidth: 3, // reduced from 4
+      borderLeftWidth: 3,
       borderLeftColor: borderColor,
-      paddingLeft: 10, // reduced from 12
-      marginVertical: 10, // reduced from 12
+      paddingLeft: 10,
+      marginVertical: 10,
       fontStyle: "italic",
     },
     // Links
@@ -133,30 +144,30 @@ export function useMdStyles() {
     table: {
       borderWidth: 1,
       borderColor: borderColor,
-      borderRadius: 5, // reduced from 6
-      marginVertical: 10, // reduced from 12
+      borderRadius: 5,
+      marginVertical: 10,
       overflow: "hidden",
     },
     thead: {
       backgroundColor: codeBackgroundColor,
     },
     th: {
-      padding: 6, // reduced from 8
+      padding: 6,
       fontWeight: "600",
     },
-    tableCell: {
-      padding: 6, // reduced from 8
+    td: {
+      padding: 6,
       borderTopWidth: 1,
       borderColor: borderColor,
     },
-    tableRow: {
+    tr: {
       flexDirection: "row",
     },
     // Horizontal rule
     hr: {
       backgroundColor: borderColor,
       height: 1,
-      marginVertical: 14, // reduced from 16
+      marginVertical: 14,
     },
     // Text formatting
     strong: {
@@ -165,13 +176,13 @@ export function useMdStyles() {
     em: {
       fontStyle: "italic",
     },
-    strikethrough: {
+    s: {
       textDecorationLine: "line-through",
     },
     // Images
     image: {
-      marginVertical: 10, // reduced from 12
-      borderRadius: 5, // reduced from 6
+      marginVertical: 10,
+      borderRadius: 5,
     },
   } as StyleSheet.NamedStyles<any>;
 }

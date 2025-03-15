@@ -53,6 +53,7 @@
     "react-native-uitextview": "^1.4.0",
     "react-native-web": "~0.19.13",
     "react-native-webview": "13.12.5",
+    "tiny-segmenter": "^0.2.0",
     "wanakana": "^5.3.1"
   },
   "devDependencies": {

@@ -1,5 +1,5 @@
 import { useSQLiteContext } from "expo-sqlite";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ScrollView, StyleSheet } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import Markdown from "react-native-markdown-display";
@@ -17,6 +17,7 @@ import { getAiExplanation } from "@/services/request";
 export default function ExploreScreen() {
   const db = useSQLiteContext();
   const markdownStyles = useMdStyles();
+  const scrollRef = useRef<ScrollView>(null);
   const [chatsHistory, setChatsHistory] = useState<Chat[]>([]);
   const [messages, setMessages] = useState<string[]>([]);
   const [currentResponse, setCurrentResponse] = useState<string>("");
@@ -52,6 +53,7 @@ export default function ExploreScreen() {
     getAiExplanation(),
     (chunk) => {
       setCurrentResponse((t) => t + chunk);
+      scrollRef.current?.scrollToEnd({ animated: true });
     },
     handleAddChatAndSeparator
   );
@@ -81,10 +83,11 @@ export default function ExploreScreen() {
       style={styles.container}
     >
       <ScrollView
+        ref={scrollRef}
         style={styles.list}
         contentContainerStyle={styles.scrollContainer}
         keyboardDismissMode="on-drag"
-        removeClippedSubviews={false}
+        removeClippedSubviews={true}
       >
         <ChatsHistory chats={chatsHistory} handleDelete={handleDelete} />
 

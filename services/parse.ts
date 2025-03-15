@@ -1,14 +1,13 @@
 import {
+  isHiragana,
+  isJapanese,
+  isKana,
+  isKanji,
+  isKatakana,
   stripOkurigana,
   tokenize,
-  isKanji,
-  isKana,
-  isHiragana,
-  isKatakana,
-  toKatakana,
-  toHiragana,
-  toKana,
 } from "wanakana";
+import segmenter from "./tsegmenter";
 
 type Marker = "numbered" | "bullet" | "dash" | "rows" | "none";
 
@@ -422,4 +421,14 @@ export function zip(...arrays: (any[] | string)[]): any[][] {
   }
 
   return result;
+}
+
+function removeJpSymbols(text: string): string {
+  return text.replace(/[\u3000-\u303F\uFF00-\uFFEF]/g, "");
+}
+
+export function getJpTokens(text: string): string[] {
+  return segmenter(text)
+    .map(removeJpSymbols)
+    .filter((t) => t.length > 1 && isJapanese(t));
 }

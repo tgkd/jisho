@@ -22,7 +22,13 @@ import {
   searchDictionary,
   WordMeaning,
 } from "@/services/database";
-import { deduplicateEn, formatEn, formatJp } from "@/services/parse";
+import {
+  deduplicateEn,
+  formatEn,
+  formatJp,
+  getJpTokens,
+} from "@/services/parse";
+import TagsList from "@/components/TagsList";
 
 export default function HomeScreen() {
   const db = useSQLiteContext();
@@ -33,6 +39,9 @@ export default function HomeScreen() {
     new Map()
   );
   const searchBarRef = useRef<SearchBarCommands>(null);
+  const [tokens, setTokens] = useState<Array<{ id: string; label: string }>>(
+    []
+  );
 
   const handleSearch = useDebouncedCallback(async (query: string) => {
     const text = query.trim();
@@ -41,6 +50,12 @@ export default function HomeScreen() {
       setResults([]);
       setLoading(false);
       return;
+    }
+
+    const tokens = getJpTokens(text).map((t) => ({ id: t, label: t }));
+
+    if (tokens.length > 1) {
+      setTokens(tokens);
     }
 
     try {
@@ -60,6 +75,12 @@ export default function HomeScreen() {
     setLoading(true);
     setSearch(text);
     handleSearch(text);
+  };
+
+  const handleTokenSelect = (value: string) => {
+    searchBarRef.current?.setText(value);
+    handleChange(value);
+    setTokens([]);
   };
 
   const checkClipboardContent = async () => {
@@ -121,12 +142,9 @@ export default function HomeScreen() {
           initialNumToRender={10}
           maxToRenderPerBatch={10}
           windowSize={5}
+          ListFooterComponent={loading ? <Loader /> : null}
           ListHeaderComponent={
-            loading && search.length ? (
-              <View style={styles.headerContainer}>
-                <Loader />
-              </View>
-            ) : null
+            <TagsList items={tokens} onSelect={handleTokenSelect} />
           }
           ListEmptyComponent={
             loading || !search.length ? null : (
@@ -198,7 +216,7 @@ export function SearchListItem({
 
 const styles = StyleSheet.create({
   scrollContainer: {
-    paddingVertical: 24,
+    paddingBottom: 24,
     paddingHorizontal: 16,
   },
   headerContainer: {

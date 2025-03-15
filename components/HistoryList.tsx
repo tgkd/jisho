@@ -125,7 +125,7 @@ export function HistoryList() {
               <ThemedText type="defaultSemiBold">{item.word + " "}</ThemedText>
               <ThemedText size="sm">{item.reading}</ThemedText>
             </Text>
-            <ThemedText type="secondary">
+            <ThemedText type="secondary" style={styles.meaning}>
               {formatEn(item.meaning, "none", { truncateAll: 30 })}
             </ThemedText>
           </ThemedView>
@@ -225,5 +225,8 @@ const styles = StyleSheet.create({
   sectionTitle: {
     marginVertical: 8,
     paddingHorizontal: 8,
+  },
+  meaning: {
+    maxWidth: "90%",
   },
 });
