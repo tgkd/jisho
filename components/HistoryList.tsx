@@ -1,22 +1,17 @@
-import { useFocusEffect, useRouter } from "expo-router";
-import { useSQLiteContext } from "expo-sqlite";
-import { useCallback, useMemo, useState } from "react";
-import { SectionList, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import ReanimatedSwipeable, {
   SwipeableMethods,
 } from "react-native-gesture-handler/ReanimatedSwipeable";
 import Animated, {
+  FadeIn,
+  FadeOut,
   SharedValue,
   useAnimatedStyle,
 } from "react-native-reanimated";
 
 import { Colors } from "@/constants/Colors";
 import { useThemeColor } from "@/hooks/useThemeColor";
-import {
-  getHistory,
-  HistoryEntry,
-  removeHistoryById,
-} from "@/services/database";
+import { HistoryEntry } from "@/services/database";
 import { formatEn } from "@/services/parse";
 import { HapticTab } from "./HapticTab";
 import { ThemedText } from "./ThemedText";
@@ -25,93 +20,36 @@ import { IconSymbol } from "./ui/IconSymbol";
 
 const ACTION_WIDTH = 40;
 
-export function HistoryList() {
-  const router = useRouter();
-  const db = useSQLiteContext();
-  const [historyItems, setHistoryItems] = useState<HistoryEntry[]>([]);
+export const HistoryListItem = ({
+  item,
+  index,
+  list,
+  onRemove,
+  onPress,
+}: {
+  list: HistoryEntry[];
+  item: HistoryEntry;
+  index: number;
+  onRemove: (item: HistoryEntry) => void;
+  onPress: (item: HistoryEntry) => void;
+}) => {
+  const isFirst = index === 0;
+  const isLast = index === list.length - 1;
 
-  const groupedByMonth = useMemo(() => {
-    const grouped: Record<string, HistoryEntry[]> = {};
-
-    for (const item of historyItems) {
-      const title = new Date(item.createdAt).toLocaleDateString("en-US", {
-        month: "long",
-        day: "numeric",
-        year: undefined,
-      });
-
-      if (!grouped[title]) {
-        grouped[title] = [];
-      }
-      grouped[title].push(item);
-    }
-
-    return Object.entries(grouped).map(([key, value]) => ({
-      title: key,
-      data: value,
-    }));
-  }, [historyItems]);
-
-  useFocusEffect(
-    useCallback(() => {
-      const loadHistory = async () => {
-        try {
-          const history = await getHistory(db);
-          setHistoryItems(history);
-        } catch (error) {
-          console.error("Failed to load history:", error);
-        }
-      };
-
-      loadHistory();
-    }, [])
-  );
-
-  const handleRemoveHistoryItem = (item: HistoryEntry) => async () => {
-    console.log("Removing history item:", item);
-
-    try {
-      await removeHistoryById(db, item.id);
-      setHistoryItems((prev) => prev.filter((i) => i.id !== item.id));
-    } catch (error) {
-      console.error("Failed to remove history item:", error);
-    }
-  };
-
-  const handleWordPress = async (item: HistoryEntry) => {
-    router.push({
-      pathname: "/word/[id]",
-      params: { id: item.wordId.toString(), title: item.word },
-    });
-  };
-
-  const renderHistoryItem = ({
-    item,
-    index,
-    section,
-  }: {
-    item: HistoryEntry;
-    index: number;
-    section: { data: HistoryEntry[] };
-  }) => {
-    const isFirst = index === 0;
-    const isLast = index === section.data.length - 1;
-
-    return (
-      <ReanimatedSwipeable
-        friction={2}
-        rightThreshold={ACTION_WIDTH}
-        enableTrackpadTwoFingerGesture
-        onActivated={(e) => console.log("onSwipeableOpen", e.nativeEvent.state)}
-        renderRightActions={(_, drag, swipe) => (
-          <RightAction
-            drag={drag}
-            swipe={swipe}
-            onPress={handleRemoveHistoryItem(item)}
-          />
-        )}
+  return (
+    <ReanimatedSwipeable
+      friction={2}
+      rightThreshold={ACTION_WIDTH}
+      enableTrackpadTwoFingerGesture
+      renderRightActions={(_, drag, swipe) => (
+        <RightAction drag={drag} swipe={swipe} onPress={() => onRemove(item)} />
+      )}
+    >
+      <Animated.View
+        entering={FadeIn.duration(200)}
+        exiting={FadeOut.duration(200)}
       >
-        <HapticTab onPress={() => handleWordPress(item)}>
+        <HapticTab onPress={() => onPress(item)}>
           <ThemedView
             style={[
               styles.resultItem,
@@ -131,32 +69,10 @@ export function HistoryList() {
           </ThemedView>
           {!isLast ? <View style={styles.separator} /> : null}
         </HapticTab>
-      </ReanimatedSwipeable>
-    );
-  };
-
-  return (
-    <SectionList
-      contentInsetAdjustmentBehavior="automatic"
-      sections={groupedByMonth}
-      keyExtractor={(i) => i.id.toString()}
-      renderItem={renderHistoryItem}
-      renderSectionHeader={({ section: { title } }) => (
-        <ThemedText style={styles.sectionTitle} type="secondary">
-          {title}
-        </ThemedText>
-      )}
-      maxToRenderPerBatch={5}
-      windowSize={5}
-      keyboardShouldPersistTaps="handled"
-      keyboardDismissMode="on-drag"
-      removeClippedSubviews
-      initialNumToRender={5}
-      stickySectionHeadersEnabled={false}
-      contentContainerStyle={styles.container}
-    />
+      </Animated.View>
+    </ReanimatedSwipeable>
   );
-}
+};
 
 function RightAction({
   drag,

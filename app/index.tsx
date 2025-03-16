@@ -1,24 +1,30 @@
 import * as Clipboard from "expo-clipboard";
-import { Stack } from "expo-router";
+import { router, Stack } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useRef, useState } from "react";
-import { FlatList, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
+import Animated, {
+  FadeIn,
+  FadeOut,
+  LinearTransition,
+} from "react-native-reanimated";
 import { SearchBarCommands } from "react-native-screens";
 import * as wanakana from "wanakana";
 
-import { router } from "expo-router";
-
 import { HapticTab } from "@/components/HapticTab";
-import { HistoryList } from "@/components/HistoryList";
+import { HistoryListItem } from "@/components/HistoryList";
 import { Loader } from "@/components/Loader";
+import TagsList from "@/components/TagsList";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { Colors } from "@/constants/Colors";
 import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
+import { useSearchHistory } from "@/hooks/useSearchHistory";
 import { useThemeColor } from "@/hooks/useThemeColor";
 import {
   DictionaryEntry,
+  HistoryEntry,
   searchDictionary,
   WordMeaning,
 } from "@/services/database";
@@ -28,7 +34,6 @@ import {
   formatJp,
   getJpTokens,
 } from "@/services/parse";
-import TagsList from "@/components/TagsList";
 
 export default function HomeScreen() {
   const db = useSQLiteContext();
@@ -103,7 +108,40 @@ export default function HomeScreen() {
   const onFocus = () => {
     checkClipboardContent();
   };
+
+  const history = useSearchHistory();
   const showHistory = !search.trim().length && !results.length;
+
+  const handleHistoryWordPress = async (item: HistoryEntry) => {
+    router.push({
+      pathname: "/word/[id]",
+      params: { id: item.wordId.toString(), title: item.word },
+    });
+  };
+
+  const renderItem = ({
+    index,
+    item,
+  }: {
+    index: number;
+    item: DictionaryEntry | HistoryEntry;
+  }) =>
+    isHistoryItem(item) ? (
+      <HistoryListItem
+        item={item}
+        index={index}
+        list={history.list}
+        onPress={handleHistoryWordPress}
+        onRemove={history.removeItem}
+      />
+    ) : (
+      <SearchListItem
+        item={item}
+        meanings={meaningsMap.get(item.id)}
+        index={index}
+        total={results?.length || 0}
+      />
+    );
 
   return (
     <>
@@ -120,43 +158,46 @@ export default function HomeScreen() {
           },
         }}
       />
-      {showHistory ? (
-        <HistoryList />
-      ) : (
-        <FlatList
-          contentInsetAdjustmentBehavior="automatic"
-          data={results}
-          renderItem={({ index, item }) => (
-            <SearchListItem
-              item={item}
-              meanings={meaningsMap.get(item.id)}
-              index={index}
-              total={results?.length || 0}
-            />
-          )}
-          keyExtractor={(item) => item.id.toString()}
-          contentContainerStyle={styles.scrollContainer}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-          removeClippedSubviews
-          initialNumToRender={10}
-          maxToRenderPerBatch={10}
-          windowSize={5}
-          ListFooterComponent={loading ? <Loader /> : null}
-          ListHeaderComponent={
-            <TagsList items={tokens} onSelect={handleTokenSelect} />
-          }
-          ListEmptyComponent={
-            loading || !search.length ? null : (
-              <View style={styles.emptyContainer}>
-                <ThemedText type="secondary">{"No results found"}</ThemedText>
-              </View>
-            )
-          }
-        />
-      )}
+
+      <Animated.FlatList
+        itemLayoutAnimation={LinearTransition}
+        contentInsetAdjustmentBehavior="automatic"
+        data={showHistory ? history.list : results}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.id.toString()}
+        contentContainerStyle={styles.scrollContainer}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        removeClippedSubviews
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        refreshControl={
+          loading ? (
+            <View style={styles.loader}>
+              <Loader />
+            </View>
+          ) : undefined
+        }
+        ListHeaderComponent={
+          <TagsList items={tokens} onSelect={handleTokenSelect} />
+        }
+        ListEmptyComponent={
+          loading || !search.length ? null : (
+            <View style={styles.emptyContainer}>
+              <ThemedText type="secondary">{"No results found"}</ThemedText>
+            </View>
+          )
+        }
+      />
     </>
   );
+}
+
+function isHistoryItem(
+  item: DictionaryEntry | HistoryEntry
+): item is HistoryEntry {
+  return (item as HistoryEntry).wordId !== undefined;
 }
 
 export function SearchListItem({
@@ -187,34 +228,42 @@ export function SearchListItem({
   };
 
   return (
-    <HapticTab onPress={() => handleWordPress(item)}>
-      <ThemedView
-        style={[
-          styles.item,
-          isFirst && styles.firstRadius,
-          isLast && styles.lastRadius,
-        ]}
-        lightColor={Colors.light.groupedBackground}
-        darkColor={Colors.dark.groupedBackground}
-      >
-        <View style={styles.col}>
-          <View style={styles.titleRow}>
-            <ThemedText type="defaultSemiBold">{item.word}</ThemedText>
-            <ThemedText type="secondary">{formatJp(item.reading)}</ThemedText>
+    <Animated.View
+      entering={FadeIn.duration(200)}
+      exiting={FadeOut.duration(200)}
+    >
+      <HapticTab onPress={() => handleWordPress(item)}>
+        <ThemedView
+          style={[
+            styles.item,
+            isFirst && styles.firstRadius,
+            isLast && styles.lastRadius,
+          ]}
+          lightColor={Colors.light.groupedBackground}
+          darkColor={Colors.dark.groupedBackground}
+        >
+          <View style={styles.col}>
+            <View style={styles.titleRow}>
+              <ThemedText type="defaultSemiBold">{item.word}</ThemedText>
+              <ThemedText type="secondary">{formatJp(item.reading)}</ThemedText>
+            </View>
+            <ThemedText numberOfLines={1} type="secondary">
+              {details}
+            </ThemedText>
           </View>
-          <ThemedText numberOfLines={1} type="secondary">
-            {details}
-          </ThemedText>
-        </View>
-        <IconSymbol color={iconColor} name="chevron.right" size={16} />
-      </ThemedView>
+          <IconSymbol color={iconColor} name="chevron.right" size={16} />
+        </ThemedView>
 
-      {isLast ? null : <View style={styles.separator} />}
-    </HapticTab>
+        {isLast ? null : <View style={styles.separator} />}
+      </HapticTab>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
+  loader: {
+    paddingTop: 16,
+  },
   scrollContainer: {
     paddingBottom: 24,
     paddingHorizontal: 16,
