@@ -6383,6 +6383,11 @@ react-is@^16.13.1, react-is@^16.7.0:
   resolved "https://registry.yarnpkg.com/react-is/-/react-is-16.13.1.tgz#789729a4dc36de2999dc156dd6c1d9c18cea56a4"
   integrity sha512-24e6ynE2H+OKt4kqsOvNd8kBpV65zoxbA4BVsEOB3ARVWQki/DHzaUoC5KuON/BiccDaCCTZBuOcfZs70kR8bQ==
 
+react-native-context-menu-view@^1.18.0:
+  version "1.18.0"
+  resolved "https://registry.yarnpkg.com/react-native-context-menu-view/-/react-native-context-menu-view-1.18.0.tgz#3e997cd389f1cee4324c0ef827ab70f15f758d8c"
+  integrity sha512-Rj4ralJ1hQUiTCduTI8EH1MEd1n3FNOas6tQhX4kLgcb0ZiqZPYAiLlA4WMClYrstD3gVnl3EU8y+5es1ulolw==
+
 react-native-fit-image@^1.5.5:
   version "1.5.5"
   resolved "https://registry.yarnpkg.com/react-native-fit-image/-/react-native-fit-image-1.5.5.tgz#c660d1ad74b9dcaa1cba27a0d9c23837e000226c"

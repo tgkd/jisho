@@ -17,6 +17,7 @@ import { HapticTab } from "./HapticTab";
 import { ThemedText } from "./ThemedText";
 import { ThemedView } from "./ThemedView";
 import { IconSymbol } from "./ui/IconSymbol";
+import { MenuActions } from "./MenuActions";
 
 const ACTION_WIDTH = 40;
 
@@ -49,26 +50,30 @@ export const HistoryListItem = ({
         entering={FadeIn.duration(200)}
         exiting={FadeOut.duration(200)}
       >
-        <HapticTab onPress={() => onPress(item)}>
-          <ThemedView
-            style={[
-              styles.resultItem,
-              isFirst && styles.firstRowStyle,
-              isLast && styles.lastRowStyle,
-            ]}
-            lightColor={Colors.light.groupedBackground}
-            darkColor={Colors.dark.groupedBackground}
-          >
-            <Text numberOfLines={1}>
-              <ThemedText type="defaultSemiBold">{item.word + " "}</ThemedText>
-              <ThemedText size="sm">{item.reading}</ThemedText>
-            </Text>
-            <ThemedText type="secondary" style={styles.meaning}>
-              {formatEn(item.meaning, "none", { truncateAll: 30 })}
-            </ThemedText>
-          </ThemedView>
-          {!isLast ? <View style={styles.separator} /> : null}
-        </HapticTab>
+        <MenuActions text={item.word + " " + item.reading + " " + item.meaning}>
+          <HapticTab onPress={() => onPress(item)}>
+            <ThemedView
+              style={[
+                styles.resultItem,
+                isFirst && styles.firstRowStyle,
+                isLast && styles.lastRowStyle,
+              ]}
+              lightColor={Colors.light.groupedBackground}
+              darkColor={Colors.dark.groupedBackground}
+            >
+              <Text numberOfLines={1}>
+                <ThemedText type="defaultSemiBold">
+                  {item.word + " "}
+                </ThemedText>
+                <ThemedText size="sm">{item.reading}</ThemedText>
+              </Text>
+              <ThemedText type="secondary" style={styles.meaning}>
+                {formatEn(item.meaning, "none", { truncateAll: 30 })}
+              </ThemedText>
+            </ThemedView>
+            {!isLast ? <View style={styles.separator} /> : null}
+          </HapticTab>
+        </MenuActions>
       </Animated.View>
     </ReanimatedSwipeable>
   );

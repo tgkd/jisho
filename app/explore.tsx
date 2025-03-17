@@ -6,6 +6,7 @@ import Markdown from "react-native-markdown-display";
 
 import { ChatFooterView } from "@/components/ChatFooter";
 import { ChatsHistory } from "@/components/ChatsHistory";
+import { MenuActions } from "@/components/MenuActions";
 import { ThemedText } from "@/components/ThemedText";
 import { Card } from "@/components/ui/Card";
 import { Colors } from "@/constants/Colors";
@@ -102,12 +103,14 @@ export default function ExploreScreen() {
         ))}
 
         {currentResponse.length ? (
-          <Card
-            lightColor={Colors.light.secondaryBackground}
-            darkColor={Colors.dark.secondaryBackground}
-          >
-            <Markdown style={markdownStyles}>{currentResponse}</Markdown>
-          </Card>
+          <MenuActions text={currentResponse}>
+            <Card
+              lightColor={Colors.light.secondaryBackground}
+              darkColor={Colors.dark.secondaryBackground}
+            >
+              <Markdown style={markdownStyles}>{currentResponse}</Markdown>
+            </Card>
+          </MenuActions>
         ) : null}
 
         {!messages.length && !chatsHistory.length ? (

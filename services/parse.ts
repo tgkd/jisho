@@ -432,3 +432,38 @@ export function getJpTokens(text: string): string[] {
     .map(removeJpSymbols)
     .filter((t) => t.length > 1 && isJapanese(t));
 }
+
+export function cleanupMdStr(text: string): string {
+  if (!text) return "";
+
+  return (
+    text
+      // Remove code blocks
+      .replace(/```[\s\S]*?```/g, "")
+      // Remove inline code
+      .replace(/`([^`]+)`/g, "$1")
+      // Remove bold/italic formatting
+      .replace(/\*\*([^*]+)\*\*/g, "$1")
+      .replace(/\*([^*]+)\*/g, "$1")
+      .replace(/__([^_]+)__/g, "$1")
+      .replace(/_([^_]+)_/g, "$1")
+      // Remove headers
+      .replace(/^#+\s+/gm, "")
+      // Remove blockquotes
+      .replace(/^>\s+/gm, "")
+      // Remove horizontal rules
+      .replace(/^\s*[-*_]{3,}\s*$/gm, "")
+      // Remove links but keep link text
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+      // Remove image tags
+      .replace(/!\[([^\]]*)\]\([^)]+\)/g, "")
+      // Remove HTML tags
+      .replace(/<[^>]*>/g, "")
+      // Preserve line breaks but normalize whitespace
+      .replace(/\s+/g, " ")
+      // md tables
+      .replace(/\|/g, "")
+      .replace(/-----/g, "")
+      .trim()
+  );
+}

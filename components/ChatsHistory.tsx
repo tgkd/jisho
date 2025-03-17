@@ -1,9 +1,5 @@
 import { memo } from "react";
-import {
-  Alert,
-  StyleSheet,
-  View
-} from "react-native";
+import { Alert, StyleSheet, View } from "react-native";
 import Markdown from "react-native-markdown-display";
 
 import { Collapsible } from "@/components/Collapsible";
@@ -12,6 +8,7 @@ import { IconSymbol } from "@/components/ui/IconSymbol";
 import { useMdStyles } from "@/hooks/useMdStyles";
 import { useThemeColor } from "@/hooks/useThemeColor";
 import { Chat } from "@/services/database";
+import { MenuActions } from "./MenuActions";
 
 export const ChatsHistory = memo(
   ({
@@ -22,16 +19,20 @@ export const ChatsHistory = memo(
     handleDelete: (id: number) => void;
   }) => {
     const markdownStyles = useMdStyles();
+
     return (
       <View style={styles.list}>
         {chats.map((c) => (
-          <Collapsible
-            rightButton={<RemoveButton chat={c} handleDelete={handleDelete} />}
-            title={c.request || c.id.toString()}
-            key={c.id}
-          >
-            <Markdown style={markdownStyles}>{c.response}</Markdown>
-          </Collapsible>
+          <MenuActions key={c.id} text={c.response}>
+            <Collapsible
+              rightButton={
+                <RemoveButton chat={c} handleDelete={handleDelete} />
+              }
+              title={c.request || c.id.toString()}
+            >
+              <Markdown style={markdownStyles}>{c.response}</Markdown>
+            </Collapsible>
+          </MenuActions>
         ))}
       </View>
     );

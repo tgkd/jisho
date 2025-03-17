@@ -14,6 +14,7 @@ import * as wanakana from "wanakana";
 import { HapticTab } from "@/components/HapticTab";
 import { HistoryListItem } from "@/components/HistoryList";
 import { Loader } from "@/components/Loader";
+import { MenuActions } from "@/components/MenuActions";
 import TagsList from "@/components/TagsList";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -232,30 +233,36 @@ export function SearchListItem({
       entering={FadeIn.duration(200)}
       exiting={FadeOut.duration(200)}
     >
-      <HapticTab onPress={() => handleWordPress(item)}>
-        <ThemedView
-          style={[
-            styles.item,
-            isFirst && styles.firstRadius,
-            isLast && styles.lastRadius,
-          ]}
-          lightColor={Colors.light.groupedBackground}
-          darkColor={Colors.dark.groupedBackground}
-        >
-          <View style={styles.col}>
-            <View style={styles.titleRow}>
-              <ThemedText type="defaultSemiBold">{item.word}</ThemedText>
-              <ThemedText type="secondary">{formatJp(item.reading)}</ThemedText>
+      <MenuActions
+        text={item.word + " " + formatJp(item.reading) + " " + details}
+      >
+        <HapticTab onPress={() => handleWordPress(item)}>
+          <ThemedView
+            style={[
+              styles.item,
+              isFirst && styles.firstRadius,
+              isLast && styles.lastRadius,
+            ]}
+            lightColor={Colors.light.groupedBackground}
+            darkColor={Colors.dark.groupedBackground}
+          >
+            <View style={styles.col}>
+              <View style={styles.titleRow}>
+                <ThemedText type="defaultSemiBold">{item.word}</ThemedText>
+                <ThemedText type="secondary">
+                  {formatJp(item.reading)}
+                </ThemedText>
+              </View>
+              <ThemedText numberOfLines={1} type="secondary">
+                {details}
+              </ThemedText>
             </View>
-            <ThemedText numberOfLines={1} type="secondary">
-              {details}
-            </ThemedText>
-          </View>
-          <IconSymbol color={iconColor} name="chevron.right" size={16} />
-        </ThemedView>
+            <IconSymbol color={iconColor} name="chevron.right" size={16} />
+          </ThemedView>
 
-        {isLast ? null : <View style={styles.separator} />}
-      </HapticTab>
+          {isLast ? null : <View style={styles.separator} />}
+        </HapticTab>
+      </MenuActions>
     </Animated.View>
   );
 }

@@ -16,12 +16,12 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { useThemeColor } from "@/hooks/useThemeColor";
-import { HIT_SLOP } from "../HapticTab";
-import { ThemedText } from "../ThemedText";
-import { IconSymbol, IconSymbolName } from "../ui/IconSymbol";
+import { HIT_SLOP } from "./HapticTab";
+import { ThemedText } from "./ThemedText";
+import { IconSymbol, IconSymbolName } from "./ui/IconSymbol";
 import { Colors } from "@/constants/Colors";
 
-interface Props {
+export interface Props {
   items: Array<{
     label: string;
     onPress: () => void;
