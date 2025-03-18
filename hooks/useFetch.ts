@@ -1,18 +1,28 @@
+import { FetchResponse } from "expo/build/winter/fetch/FetchResponse";
 import { useState, useCallback } from "react";
 
+type ResponseType<T> = T | Blob | string | null;
+
 interface UseFetchResult<T> {
-  response: T | null;
+  response: ResponseType<T>;
   error: Error | null;
   abort: () => void;
   isLoading: boolean;
   fetchData: () => Promise<void>;
 }
 
+interface FetchOptions<T> {
+  type?: "json" | "text" | "blob";
+  headers?: HeadersInit;
+}
+
 export const useFetch = <T>(
-  fetchFn: (signal?: AbortSignal | null) => Promise<any>,
-  onSuccess?: (data: T) => void
+  fetchFn: (signal?: AbortSignal | null) => Promise<Response | FetchResponse>,
+  options: FetchOptions<T> = { type: "json" },
+  onSuccess?: (data: ResponseType<T>) => void,
+  onError?: (error: Error) => void
 ): UseFetchResult<T> => {
-  const [response, setResponse] = useState<T | null>(null);
+  const [response, setResponse] = useState<ResponseType<T>>(null);
   const [error, setError] = useState<Error | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [abortController, setAbortController] =
@@ -40,6 +50,26 @@ export const useFetch = <T>(
         throw new Error(`HTTP error! Status: ${res.status}`);
       }
 
+      if (options?.type === "json") {
+        const data = (await res.json()) as T;
+        setResponse(data);
+        onSuccess?.(data);
+        return;
+      }
+      if (options?.type === "text") {
+        const data = await res.text();
+        setResponse(data);
+        onSuccess?.(data);
+        return;
+      }
+
+      if (options?.type === "blob") {
+        const data = await res.blob();
+        setResponse(data);
+        onSuccess?.(data);
+        return;
+      }
+
       const data = (await res.json()) as T;
       setResponse(data);
       onSuccess?.(data);
@@ -47,6 +77,7 @@ export const useFetch = <T>(
       if (err instanceof Error && err.name !== "AbortError") {
         setError(err as Error);
       }
+      onError?.(err as Error);
     } finally {
       setIsLoading(false);
     }

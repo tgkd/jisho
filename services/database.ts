@@ -1,4 +1,5 @@
 import { SQLiteDatabase } from "expo-sqlite";
+import * as FileSystem from "expo-file-system";
 import * as wanakana from "wanakana";
 import { AiExample } from "./request";
 
@@ -19,8 +20,8 @@ type DBExampleSentence = {
   id: number;
   japanese_text: string;
   english_text: string;
+  example_id: string;
   tokens?: string;
-  example_id?: string;
 };
 
 export type ExampleSentence = Omit<
@@ -75,6 +76,21 @@ export type Chat = Omit<DBChat, "created_at"> & {
   createdAt: string;
 };
 
+type DBAudio = {
+  id: number;
+  file_path: string;
+  word_id: number;
+  example_id: number;
+  audio_data: string;
+  created_at: string;
+};
+
+export type AudioFile = {
+  id: number;
+  filePath: string;
+  audioData: string;
+};
+
 interface SearchQuery {
   original: string;
   hiragana?: string;
@@ -83,7 +99,7 @@ interface SearchQuery {
 }
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
-  const DATABASE_VERSION = 7;
+  const DATABASE_VERSION = 8;
 
   try {
     const versionResult = await db.getFirstAsync<{ user_version: number }>(
@@ -203,8 +219,42 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
     }
 
     if (currentDbVersion < 7) {
-      await db.execAsync(`PRAGMA user_version = 7`);
-      currentDbVersion = 7;
+      try {
+        await db.execAsync(`PRAGMA user_version = 7`);
+        currentDbVersion = 7;
+      } catch (error) {
+        console.error("Error migrating to version 7:", error);
+      }
+    }
+
+    if (currentDbVersion < 8) {
+      try {
+        // Make sure to create the table first before any other operations
+        await db.execAsync(`
+          CREATE TABLE IF NOT EXISTS audio_blobs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            file_path TEXT NOT NULL,
+            word_id INTEGER NOT NULL,
+            example_id INTEGER,
+            audio_data BLOB NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (word_id) REFERENCES words (id),
+            FOREIGN KEY (example_id) REFERENCES examples (id)
+          );
+        `);
+
+        // Then create indices
+        await db.execAsync(`
+          CREATE INDEX IF NOT EXISTS idx_audio_word_id ON audio_blobs(word_id);
+          CREATE INDEX IF NOT EXISTS idx_audio_example_id ON audio_blobs(example_id);
+        `);
+
+        await db.execAsync(`PRAGMA user_version = 8`);
+        currentDbVersion = 8;
+        console.log("Successfully migrated to version 8");
+      } catch (error) {
+        console.error("Error migrating to version 8:", error);
+      }
     }
 
     console.log(
@@ -430,7 +480,7 @@ export async function searchExamples(
         ...e,
         japaneseText: e.japanese_text,
         englishText: e.english_text,
-        exampleId: e.example_id || null,
+        exampleId: e.example_id,
       }));
     }
   }
@@ -500,6 +550,13 @@ export async function addExamplesList(
   await Promise.all(examples.map((e) => addExample(wId, e.jp, e.en, db)));
 }
 
+function dbWordToDictEntry(word: DBDictEntry): DictionaryEntry {
+  return {
+    ...word,
+    readingHiragana: word.reading_hiragana || null,
+  };
+}
+
 export async function getDictionaryEntry(
   db: SQLiteDatabase,
   id: number,
@@ -525,48 +582,7 @@ export async function getDictionaryEntry(
     );
 
     if (withExamples) {
-      const examplesByWordId = await db.getAllAsync<DBExampleSentence>(
-        `
-        SELECT id, japanese_text, english_text, tokens, example_id
-        FROM examples
-        WHERE word_id = ?
-        ORDER BY length(japanese_text)
-        LIMIT 5
-        `,
-        [id]
-      );
-
-      if (examplesByWordId && examplesByWordId.length > 0) {
-        return {
-          word: {
-            ...word,
-            readingHiragana: word?.reading_hiragana || null,
-          },
-          meanings: meanings.map((m) => ({
-            ...m,
-            wordId: id,
-            partOfSpeech: m.part_of_speech || null,
-          })),
-          examples: examplesByWordId.map((e) => ({
-            ...e,
-            japaneseText: e.japanese_text,
-            englishText: e.english_text,
-            exampleId: e.example_id || null,
-          })),
-        };
-      }
-
-      // Fall back to text search
-      const examples = await db.getAllAsync<DBExampleSentence>(
-        `
-        SELECT id, japanese_text, english_text, tokens, example_id
-        FROM examples
-        WHERE japanese_text LIKE ? OR japanese_text LIKE ?
-        ORDER BY length(japanese_text)
-        LIMIT 5
-        `,
-        [`%${word.word}%`, `%${word.reading}%`]
-      );
+      const examples = await getExamples(db, dbWordToDictEntry(word));
 
       return {
         word: {
@@ -578,20 +594,12 @@ export async function getDictionaryEntry(
           wordId: id,
           partOfSpeech: m.part_of_speech || null,
         })),
-        examples: examples.map((e) => ({
-          ...e,
-          japaneseText: e.japanese_text,
-          englishText: e.english_text,
-          exampleId: e.example_id || null,
-        })),
+        examples,
       };
     }
 
     return {
-      word: {
-        ...word,
-        readingHiragana: word?.reading_hiragana || null,
-      },
+      word: dbWordToDictEntry(word),
       meanings: meanings.map((m) => ({
         ...m,
         wordId: id,
@@ -602,6 +610,55 @@ export async function getDictionaryEntry(
   } catch (error) {
     console.error("Failed to get dictionary entry:", error);
     return null;
+  }
+}
+
+export async function getExamples(
+  db: SQLiteDatabase,
+  word: DictionaryEntry
+): Promise<ExampleSentence[]> {
+  try {
+    const id = word.id;
+    const examplesByWordId = await db.getAllAsync<DBExampleSentence>(
+      `
+    SELECT id, japanese_text, english_text, tokens, example_id
+    FROM examples
+    WHERE word_id = ?
+    ORDER BY length(japanese_text)
+    LIMIT 5
+    `,
+      [id]
+    );
+
+    if (examplesByWordId && examplesByWordId.length > 0) {
+      return examplesByWordId.map((e) => ({
+        ...e,
+        japaneseText: e.japanese_text,
+        englishText: e.english_text,
+        exampleId: e.example_id || null,
+      }));
+    }
+
+    const examples = await db.getAllAsync<DBExampleSentence>(
+      `
+    SELECT id, japanese_text, english_text, tokens, example_id
+    FROM examples
+    WHERE japanese_text LIKE ? OR japanese_text LIKE ?
+    ORDER BY length(japanese_text)
+    LIMIT 5
+    `,
+      [`%${word.word}%`, `%${word.reading}%`]
+    );
+
+    return examples.map((e) => ({
+      ...e,
+      japaneseText: e.japanese_text,
+      englishText: e.english_text,
+      exampleId: e.example_id || null,
+    }));
+  } catch (error) {
+    console.error("Failed to get examples:", error);
+    return [];
   }
 }
 
@@ -619,6 +676,7 @@ export async function resetDatabase(db: SQLiteDatabase): Promise<void> {
       DROP TABLE IF EXISTS bookmarks;
       DROP TABLE IF EXISTS history;
       DROP TABLE IF EXISTS chats;
+      DROP TABLE IF EXISTS audio_blobs;
     `);
 
     await db.execAsync(`PRAGMA user_version = 0`);
@@ -803,8 +861,51 @@ export async function clearChats(db: SQLiteDatabase): Promise<boolean> {
   }
 }
 
-type Chats = {
-  request: string;
-  response: string;
-  created_at: string;
-};
+export async function saveAudioFile(
+  db: SQLiteDatabase,
+  wordId: number,
+  exampleId: number,
+  filePath: string
+): Promise<number | null> {
+  try {
+    const fileBlob = await FileSystem.readAsStringAsync(filePath, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+
+    const result = await db.runAsync(
+      "INSERT INTO audio_blobs (file_path, word_id, example_id, audio_data, created_at) VALUES (?, ?, ?, ?, ?)",
+      [filePath, wordId, exampleId, fileBlob, new Date().toISOString()]
+    );
+
+    return result.lastInsertRowId;
+  } catch (error) {
+    console.error("Failed to save audio file:", error);
+    return null;
+  }
+}
+
+export async function getAudioFile(
+  db: SQLiteDatabase,
+  wordId: number,
+  exampleId: number
+): Promise<AudioFile | null> {
+  try {
+    const result = await db.getFirstAsync<DBAudio>(
+      "SELECT id, file_path, audio_data FROM audio_blobs WHERE word_id = ? AND example_id = ? ORDER BY created_at DESC LIMIT 1",
+      [wordId, exampleId]
+    );
+
+    if (result) {
+      return {
+        filePath: result.file_path,
+        id: result.id,
+        audioData: result.audio_data,
+      };
+    }
+
+    return null;
+  } catch (error) {
+    console.error("Failed to get audio file:", error);
+    return null;
+  }
+}

@@ -1,11 +1,12 @@
 import { Stack, useLocalSearchParams } from "expo-router";
+import * as Speech from "expo-speech";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useMemo, useState } from "react";
 import {
-  LayoutAnimation,
   Pressable,
   ScrollView,
   StyleSheet,
+  TouchableOpacity,
   View,
 } from "react-native";
 
@@ -23,14 +24,22 @@ import {
   addToHistory,
   DictionaryEntry,
   ExampleSentence,
+  getAudioFile,
   getDictionaryEntry,
+  getExamples,
   isBookmarked,
   removeBookmark,
+  saveAudioFile,
   WordMeaning,
 } from "@/services/database";
 import { deduplicateEn, formatEn, formatJp } from "@/services/parse";
-import { AiExample, getAiExamples, craeteWordPrompt } from "@/services/request";
-import { useFetch } from "@/hooks/useFetch";
+import {
+  aiSoundQueryOptions,
+  aiExamplesQueryOptions,
+  craeteWordPrompt,
+} from "@/services/request";
+import { useAudioPlayer } from "expo-audio";
+import { useQuery } from "@tanstack/react-query";
 
 export default function WordDetailScreen() {
   const tintColor = useThemeColor({}, "tint");
@@ -69,6 +78,21 @@ export default function WordDetailScreen() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleRefreshExamples = async () => {
+    if (!entry) {
+      return;
+    }
+    try {
+      const newDbExamples = await getExamples(db, entry.word);
+      setEntry((prev) => {
+        if (prev) {
+          return { ...prev, examples: newDbExamples };
+        }
+        return prev;
+      });
+    } catch (error) {}
   };
 
   useEffect(() => {
@@ -160,7 +184,7 @@ export default function WordDetailScreen() {
             </View>
           ))}
         </Card>
-        <ExamplesView entry={entry} />
+        <ExamplesView entry={entry} refreshExamples={handleRefreshExamples} />
       </ScrollView>
     </ThemedView>
   );
@@ -168,45 +192,26 @@ export default function WordDetailScreen() {
 
 function ExamplesView({
   entry,
+  refreshExamples,
 }: {
   entry: {
     word: DictionaryEntry;
     meanings: WordMeaning[];
     examples: ExampleSentence[];
-  } | null;
+  };
+  refreshExamples: () => Promise<void>;
 }) {
   const db = useSQLiteContext();
-  const aiex = useFetch<AiExample[]>(
-    getAiExamples(craeteWordPrompt(entry)),
-    (data) => {
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      if (entry) {
-        addExamplesList(entry.word.id, data, db);
-      }
-    }
-  );
+  const aiexQuery = useQuery(aiExamplesQueryOptions(craeteWordPrompt(entry)));
+  const aiex = aiexQuery.data;
 
-  const listItems = useMemo(() => {
-    if (aiex.response) {
-      return aiex.response.map((e) => ({
-        jp: e.jp,
-        en: e.en,
-        reading: e.jp_reading,
-      }));
-    } else if (entry) {
-      return entry.examples.map((e) => ({
-        jp: e.japaneseText,
-        en: e.englishText,
-        reading: "",
-      }));
-    } else {
-      return [];
+  const handleFetchExamples = async () => {
+    const resp = await aiexQuery.refetch();
+    if (resp.data) {
+      await addExamplesList(entry.word.id, resp.data, db);
+      await refreshExamples();
     }
-  }, [aiex.response, entry]);
-
-  if (!entry) {
-    return null;
-  }
+  };
 
   return (
     <>
@@ -214,26 +219,92 @@ function ExamplesView({
         {"Examples"}
       </ThemedText>
       <Card variant="grouped">
-        {listItems.map((e, idx) => (
-          <View key={idx} style={styles.exampleItem}>
-            <HighlightText text={e.jp} highlight={entry.word.word} />
-            <ThemedText size="sm" type="secondary">
-              {e.en}
-            </ThemedText>
-          </View>
+        {entry.examples.map((e, idx) => (
+          <ExampleRow
+            key={idx}
+            e={e}
+            idx={idx}
+            word={entry.word.word}
+            wordId={entry.word.id}
+          />
         ))}
-        {listItems.length === 0 ? (
+        {entry.examples.length === 0 ? (
           <ThemedText type="secondary">{"No examples found"}</ThemedText>
         ) : null}
       </Card>
       <Pressable
         style={styles.examplesLoading}
-        disabled={aiex.isLoading}
-        onPress={aiex.fetchData}
+        disabled={aiexQuery.isLoading}
+        onPress={handleFetchExamples}
       >
-        <ThemedText>{aiex.isLoading ? "Loading..." : "✨🤖✨"}</ThemedText>
+        <ThemedText>{aiexQuery.isLoading ? "Loading..." : "✨🤖✨"}</ThemedText>
       </Pressable>
     </>
+  );
+}
+
+function ExampleRow({
+  e,
+  idx,
+  word,
+  wordId,
+}: {
+  e: ExampleSentence;
+  idx: number;
+  word: string;
+  wordId: number;
+}) {
+  const db = useSQLiteContext();
+  const player = useAudioPlayer();
+  const soundQuery = useQuery(aiSoundQueryOptions(e.japaneseText));
+
+  const fallbackToSpeech = () => {
+    Speech.speak(e.japaneseText, { language: "ja" });
+  };
+
+  const handlePlayText = async () => {
+    try {
+      const localAudio = await getAudioFile(db, wordId, e.id);
+
+      if (localAudio) {
+        player.replace(localAudio.filePath);
+        player.play();
+        return;
+      }
+
+      const res = await soundQuery.refetch();
+
+      if (res.data) {
+        player.replace(res.data);
+        player.play();
+        await saveAudioFile(db, wordId, e.id, res.data);
+      } else {
+        fallbackToSpeech();
+      }
+    } catch (error) {
+      console.error("Failed to play text:", error);
+      fallbackToSpeech();
+    }
+  };
+
+  return (
+    <TouchableOpacity
+      onPress={handlePlayText}
+      key={idx}
+      style={styles.exampleItem}
+    >
+      <View style={styles.exampleRow}>
+        <IconSymbol
+          name={soundQuery.isFetching ? "progress.indicator" : "speaker.circle"}
+          size={16}
+          color="gray"
+        />
+        <HighlightText text={e.japaneseText} highlight={word} />
+      </View>
+      <ThemedText size="sm" type="secondary">
+        {e.englishText}
+      </ThemedText>
+    </TouchableOpacity>
   );
 }
 
@@ -283,5 +354,11 @@ const styles = StyleSheet.create({
   examplesLoading: {
     alignItems: "center",
     paddingVertical: 16,
+  },
+  exampleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    maxWidth: "90%",
   },
 });

@@ -27,7 +27,17 @@
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
-    "plugins": ["expo-router", ["expo-splash-screen"], "expo-sqlite"],
+    "plugins": [
+      "expo-router",
+      "expo-splash-screen",
+      "expo-sqlite",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone."
+        }
+      ]
+    ],
     "experiments": {
       "typedRoutes": true
     },
