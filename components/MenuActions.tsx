@@ -8,11 +8,13 @@ import { PropsWithChildren } from "react";
 
 import { cleanupMdStr } from "@/services/parse";
 
-const ACTIONS = [{ title: "Copy" }];
+const ACTIONS: ContextMenuAction[] = [
+  { title: "Copy", systemIcon: "document.on.clipboard" },
+];
 
 interface Props {
   text?: string;
-  actions?: ContextMenuAction[];
+  actions?: Array<ContextMenuAction & { onActivate?: () => void }>;
 }
 
 export function MenuActions({
@@ -29,13 +31,23 @@ export function MenuActions({
   const handleCtxMenu = (
     e: NativeSyntheticEvent<ContextMenuOnPressNativeEvent>
   ) => {
-    if (e.nativeEvent.name === ACTIONS[0].title) {
-      handleCopy();
+    switch (e.nativeEvent.name.toLocaleLowerCase()) {
+      case "copy":
+        handleCopy();
+        break;
+      default:
+        const action = actions.find(
+          (action) => action.title === e.nativeEvent.name
+        );
+        if (action?.onActivate) {
+          action.onActivate();
+        }
+        break;
     }
   };
 
   return (
-    <ContextMenu actions={ACTIONS} onPress={handleCtxMenu}>
+    <ContextMenu actions={actions} onPress={handleCtxMenu}>
       {children}
     </ContextMenu>
   );

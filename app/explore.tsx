@@ -20,7 +20,6 @@ export default function ExploreScreen() {
   const markdownStyles = useMdStyles();
   const scrollRef = useRef<ScrollView>(null);
   const [chatsHistory, setChatsHistory] = useState<Chat[]>([]);
-  const [messages, setMessages] = useState<string[]>([]);
   const [currentResponse, setCurrentResponse] = useState<string>("");
 
   useEffect(() => {
@@ -41,13 +40,20 @@ export default function ExploreScreen() {
     message: string,
     reqParams: any[]
   ) => {
-    const req =
-      reqParams?.[0] && typeof reqParams[0] === "string"
-        ? reqParams[0].slice(0, 36) + "…"
-        : message.slice(0, 36) + "…";
-    await addChat(db, req, message);
-    setMessages((m) => [...m, message]);
-    setCurrentResponse("");
+    const req = getTitle(reqParams, message);
+    const chatId = await addChat(db, req, message);
+    if (typeof chatId === "number") {
+      setChatsHistory((c) => [
+        ...c,
+        {
+          id: 0,
+          request: req,
+          createdAt: new Date().toISOString(),
+          response: message,
+        },
+      ]);
+      setCurrentResponse("");
+    }
   };
 
   const stream = useTextStream(
@@ -92,28 +98,16 @@ export default function ExploreScreen() {
       >
         <ChatsHistory chats={chatsHistory} handleDelete={handleDelete} />
 
-        {messages.map((m, idx) => (
+        {currentResponse.length ? (
           <Card
-            key={idx}
             lightColor={Colors.light.secondaryBackground}
             darkColor={Colors.dark.secondaryBackground}
           >
-            <Markdown style={markdownStyles}>{m}</Markdown>
+            <Markdown style={markdownStyles}>{currentResponse}</Markdown>
           </Card>
-        ))}
-
-        {currentResponse.length ? (
-          <MenuActions text={currentResponse}>
-            <Card
-              lightColor={Colors.light.secondaryBackground}
-              darkColor={Colors.dark.secondaryBackground}
-            >
-              <Markdown style={markdownStyles}>{currentResponse}</Markdown>
-            </Card>
-          </MenuActions>
         ) : null}
 
-        {!messages.length && !chatsHistory.length ? (
+        {!chatsHistory.length && !currentResponse.length ? (
           <ThemedText textAlign="center" type="secondary">
             {"Ask me anything"}
           </ThemedText>
@@ -122,6 +116,26 @@ export default function ExploreScreen() {
       <ChatFooterView handleSubmit={handleSubmit} loading={stream.isLoading} />
     </KeyboardAvoidingView>
   );
+}
+
+function getTitle(reqParams: any[], msg: string) {
+  if (!reqParams || reqParams.length === 0) {
+    return Math.random().toString(36).slice(2, 10);
+  }
+
+  const resp = reqParams[0];
+
+  if (typeof resp !== "string") {
+    return Math.random().toString(36).slice(2, 10);
+  }
+
+  if (resp.length < 36) {
+    return resp.slice(0, 36);
+  }
+
+  return reqParams?.[0] && typeof reqParams[0] === "string"
+    ? reqParams[0].slice(0, 36) + "…"
+    : msg.slice(0, 36) + "…";
 }
 
 const styles = StyleSheet.create({

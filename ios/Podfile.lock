@@ -1,9 +1,9 @@
 PODS:
   - boost (1.84.0)
   - DoubleConversion (1.1.6)
-  - EXConstants (17.0.7):
+  - EXConstants (17.0.8):
     - ExpoModulesCore
-  - Expo (52.0.37):
+  - Expo (52.0.39):
     - ExpoModulesCore
   - ExpoAsset (11.0.4):
     - ExpoModulesCore
@@ -21,13 +21,13 @@ PODS:
     - ExpoModulesCore
   - ExpoHaptics (14.0.1):
     - ExpoModulesCore
-  - ExpoHead (4.0.17):
+  - ExpoHead (4.0.19):
     - ExpoModulesCore
   - ExpoKeepAwake (14.0.3):
     - ExpoModulesCore
   - ExpoLinking (7.0.5):
     - ExpoModulesCore
-  - ExpoModulesCore (2.2.2):
+  - ExpoModulesCore (2.2.3):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -2154,8 +2154,8 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   boost: 1dca942403ed9342f98334bf4c3621f011aa7946
   DoubleConversion: f16ae600a246532c4020132d54af21d0ddb2a385
-  EXConstants: 30c43b9ca8391c31bab9cc45c97f16eddcf11042
-  Expo: 63515728b6f238842dc95702eb0fb385f00d7c5a
+  EXConstants: fcfc75800824ac2d5c592b5bc74130bad17b146b
+  Expo: dc113fa18a3212dfdab60fc543b052ef4299f8a9
   ExpoAsset: 4033893dfb333b444bf45e951351254137b658d5
   ExpoAudio: 5fe5fc98236b820c4affd09e0631de1c7a7c299b
   ExpoBlur: 392c1207f71d0ecf22371621c1fbd44ba84d9742
@@ -2164,10 +2164,10 @@ SPEC CHECKSUMS:
   ExpoFileSystem: 2d804c73034c0d65eb2a640e0a77627033b69edc
   ExpoFont: f354e926f8feae5e831ec8087f36652b44a0b188
   ExpoHaptics: 8d199b2f33245ea85289ff6c954c7ee7c00a5b5d
-  ExpoHead: 5d1c5c20e3933db5d9ca349424cb3b9a4a84b706
+  ExpoHead: caaccab2474a1b1f3be62eb1d493f9d30c704f94
   ExpoKeepAwake: b0171a73665bfcefcfcc311742a72a956e6aa680
   ExpoLinking: 8d12bee174ba0cdf31239706578e29e74a417402
-  ExpoModulesCore: 7f5e59799b89e5fad1d7cc6070744c1003ca320f
+  ExpoModulesCore: 98297c2cc7977c43740a2e52d850d94ac8dbf176
   ExpoNetwork: 16083eb5ed34ce1c8e916fb6292fdb6e9daac0ca
   ExpoSharing: 849a5ce9985c22598c16ec027e32969be8062e8e
   ExpoSpeech: 8f74347608243ee8fdc2faa14e7d2cd5503f33f8

@@ -127,7 +127,6 @@ export const aiSoundQueryOptions = (
         );
       }
 
-      console.log("Audio downloaded to:", tempFilePath);
       return tempFilePath;
     },
   });

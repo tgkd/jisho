@@ -825,16 +825,16 @@ export async function addChat(
   db: SQLiteDatabase,
   request: string,
   response: string
-): Promise<boolean> {
+): Promise<number | null> {
   try {
-    await db.runAsync(
+    const res = await db.runAsync(
       "INSERT INTO chats (request, response, created_at) VALUES (?, ?, ?)",
       [request, response, new Date().toISOString()]
     );
-    return true;
+    return res.lastInsertRowId;
   } catch (error) {
     console.error("Failed to add chat:", error);
-    return false;
+    return null;
   }
 }
 
@@ -896,8 +896,19 @@ export async function getAudioFile(
     );
 
     if (result) {
-      return {
+      const filePath = await audioFileBlobToFileUrl({
+        audioData: result.audio_data,
+        id: result.id,
         filePath: result.file_path,
+      });
+
+      if (!filePath) {
+        console.error("Failed to convert audio file blob to URL");
+        return null;
+      }
+
+      return {
+        filePath,
         id: result.id,
         audioData: result.audio_data,
       };
@@ -906,6 +917,29 @@ export async function getAudioFile(
     return null;
   } catch (error) {
     console.error("Failed to get audio file:", error);
+    return null;
+  }
+}
+
+async function audioFileBlobToFileUrl(
+  audioFile: AudioFile
+): Promise<string | null> {
+  try {
+    const tempDir = FileSystem.cacheDirectory + "audio/";
+    const tempPath = tempDir + `audio-${audioFile.id}.mp3`;
+    await FileSystem.makeDirectoryAsync(tempDir, { intermediates: true }).catch(
+      () => {}
+    );
+    const fileInfo = await FileSystem.getInfoAsync(tempPath);
+    if (!fileInfo.exists) {
+      await FileSystem.writeAsStringAsync(tempPath, audioFile.audioData, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+    }
+
+    return tempPath;
+  } catch (error) {
+    console.error("Failed to convert audio file blob to URL:", error);
     return null;
   }
 }

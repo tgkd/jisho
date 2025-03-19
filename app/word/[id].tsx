@@ -2,17 +2,12 @@ import { Stack, useLocalSearchParams } from "expo-router";
 import * as Speech from "expo-speech";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useMemo, useState } from "react";
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import { HapticTab } from "@/components/HapticTab";
 import { HighlightText } from "@/components/HighlightText";
 import { Loader } from "@/components/Loader";
+import { MenuActions } from "@/components/MenuActions";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { Card } from "@/components/ui/Card";
@@ -34,12 +29,12 @@ import {
 } from "@/services/database";
 import { deduplicateEn, formatEn, formatJp } from "@/services/parse";
 import {
-  aiSoundQueryOptions,
   aiExamplesQueryOptions,
+  aiSoundQueryOptions,
   craeteWordPrompt,
 } from "@/services/request";
-import { useAudioPlayer } from "expo-audio";
 import { useQuery } from "@tanstack/react-query";
+import { useAudioPlayer } from "expo-audio";
 
 export default function WordDetailScreen() {
   const tintColor = useThemeColor({}, "tint");
@@ -288,23 +283,28 @@ function ExampleRow({
   };
 
   return (
-    <TouchableOpacity
-      onPress={handlePlayText}
-      key={idx}
-      style={styles.exampleItem}
-    >
-      <View style={styles.exampleRow}>
-        <IconSymbol
-          name={soundQuery.isFetching ? "progress.indicator" : "speaker.circle"}
-          size={16}
-          color="gray"
-        />
+    <View style={styles.exampleItem}>
+      <MenuActions
+        actions={[
+          {
+            systemIcon: "speaker.circle",
+            title: "Play",
+            onActivate: handlePlayText,
+          },
+          {
+            systemIcon: "document.on.clipboard",
+            title: "Copy",
+          },
+        ]}
+        text={e.japaneseText}
+      >
         <HighlightText text={e.japaneseText} highlight={word} />
-      </View>
+      </MenuActions>
+
       <ThemedText size="sm" type="secondary">
         {e.englishText}
       </ThemedText>
-    </TouchableOpacity>
+    </View>
   );
 }
 
