@@ -5,7 +5,7 @@ import { useCallback, useState } from "react";
 import {
   getHistory,
   HistoryEntry,
-  removeHistoryById,
+  removeHistoryById
 } from "@/services/database";
 
 export function useSearchHistory() {

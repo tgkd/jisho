@@ -27,7 +27,6 @@ import { useColorScheme } from "@/hooks/useColorScheme";
 import { migrateDbIfNeeded } from "@/services/database";
 import { queryClient } from "@/services/queryClient";
 
-
 const DATABASE_PATH = "../assets/db/dict_2.db";
 
 SplashScreen.preventAutoHideAsync();
@@ -59,7 +58,9 @@ export default function RootLayout() {
         <Suspense fallback={<Loader />}>
           <SQLiteProvider
             databaseName="jisho_2.db"
-            assetSource={{ assetId: require(DATABASE_PATH) }}
+            assetSource={{
+              assetId: require(DATABASE_PATH),
+            }}
             onInit={migrateDbIfNeeded}
             useSuspense
           >
@@ -85,6 +86,10 @@ export default function RootLayout() {
                     name="explore"
                     options={{ headerTitle: "質問" }}
                   />
+                  <Stack.Screen
+                    name="kanji"
+                    options={{ headerTitle: "漢字" }}
+                  />
                 </Stack>
               </KeyboardProvider>
 
@@ -108,6 +113,10 @@ function BookmarksButton() {
     router.push("/explore");
   };
 
+  const navigateToKanji = () => {
+    router.push("/kanji");
+  };
+
   return (
     <PopupMenu
       buttonView={
@@ -127,6 +136,11 @@ function BookmarksButton() {
           label: "質問",
           onPress: navigateToExplore,
           icon: "sparkles",
+        },
+        {
+          label: "漢字",
+          onPress: navigateToKanji,
+          icon: "book.closed",
         },
       ]}
     />

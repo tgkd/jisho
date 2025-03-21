@@ -91,6 +91,26 @@ export type AudioFile = {
   audioData: string;
 };
 
+type DBKanji = {
+  id: number;
+  character: string;
+  jis_code: number | null;
+  unicode: string | null;
+  on_readings: string | null;
+  kun_readings: string | null;
+  meanings: string | null;
+  created_at: string;
+};
+
+export type KanjiEntry = Omit<
+  DBKanji,
+  "on_readings" | "kun_readings" | "meanings"
+> & {
+  onReadings: string[] | null;
+  kunReadings: string[] | null;
+  meanings: string[] | null;
+};
+
 interface SearchQuery {
   original: string;
   hiragana?: string;
@@ -99,7 +119,7 @@ interface SearchQuery {
 }
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
-  const DATABASE_VERSION = 8;
+  const DATABASE_VERSION = 9;
 
   try {
     const versionResult = await db.getFirstAsync<{ user_version: number }>(
@@ -255,6 +275,23 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
       } catch (error) {
         console.error("Error migrating to version 8:", error);
       }
+    }
+
+    if (currentDbVersion < 9) {
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS kanji (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            character TEXT NOT NULL,
+            jis_code INTEGER,
+            unicode TEXT,
+            on_readings TEXT,
+            kun_readings TEXT,
+            meanings TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          );
+        `);
+      await db.execAsync(`PRAGMA user_version = 9`);
+      currentDbVersion = 9;
     }
 
     console.log(
@@ -942,4 +979,153 @@ async function audioFileBlobToFileUrl(
     console.error("Failed to convert audio file blob to URL:", error);
     return null;
   }
+}
+
+export async function getKanji(
+  db: SQLiteDatabase,
+  character: string
+): Promise<KanjiEntry | null> {
+  try {
+    const result = await db.getFirstAsync<DBKanji>(
+      "SELECT * FROM kanji WHERE character = ?",
+      [character]
+    );
+
+    if (!result) {
+      return null;
+    }
+
+    // Parse string arrays from DB
+    const onReadings = result.on_readings
+      ? JSON.parse(result.on_readings)
+      : null;
+    const kunReadings = result.kun_readings
+      ? JSON.parse(result.kun_readings)
+      : null;
+    const meanings = result.meanings ? JSON.parse(result.meanings) : null;
+
+    return {
+      id: result.id,
+      character: result.character,
+      jis_code: result.jis_code,
+      unicode: result.unicode,
+      created_at: result.created_at,
+      onReadings,
+      kunReadings,
+      meanings,
+    };
+  } catch (error) {
+    console.error("Failed to get kanji data:", error);
+    return null;
+  }
+}
+
+export async function searchKanji(
+  db: SQLiteDatabase,
+  query: string,
+  limit: number = 20
+): Promise<KanjiEntry[]> {
+  try {
+    const results = await db.getAllAsync<DBKanji>(
+      `SELECT * FROM kanji
+       WHERE character LIKE ? OR meanings LIKE ?
+       ORDER BY id
+       LIMIT ?`,
+      [`%${query}%`, `%${query}%`, limit]
+    );
+
+    return results.map((result) => {
+      // Parse string arrays from DB
+      const onReadings = result.on_readings
+        ? JSON.parse(result.on_readings)
+        : null;
+      const kunReadings = result.kun_readings
+        ? JSON.parse(result.kun_readings)
+        : null;
+      const meanings = result.meanings ? JSON.parse(result.meanings) : null;
+
+      return {
+        id: result.id,
+        character: result.character,
+        jis_code: result.jis_code,
+        unicode: result.unicode,
+        created_at: result.created_at,
+        onReadings,
+        kunReadings,
+        meanings,
+      };
+    });
+  } catch (error) {
+    console.error("Failed to search kanji:", error);
+    return [];
+  }
+}
+
+export async function getKanjiByUnicode(
+  db: SQLiteDatabase,
+  unicode: string
+): Promise<KanjiEntry | null> {
+  try {
+    const result = await db.getFirstAsync<DBKanji>(
+      "SELECT * FROM kanji WHERE unicode = ?",
+      [unicode]
+    );
+
+    if (!result) {
+      return null;
+    }
+
+    // Parse string arrays from DB
+    const onReadings = result.on_readings
+      ? JSON.parse(result.on_readings)
+      : null;
+    const kunReadings = result.kun_readings
+      ? JSON.parse(result.kun_readings)
+      : null;
+    const meanings = result.meanings ? JSON.parse(result.meanings) : null;
+
+    return {
+      id: result.id,
+      character: result.character,
+      jis_code: result.jis_code,
+      unicode: result.unicode,
+      created_at: result.created_at,
+      onReadings,
+      kunReadings,
+      meanings,
+    };
+  } catch (error) {
+    console.error("Failed to get kanji by unicode:", error);
+    return null;
+  }
+}
+
+export function getKanjiList(db: SQLiteDatabase): Promise<KanjiEntry[]> {
+  return db
+    .getAllAsync<DBKanji>(
+      "SELECT * FROM kanji ORDER BY RANDOM() LIMIT 50"
+    )
+    .then((results) => {
+      return results.map((result) => {
+        // Parse string arrays from DB
+        const onReadings = result.on_readings
+          ? JSON.parse(result.on_readings)
+          : null;
+        const kunReadings = result.kun_readings
+          ? JSON.parse(result.kun_readings)
+          : null;
+        const meanings = result.meanings ? JSON.parse(result.meanings) : null;
+
+        return {
+          id: result.id,
+          character: result.character,
+          jis_code: result.jis_code,
+          unicode: result.unicode,
+          created_at: result.created_at,
+          onReadings,
+          kunReadings,
+          meanings,
+        };
+      });
+    });
 }
