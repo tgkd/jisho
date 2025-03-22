@@ -6,18 +6,29 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-import { ThemedText } from "@/components/ThemedText";
+import { ThemedText, ThemedTextProps } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { useThemeColor } from "@/hooks/useThemeColor";
 
+interface Props {
+  title: string;
+  rightButton?: React.ReactNode;
+  p?: number;
+  withIcon?: boolean;
+  titleProps?: ThemedTextProps;
+}
+
 export function Collapsible({
   children,
   title,
   rightButton = null,
-}: PropsWithChildren & { title: string; rightButton?: React.ReactNode }) {
+  p = 12,
+  withIcon = true,
+  titleProps = {},
+}: PropsWithChildren<Props>) {
   const opened = useSharedValue(0);
   const theme = useColorScheme() ?? "light";
   const bg = useThemeColor({}, "secondaryBackground");
@@ -42,21 +53,29 @@ export function Collapsible({
   return (
     <View>
       <TouchableOpacity
-        style={[styles.heading, { backgroundColor: bg }]}
+        style={[styles.heading, { backgroundColor: bg, padding: p }]}
         onPress={onPress}
         activeOpacity={0.8}
       >
         <View style={styles.headName}>
-          <Animated.View style={iconStyle}>
-            <IconSymbol
-              name="chevron.right"
-              size={16}
-              weight="medium"
-              color={theme === "light" ? Colors.light.icon : Colors.dark.icon}
-            />
-          </Animated.View>
+          {withIcon ? (
+            <Animated.View style={iconStyle}>
+              <IconSymbol
+                name="chevron.right"
+                size={16}
+                weight="medium"
+                color={theme === "light" ? Colors.light.icon : Colors.dark.icon}
+              />
+            </Animated.View>
+          ) : null}
 
-          <ThemedText size="sm">{title}</ThemedText>
+          <ThemedText
+            size="sm"
+            style={withIcon ? undefined : styles.underline}
+            {...titleProps}
+          >
+            {title}
+          </ThemedText>
         </View>
         {rightButton}
       </TouchableOpacity>
@@ -74,7 +93,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 12,
     borderRadius: 10,
   },
   headName: {
@@ -86,5 +104,8 @@ const styles = StyleSheet.create({
     marginTop: 8,
     padding: 12,
     borderRadius: 10,
+  },
+  underline: {
+    textDecorationLine: "underline",
   },
 });

@@ -73,7 +73,7 @@ function PopupMenuImpl({ items, buttonView }: Props) {
     }
 
     wrapperRef.current.measure((x, y, width) => {
-      setCoords({ y: y + popupHeight, width });
+      setCoords({ y: y + popupHeight / 2, width });
     });
   };
 

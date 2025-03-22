@@ -467,3 +467,15 @@ export function cleanupMdStr(text: string): string {
       .trim()
   );
 }
+
+/**
+ * Find all kanji characters in a given text
+ * @param {string} text - The text to search for kanji characters
+ * @return {string[]} - Array of unique kanji characters found in the text
+ */
+export function findKanji(text: string): string[] {
+  return Array.from(new Set(Array.from(text).filter(char => {
+    const code = char.charCodeAt(0);
+    return code >= 0x4e00 && code <= 0x9faf;
+  })));
+}

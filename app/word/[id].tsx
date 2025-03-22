@@ -32,8 +32,10 @@ import {
   removeBookmark,
   saveAudioFile,
   WordMeaning,
+  getKanji,
+  KanjiEntry,
 } from "@/services/database";
-import { deduplicateEn, formatEn, formatJp } from "@/services/parse";
+import { deduplicateEn, formatEn, formatJp, findKanji } from "@/services/parse";
 import {
   aiExamplesQueryOptions,
   aiSoundQueryOptions,
@@ -41,6 +43,7 @@ import {
 } from "@/services/request";
 import { useQuery } from "@tanstack/react-query";
 import { useAudioPlayer } from "expo-audio";
+import { Collapsible } from "@/components/Collapsible";
 
 export default function WordDetailScreen() {
   const tintColor = useThemeColor({}, "tint");
@@ -244,6 +247,39 @@ function ExamplesView({
   );
 }
 
+function KanjiDetails({ character }: { character: string }) {
+  const db = useSQLiteContext();
+  const [details, setDetails] = useState<KanjiEntry | null>(null);
+
+  useEffect(() => {
+    const loadKanjiDetails = async () => {
+      const result = await getKanji(db, character);
+      setDetails(result);
+    };
+    loadKanjiDetails();
+  }, [character]);
+
+  if (!details) return null;
+
+  return (
+    <View style={styles.kanjiDetails}>
+      <ThemedText type="secondary" size="sm">
+        {details.character} - {details.meanings?.join(", ")}
+      </ThemedText>
+      {details.onReadings && (
+        <ThemedText type="secondary" size="sm">
+          On: {details.onReadings.join(", ")}
+        </ThemedText>
+      )}
+      {details.kunReadings && (
+        <ThemedText type="secondary" size="sm">
+          Kun: {details.kunReadings.join(", ")}
+        </ThemedText>
+      )}
+    </View>
+  );
+}
+
 function ExampleRow({
   e,
   idx,
@@ -289,7 +325,8 @@ function ExampleRow({
     }
   };
 
-  ///поиск по кандзи из примеров
+  const kanjiChars = findKanji(e.japaneseText);
+  const hasKanji = kanjiChars.length > 0;
 
   return (
     <View style={styles.exampleItem}>
@@ -317,6 +354,15 @@ function ExampleRow({
       {loading ? (
         <ActivityIndicator size="small" style={styles.loader} />
       ) : null}
+      {hasKanji && (
+        <Collapsible title="Kanji Details" p={0} withIcon={false}>
+          <View style={styles.kanjiList}>
+            {kanjiChars.map((char, idx) => (
+              <KanjiDetails key={idx} character={char} />
+            ))}
+          </View>
+        </Collapsible>
+      )}
     </View>
   );
 }
@@ -377,5 +423,12 @@ const styles = StyleSheet.create({
   loader: {
     position: "absolute",
     right: 0,
+  },
+  kanjiDetails: {
+    paddingVertical: 4,
+    gap: 2,
+  },
+  kanjiList: {
+    gap: 8,
   },
 });

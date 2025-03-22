@@ -1,8 +1,4 @@
-import {
-  ClipboardPasteButton,
-  isPasteButtonAvailable,
-  PasteEventPayload,
-} from "expo-clipboard";
+import { PasteEventPayload } from "expo-clipboard";
 import { memo, useRef, useState } from "react";
 import { StyleSheet, TextInput, View } from "react-native";
 import { useGenericKeyboardHandler } from "react-native-keyboard-controller";
@@ -109,15 +105,6 @@ export const ChatFooterView = memo(
           placeholder="What does りんご mean?"
         />
         <View style={styles.buttons}>
-          {isPasteButtonAvailable ? (
-            <ClipboardPasteButton
-              onPress={handlePasteClipboard}
-              style={styles.paste}
-              cornerStyle="capsule"
-              displayMode="iconOnly"
-            />
-          ) : null}
-
           <View style={styles.type}>
             {requestTypes.map((e) => (
               <Pill
@@ -183,5 +170,5 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 4,
     alignItems: "center",
-  }
+  },
 });
