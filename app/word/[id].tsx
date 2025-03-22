@@ -35,7 +35,13 @@ import {
   getKanji,
   KanjiEntry,
 } from "@/services/database";
-import { deduplicateEn, formatEn, formatJp, findKanji } from "@/services/parse";
+import {
+  deduplicateEn,
+  formatEn,
+  formatJp,
+  findKanji,
+  cleanupJpReadings,
+} from "@/services/parse";
 import {
   aiExamplesQueryOptions,
   aiSoundQueryOptions,
@@ -188,9 +194,35 @@ export default function WordDetailScreen() {
             </View>
           ))}
         </Card>
+
+        <WordKanjiSection word={entry.word.word} />
+
         <ExamplesView entry={entry} refreshExamples={handleRefreshExamples} />
       </ScrollView>
     </ThemedView>
+  );
+}
+
+function WordKanjiSection({ word }: { word: string }) {
+  const kanjiChars = findKanji(word);
+
+  if (kanjiChars.length === 0) {
+    return null;
+  }
+
+  return (
+    <>
+      <ThemedText type="title" style={styles.sectionTitle}>
+        {"Kanji"}
+      </ThemedText>
+      <Card variant="grouped">
+        <View style={styles.kanjiList}>
+          {kanjiChars.map((char, idx) => (
+            <KanjiDetails key={idx} character={char} />
+          ))}
+        </View>
+      </Card>
+    </>
   );
 }
 
@@ -263,8 +295,11 @@ function KanjiDetails({ character }: { character: string }) {
 
   return (
     <View style={styles.kanjiDetails}>
-      <ThemedText type="secondary" size="sm">
-        {details.character} - {details.meanings?.join(", ")}
+      <ThemedText>
+        <ThemedText size="lg">{details.character}</ThemedText>
+        <ThemedText size="md">
+          {" - " + details.meanings?.join(", ")}
+        </ThemedText>
       </ThemedText>
       {details.onReadings && (
         <ThemedText type="secondary" size="sm">
@@ -293,7 +328,9 @@ function ExampleRow({
 }) {
   const db = useSQLiteContext();
   const player = useAudioPlayer();
-  const soundQuery = useQuery(aiSoundQueryOptions(e.japaneseText));
+  const soundQuery = useQuery(
+    aiSoundQueryOptions(cleanupJpReadings(e.japaneseText))
+  );
   const loading = soundQuery.isLoading;
 
   const fallbackToSpeech = () => {
@@ -329,28 +366,30 @@ function ExampleRow({
   const hasKanji = kanjiChars.length > 0;
 
   return (
-    <View style={styles.exampleItem}>
-      <MenuActions
-        actions={[
-          {
-            systemIcon: "speaker.circle",
-            title: "Play",
-            onActivate: handlePlayText,
-            disabled: loading,
-          },
-          {
-            systemIcon: "document.on.clipboard",
-            title: "Copy",
-          },
-        ]}
-        text={e.japaneseText}
-      >
-        <HighlightText text={e.japaneseText} highlight={word} />
-      </MenuActions>
+    <View>
+      <View style={styles.exampleTitle}>
+        <MenuActions
+          actions={[
+            {
+              systemIcon: "speaker.circle",
+              title: "Play",
+              onActivate: handlePlayText,
+              disabled: loading,
+            },
+            {
+              systemIcon: "document.on.clipboard",
+              title: "Copy",
+            },
+          ]}
+          text={e.japaneseText}
+        >
+          <HighlightText text={e.japaneseText} highlight={word} />
+        </MenuActions>
 
-      <ThemedText size="sm" type="secondary">
-        {e.englishText}
-      </ThemedText>
+        <ThemedText size="sm" type="secondary">
+          {e.englishText}
+        </ThemedText>
+      </View>
       {loading ? (
         <ActivityIndicator size="small" style={styles.loader} />
       ) : null}
@@ -407,18 +446,14 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "600",
   },
-  exampleItem: {
+  exampleTitle: {
     gap: 4,
+    flexDirection: "column",
+    maxWidth: "95%",
   },
   examplesLoading: {
     alignItems: "center",
     paddingVertical: 16,
-  },
-  exampleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    maxWidth: "90%",
   },
   loader: {
     position: "absolute",

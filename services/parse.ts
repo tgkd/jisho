@@ -479,3 +479,17 @@ export function findKanji(text: string): string[] {
     return code >= 0x4e00 && code <= 0x9faf;
   })));
 }
+
+/**
+ * Removes furigana readings in square brackets from Japanese text
+ * @param {string} text - The text containing furigana in square brackets
+ * @return {string} - The text with furigana readings removed
+ * @example
+ * cleanupReadings('この譬話[たとえばなし]は、大切[たいせつ]な教訓[きょうくん]を含んでいます。')
+ * // => 'この譬話は、大切な教訓を含んでいます。'
+ */
+export function cleanupJpReadings(text: string): string {
+  if (!text) return "";
+  // Remove content in square brackets (furigana readings)
+  return text.replace(/\[[^\]]*\]/g, "");
+}
