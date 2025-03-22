@@ -2,7 +2,13 @@ import { Stack, useLocalSearchParams } from "expo-router";
 import * as Speech from "expo-speech";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+} from "react-native";
 
 import { HapticTab } from "@/components/HapticTab";
 import { HighlightText } from "@/components/HighlightText";
@@ -252,6 +258,7 @@ function ExampleRow({
   const db = useSQLiteContext();
   const player = useAudioPlayer();
   const soundQuery = useQuery(aiSoundQueryOptions(e.japaneseText));
+  const loading = soundQuery.isLoading;
 
   const fallbackToSpeech = () => {
     Speech.speak(e.japaneseText, { language: "ja" });
@@ -282,6 +289,8 @@ function ExampleRow({
     }
   };
 
+  ///поиск по кандзи из примеров
+
   return (
     <View style={styles.exampleItem}>
       <MenuActions
@@ -290,6 +299,7 @@ function ExampleRow({
             systemIcon: "speaker.circle",
             title: "Play",
             onActivate: handlePlayText,
+            disabled: loading,
           },
           {
             systemIcon: "document.on.clipboard",
@@ -304,6 +314,9 @@ function ExampleRow({
       <ThemedText size="sm" type="secondary">
         {e.englishText}
       </ThemedText>
+      {loading ? (
+        <ActivityIndicator size="small" style={styles.loader} />
+      ) : null}
     </View>
   );
 }
@@ -360,5 +373,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     maxWidth: "90%",
+  },
+  loader: {
+    position: "absolute",
+    right: 0,
   },
 });

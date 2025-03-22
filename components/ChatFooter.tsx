@@ -1,6 +1,10 @@
-import { getStringAsync, isPasteButtonAvailable } from "expo-clipboard";
+import {
+  ClipboardPasteButton,
+  isPasteButtonAvailable,
+  PasteEventPayload,
+} from "expo-clipboard";
 import { memo, useRef, useState } from "react";
-import { StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
+import { StyleSheet, TextInput, View } from "react-native";
 import { useGenericKeyboardHandler } from "react-native-keyboard-controller";
 import Animated, {
   interpolate,
@@ -10,10 +14,17 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { HapticTab } from "@/components/HapticTab";
-import { ThemedText } from "@/components/ThemedText";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { Colors } from "@/constants/Colors";
 import { useThemeColor } from "@/hooks/useThemeColor";
+import { Pill } from "./ui/Pill";
+import { ExplainRequestType } from "@/services/request";
+
+const requestTypes = [
+  { label: "Kanji", id: ExplainRequestType.K, icon: "kanji" },
+  { label: "Vocabulary", id: ExplainRequestType.V, icon: "vocabulary" },
+  { label: "Grammar", id: ExplainRequestType.G, icon: "grammar" },
+];
 
 const ICON_SIZE = 36;
 const HEIGHT = 96;
@@ -43,7 +54,7 @@ export const ChatFooterView = memo(
     handleSubmit,
     loading,
   }: {
-    handleSubmit: (value: string) => Promise<void>;
+    handleSubmit: (value: string, req: ExplainRequestType) => Promise<void>;
     loading: boolean;
   }) => {
     const kb = useGradualKeyboardAnimation();
@@ -54,17 +65,19 @@ export const ChatFooterView = memo(
     const inputBg = useThemeColor({}, "background");
     const inputRef = useRef<TextInput>(null);
     const [value, setValue] = useState("");
+    const [requestType, setRequestType] = useState<ExplainRequestType>(
+      ExplainRequestType.V
+    );
 
     const handlePress = () => {
-      handleSubmit(value);
+      handleSubmit(value, requestType);
       inputRef.current?.blur();
       setValue("");
     };
 
-    const handlePasteClipboard = async () => {
-      const text = await getStringAsync();
-      if (text) {
-        setValue(text);
+    const handlePasteClipboard = (data: PasteEventPayload) => {
+      if (data.type === "text") {
+        setValue(data.text);
       }
     };
 
@@ -97,16 +110,26 @@ export const ChatFooterView = memo(
         />
         <View style={styles.buttons}>
           {isPasteButtonAvailable ? (
-            <TouchableOpacity
+            <ClipboardPasteButton
               onPress={handlePasteClipboard}
               style={styles.paste}
-            >
-              <IconSymbol color={iconC} name="doc.on.clipboard" size={16} />
-              <ThemedText size="sm" style={{ color: iconC }}>
-                {"Paste"}
-              </ThemedText>
-            </TouchableOpacity>
+              cornerStyle="capsule"
+              displayMode="iconOnly"
+            />
           ) : null}
+
+          <View style={styles.type}>
+            {requestTypes.map((e) => (
+              <Pill
+                key={e.id}
+                text={e.label}
+                onPress={() => {
+                  setRequestType(e.id);
+                }}
+                isActive={requestType === e.id}
+              />
+            ))}
+          </View>
 
           <HapticTab onPress={handlePress} disabled={loading}>
             <IconSymbol
@@ -153,13 +176,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   paste: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
     height: 32,
-    borderRadius: 18,
-    paddingHorizontal: 8,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Colors.light.tint,
+    width: 32,
   },
+  type: {
+    flexDirection: "row",
+    gap: 4,
+    alignItems: "center",
+  }
 });

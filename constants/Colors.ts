@@ -22,6 +22,7 @@ export const Colors = {
     separator: "gray",
     groupedBackground: "#FFFFFF", // Changed to white for grouped content
     accent: tintColorLight,
+    accentLight: "rgba(0, 122, 255, 0.15)", // iOS light gray
     link: tintColorLight,
     accentForeground: "#FFFFFF",
     error: errorRedLight,
@@ -43,6 +44,7 @@ export const Colors = {
     accent: tintColorDark,
     link: tintColorDark,
     accentForeground: "#FFFFFF",
+    accentLight: "rgba(10, 132, 255, 0.15)", // iOS dark gray
     error: errorRedDark,
     highlight: "rgb(212, 181, 1)",
     disabled: "#38383A",

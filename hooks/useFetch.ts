@@ -99,7 +99,7 @@ export const useTextStream = (
     try {
       setIsLoading(true);
       setError(null);
-      const response = await fetchFn(args);
+      const response = await fetchFn(...args);
       if (!response.ok) {
         throw new Error(
           `HTTP error: ${response.status} ${response.statusText}`

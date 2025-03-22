@@ -1,8 +1,7 @@
 import React from "react";
-import { StyleSheet, FlatList, Pressable, Text, View } from "react-native";
-import { useThemeColor } from "../hooks/useThemeColor";
-import { HapticTab } from "./HapticTab";
-import { Colors } from "@/constants/Colors";
+import { FlatList, StyleSheet, View } from "react-native";
+
+import { Pill } from "./ui/Pill";
 
 type TagsListProps = {
   items: Array<{ label: string; id: string }>;
@@ -10,19 +9,14 @@ type TagsListProps = {
 };
 
 export default function TagsList({ items, onSelect }: TagsListProps) {
-  const backgroundColor = useThemeColor({}, "secondaryBackground");
-  const textColor = useThemeColor({}, "text");
-
   const renderItem = ({ item }: { item: { label: string; id: string } }) => {
     return (
-      <HapticTab
-        onPress={() => onSelect(item.id)}
-        style={[styles.pill, { backgroundColor }]}
-      >
-        <Text style={[styles.pillText, { color: textColor }]}>
-          {item.label}
-        </Text>
-      </HapticTab>
+      <Pill
+        onPress={() => {
+          onSelect(item.id);
+        }}
+        text={item.label}
+      />
     );
   };
 
@@ -48,19 +42,5 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: 8,
-  },
-  pill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    height: 32,
-    borderRadius: 18,
-    paddingHorizontal: 8,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Colors.light.textSecondary,
-  },
-  pillText: {
-    fontSize: 14,
-    fontWeight: "500",
   },
 });

@@ -13,7 +13,7 @@ import { Colors } from "@/constants/Colors";
 import { useTextStream } from "@/hooks/useFetch";
 import { useMdStyles } from "@/hooks/useMdStyles";
 import { addChat, Chat, getChats, removeChatById } from "@/services/database";
-import { getAiExplanation } from "@/services/request";
+import { ExplainRequestType, getAiExplanation } from "@/services/request";
 
 export default function ExploreScreen() {
   const db = useSQLiteContext();
@@ -66,7 +66,7 @@ export default function ExploreScreen() {
   );
 
   const handleSubmit = useCallback(
-    async (query: string) => {
+    async (query: string, type: ExplainRequestType) => {
       const text = query.trim();
 
       if (text.length === 0) {
@@ -75,7 +75,7 @@ export default function ExploreScreen() {
 
       try {
         setCurrentResponse("");
-        await stream.fetchData(query);
+        await stream.fetchData(query, type);
       } catch (error) {
         console.error("Search failed:", error);
       }

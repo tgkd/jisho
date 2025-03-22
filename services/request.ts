@@ -4,6 +4,12 @@ import * as FileSystem from "expo-file-system";
 
 import { DictionaryEntry, ExampleSentence, WordMeaning } from "./database";
 
+export enum ExplainRequestType {
+  K = "kanji",
+  V = "vocabulary", // aka "explain word prompt"
+  G = "grammar", // aka "sentence"
+}
+
 export type AiExample = {
   jp: string;
   en: string;
@@ -69,12 +75,16 @@ export const aiExamplesQueryOptions = (
   });
 
 export function getAiExplanation(signal?: AbortSignal | null) {
-  return function (prompt: string, provider: "cf" | "open" = "open") {
+  return function (
+    prompt: string,
+    type: ExplainRequestType,
+    provider: "cf" | "open" = "open"
+  ) {
     if (!prompt) {
       return Promise.resolve(new Response());
     }
     return fetch(
-      `${process.env.EXPO_PUBLIC_BASE_URL}/explain/${provider}?prompt=${prompt}`,
+      `${process.env.EXPO_PUBLIC_BASE_URL}/explain/${provider}?prompt=${prompt}&type=${type}`,
       {
         signal: signal || undefined,
         headers: {
