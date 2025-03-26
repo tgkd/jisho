@@ -5,9 +5,8 @@ import * as FileSystem from "expo-file-system";
 import { DictionaryEntry, ExampleSentence, WordMeaning } from "./database";
 
 export enum ExplainRequestType {
-  K = "kanji",
-  V = "vocabulary", // aka "explain word prompt"
-  G = "grammar", // aka "sentence"
+  V = "vocabulary",
+  G = "grammar",
 }
 
 export type AiExample = {

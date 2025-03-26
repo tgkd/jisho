@@ -1,7 +1,9 @@
 import { SQLiteDatabase } from "expo-sqlite";
 import * as FileSystem from "expo-file-system";
+import { Asset } from "expo-asset";
 import * as wanakana from "wanakana";
 import { AiExample } from "./request";
+import { Alert } from "react-native";
 
 type DBDictEntry = {
   id: number;
@@ -698,11 +700,11 @@ export async function getExamples(
     return [];
   }
 }
-
 export async function resetDatabase(db: SQLiteDatabase): Promise<void> {
   try {
-    console.log("Dropping all tables...");
+    console.log("Starting database reset process...");
 
+    // Step 1: Drop all tables and reset user_version
     await db.execAsync(`
       DROP TABLE IF EXISTS meanings;
       DROP TABLE IF EXISTS words;
@@ -714,15 +716,49 @@ export async function resetDatabase(db: SQLiteDatabase): Promise<void> {
       DROP TABLE IF EXISTS history;
       DROP TABLE IF EXISTS chats;
       DROP TABLE IF EXISTS audio_blobs;
+      DROP TABLE IF EXISTS kanji;
     `);
 
     await db.execAsync(`PRAGMA user_version = 0`);
 
-    console.log("Database reset complete");
+    // Step 2: Close the database connection
+    await db.closeAsync();
 
-    await migrateDbIfNeeded(db);
+    // Step 3: Delete the physical database file and related files to force a complete reinitialize
+    const dbDirectory = FileSystem.documentDirectory + 'SQLite/';
+    const dbPath = dbDirectory + 'jisho_2.db';
+    const walPath = dbPath + '-wal';
+    const shmPath = dbPath + '-shm';
+
+    const fileExists = await FileSystem.getInfoAsync(dbPath);
+    if (fileExists.exists) {
+      console.log("Deleting database file...");
+      await FileSystem.deleteAsync(dbPath, { idempotent: true });
+    }
+
+    // Delete WAL and SHM files if they exist
+    const walExists = await FileSystem.getInfoAsync(walPath);
+    if (walExists.exists) {
+      await FileSystem.deleteAsync(walPath, { idempotent: true });
+    }
+
+    const shmExists = await FileSystem.getInfoAsync(shmPath);
+    if (shmExists.exists) {
+      await FileSystem.deleteAsync(shmPath, { idempotent: true });
+    }
+
+    console.log("Database files deleted. The app will now recreate the database from the asset on restart.");
+
+    // Alert the user that they need to restart the app
+    // You'll need to decide how to display this message based on your UI
+    Alert.alert(
+      "Database Reset",
+      "The database has been reset. Please restart the app to recreate the database.",
+      [{ text: "OK" }]
+    );
+    return;
   } catch (error) {
-    console.error("Error resetting database:", error);
+    console.error("Error during database reset:", error);
     throw error;
   }
 }
@@ -1102,9 +1138,7 @@ export async function getKanjiByUnicode(
 
 export function getKanjiList(db: SQLiteDatabase): Promise<KanjiEntry[]> {
   return db
-    .getAllAsync<DBKanji>(
-      "SELECT * FROM kanji ORDER BY RANDOM() LIMIT 50"
-    )
+    .getAllAsync<DBKanji>("SELECT * FROM kanji ORDER BY RANDOM() LIMIT 50")
     .then((results) => {
       return results.map((result) => {
         // Parse string arrays from DB

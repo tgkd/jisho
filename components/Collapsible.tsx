@@ -27,7 +27,10 @@ export function Collapsible({
   rightButton = null,
   p = 12,
   withIcon = true,
-  titleProps = {},
+  titleProps = {
+    numberOfLines: 1,
+    ellipsizeMode: "tail",
+  },
 }: PropsWithChildren<Props>) {
   const opened = useSharedValue(0);
   const theme = useColorScheme() ?? "light";
@@ -99,6 +102,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+    maxWidth: "85%",
   },
   content: {
     marginTop: 8,

@@ -50,3 +50,18 @@ export const Colors = {
     disabled: "#38383A",
   },
 };
+
+export function getHighlightColorValue(color: string): string {
+  switch(color) {
+    case "yellow":
+      return "rgba(255, 230, 0, 0.3)";
+    case "blue":
+      return "rgba(0, 122, 255, 0.3)";
+    case "green":
+      return "rgba(52, 199, 89, 0.3)";
+    case "pink":
+      return "rgba(255, 45, 85, 0.3)";
+    default:
+      return "rgba(255, 230, 0, 0.3)";
+  }
+}

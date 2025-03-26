@@ -38,19 +38,9 @@ configureReanimatedLogger({
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
-    SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
-  });
-
   useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
-
-  if (!loaded) {
-    return null;
-  }
+    SplashScreen.hideAsync();
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -90,6 +80,13 @@ export default function RootLayout() {
                     name="kanji"
                     options={{ headerTitle: "漢字" }}
                   />
+                  <Stack.Screen
+                    name="settings"
+                    options={{
+                      headerTitle: "設定",
+                      presentation: "modal",
+                    }}
+                  />
                 </Stack>
               </KeyboardProvider>
 
@@ -117,6 +114,10 @@ function BookmarksButton() {
     router.push("/kanji");
   };
 
+  const navigateToSettings = () => {
+    router.push("/settings");
+  };
+
   return (
     <PopupMenu
       buttonView={
@@ -141,6 +142,11 @@ function BookmarksButton() {
           label: "漢字",
           onPress: navigateToKanji,
           icon: "book.closed",
+        },
+        {
+          label: "設定",
+          onPress: navigateToSettings,
+          icon: "gearshape",
         },
       ]}
     />

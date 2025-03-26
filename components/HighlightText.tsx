@@ -1,8 +1,10 @@
 import React, { useMemo } from "react";
 import { TextStyle } from "react-native";
+import { useMMKVString } from "react-native-mmkv";
 
-import { useThemeColor } from "@/hooks/useThemeColor";
+import { SETTINGS_KEYS } from "@/services/storage";
 import { ThemedText, ThemedTextProps } from "./ThemedText";
+import { getHighlightColorValue } from "@/constants/Colors";
 
 interface HighlightTextProps extends ThemedTextProps {
   text: string;
@@ -18,13 +20,17 @@ export function HighlightText({
   caseSensitive = false,
   ...rest
 }: HighlightTextProps) {
-  const backgroundColor = useThemeColor({}, "highlight");
+  const [highlightColorValue] = useMMKVString(
+    SETTINGS_KEYS.HIGHLIGHT_COLOR
+  );
+  const highlightColor = highlightColorValue
+    ? getHighlightColorValue(highlightColorValue)
+    : getHighlightColorValue("yellow");
 
   const segments = useMemo(() => {
     const highlights = Array.isArray(highlight) ? highlight : [highlight];
     let currentText = text;
 
-    // Split text by brackets to identify protected regions
     const splitByBrackets = (text: string) => {
       const result: { text: string; protected: boolean }[] = [];
       let inBrackets = false;
@@ -135,7 +141,11 @@ export function HighlightText({
       {segments.map((s, idx) => (
         <ThemedText
           key={idx}
-          style={s.highlight ? [{ backgroundColor }, textStyle] : undefined}
+          style={
+            s.highlight
+              ? [{ backgroundColor: highlightColor }, textStyle]
+              : undefined
+          }
         >
           {s.text}
         </ThemedText>

@@ -6,7 +6,6 @@ import Markdown from "react-native-markdown-display";
 
 import { ChatFooterView } from "@/components/ChatFooter";
 import { ChatsHistory } from "@/components/ChatsHistory";
-import { MenuActions } from "@/components/MenuActions";
 import { ThemedText } from "@/components/ThemedText";
 import { Card } from "@/components/ui/Card";
 import { Colors } from "@/constants/Colors";

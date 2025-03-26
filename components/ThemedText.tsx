@@ -38,7 +38,10 @@ export function ThemedText({
         };
 
       default:
-        return {};
+        return {
+          dark: darkColor || Colors.dark.text,
+          light: lightColor || Colors.light.text,
+        };
     }
   }, [type]);
 

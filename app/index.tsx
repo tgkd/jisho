@@ -3,6 +3,7 @@ import { router, Stack } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
+import { useMMKVBoolean } from "react-native-mmkv";
 import Animated, {
   FadeIn,
   FadeOut,
@@ -35,6 +36,7 @@ import {
   formatJp,
   getJpTokens,
 } from "@/services/parse";
+import { SETTINGS_KEYS } from "@/services/storage";
 
 export default function HomeScreen() {
   const db = useSQLiteContext();
@@ -48,6 +50,7 @@ export default function HomeScreen() {
   const [tokens, setTokens] = useState<Array<{ id: string; label: string }>>(
     []
   );
+  const [autoPaste] = useMMKVBoolean(SETTINGS_KEYS.AUTO_PASTE);
 
   const handleSearch = useDebouncedCallback(async (query: string) => {
     const text = query.trim();
@@ -107,7 +110,9 @@ export default function HomeScreen() {
   };
 
   const onFocus = () => {
-    checkClipboardContent();
+    if (autoPaste) {
+      checkClipboardContent();
+    }
   };
 
   const history = useSearchHistory();

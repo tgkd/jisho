@@ -9,14 +9,14 @@ import {
 import { ThemedText } from "../ThemedText";
 import { Colors } from "../../constants/Colors";
 
-interface SegmentedControlProps<T extends string> {
-  options: { label: string; value: T }[];
+interface SegmentedControlProps<T = string> {
+  options: Array<{ label: string; value: T }>;
   value: T;
   onChange: (value: T) => void;
   style?: object;
 }
 
-export function SegmentedControl<T extends string>({
+export function SegmentedControl<T = string>({
   options,
   value,
   onChange,
@@ -37,12 +37,12 @@ export function SegmentedControl<T extends string>({
 
   return (
     <View style={[styles.segmentedControl, { backgroundColor }, style]}>
-      {options.map((option) => {
+      {options.map((option, idx) => {
         const isSelected = value === option.value;
 
         return (
           <TouchableOpacity
-            key={option.value}
+            key={idx}
             style={[
               styles.segmentedControlOption,
               isSelected && { backgroundColor: selectedBgColor },

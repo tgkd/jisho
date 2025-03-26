@@ -17,8 +17,7 @@ import { Pill } from "./ui/Pill";
 import { ExplainRequestType } from "@/services/request";
 
 const requestTypes = [
-  { label: "Kanji", id: ExplainRequestType.K, icon: "kanji" },
-  { label: "Vocabulary", id: ExplainRequestType.V, icon: "vocabulary" },
+  { label: "Word", id: ExplainRequestType.V, icon: "vocabulary" },
   { label: "Grammar", id: ExplainRequestType.G, icon: "grammar" },
 ];
 

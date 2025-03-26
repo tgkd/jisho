@@ -10,6 +10,7 @@ import ReanimatedSwipeable, {
   SwipeableMethods,
 } from "react-native-gesture-handler/ReanimatedSwipeable";
 import Animated, {
+  LinearTransition,
   SharedValue,
   useAnimatedStyle,
 } from "react-native-reanimated";
@@ -132,7 +133,8 @@ export default function BookmarksScreen() {
           },
         }}
       />
-      <FlatList
+      <Animated.FlatList
+        itemLayoutAnimation={LinearTransition}
         contentInsetAdjustmentBehavior="automatic"
         data={filteredBookmarks}
         renderItem={({ index, item }) => (

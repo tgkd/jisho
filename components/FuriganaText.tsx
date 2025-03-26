@@ -1,7 +1,9 @@
-import React from "react";
-import { View, StyleSheet, TextStyle } from "react-native";
+import React, { useEffect, useState } from "react";
+import { StyleSheet, TextStyle, View } from "react-native";
+import { useMMKVBoolean } from "react-native-mmkv";
 
-import { type FuriPair, combineFuri } from "../services/parse";
+import { SETTINGS_KEYS } from "@/services/storage";
+import { combineFuri } from "../services/parse";
 import { ThemedText } from "./ThemedText";
 
 type BaseProps = {
@@ -27,6 +29,10 @@ export function FuriganaText({
   textStyle = {},
   ...props
 }: Props) {
+  const [showFurigana, setShowFurigana] = useMMKVBoolean(
+    SETTINGS_KEYS.SHOW_FURIGANA
+  );
+
   const pairs = React.useMemo(
     () => combineFuri(word, reading, furi),
     [word, reading, furi]
@@ -36,8 +42,10 @@ export function FuriganaText({
     <ThemedText style={[textStyle, styles.wrapper]} {...props}>
       {pairs.map(([ft, t], idx) => (
         <View key={t + idx} style={styles.pair}>
-          {showFuri ? (
-            <ThemedText size="xs" style={textStyle}>{ft}</ThemedText>
+          {showFurigana ? (
+            <ThemedText size="xs" style={textStyle}>
+              {ft}
+            </ThemedText>
           ) : null}
           <ThemedText style={textStyle}>{t}</ThemedText>
         </View>

@@ -295,12 +295,12 @@ function KanjiDetails({ character }: { character: string }) {
 
   return (
     <View style={styles.kanjiDetails}>
-      <ThemedText>
-        <ThemedText size="lg">{details.character}</ThemedText>
+      <View style={styles.row}>
+        <ThemedText type="subtitle">{details.character}</ThemedText>
         <ThemedText size="md">
-          {" - " + details.meanings?.join(", ")}
+          {"- " + details.meanings?.join(", ")}
         </ThemedText>
-      </ThemedText>
+      </View>
       {details.onReadings && (
         <ThemedText type="secondary" size="sm">
           On: {details.onReadings.join(", ")}
@@ -326,6 +326,7 @@ function ExampleRow({
   word: string;
   wordId: number;
 }) {
+  const tintColor = useThemeColor({}, "tint");
   const db = useSQLiteContext();
   const player = useAudioPlayer();
   const soundQuery = useQuery(
@@ -368,31 +369,24 @@ function ExampleRow({
   return (
     <View>
       <View style={styles.exampleTitle}>
-        <MenuActions
-          actions={[
-            {
-              systemIcon: "speaker.circle",
-              title: "Play",
-              onActivate: handlePlayText,
-              disabled: loading,
-            },
-            {
-              systemIcon: "document.on.clipboard",
-              title: "Copy",
-            },
-          ]}
-          text={e.japaneseText}
-        >
-          <HighlightText text={e.japaneseText} highlight={word} />
-        </MenuActions>
-
+        <HighlightText text={e.japaneseText} highlight={word} />
         <ThemedText size="sm" type="secondary">
           {e.englishText}
         </ThemedText>
       </View>
-      {loading ? (
-        <ActivityIndicator size="small" style={styles.loader} />
-      ) : null}
+
+      <HapticTab
+        style={styles.icon}
+        onPress={handlePlayText}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator size="small" />
+        ) : (
+          <IconSymbol name="play.circle" size={24} color={tintColor} />
+        )}
+      </HapticTab>
+
       {hasKanji && (
         <Collapsible title="Kanji Details" p={0} withIcon={false}>
           <View style={styles.kanjiList}>
@@ -449,13 +443,13 @@ const styles = StyleSheet.create({
   exampleTitle: {
     gap: 4,
     flexDirection: "column",
-    maxWidth: "95%",
+    maxWidth: "90%",
   },
   examplesLoading: {
     alignItems: "center",
     paddingVertical: 16,
   },
-  loader: {
+  icon: {
     position: "absolute",
     right: 0,
   },
