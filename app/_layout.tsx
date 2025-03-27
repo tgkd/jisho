@@ -4,7 +4,6 @@ import {
   ThemeProvider,
 } from "@react-navigation/native";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { useFonts } from "expo-font";
 import { Stack, useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { SQLiteProvider } from "expo-sqlite";
@@ -18,6 +17,7 @@ import {
   configureReanimatedLogger,
   ReanimatedLogLevel,
 } from "react-native-reanimated";
+import { setAudioModeAsync } from "expo-audio";
 
 import { Loader } from "@/components/Loader";
 import { PopupMenu } from "@/components/PopupMenu";
@@ -36,10 +36,24 @@ configureReanimatedLogger({
   strict: false,
 });
 
+async function setupAudio() {
+  try {
+    await setAudioModeAsync({
+      allowsRecording: false,
+      playsInSilentMode: true,
+      shouldPlayInBackground: true,
+      interruptionMode: "duckOthers",
+    });
+  } catch (error) {
+    console.error("Failed to set audio mode", error);
+  }
+}
+
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+
   useEffect(() => {
-    SplashScreen.hideAsync();
+    SplashScreen.hideAsync().then(setupAudio);
   }, []);
 
   return (

@@ -1,3 +1,5 @@
+import { useQuery } from "@tanstack/react-query";
+import { useAudioPlayer } from "expo-audio";
 import { Stack, useLocalSearchParams } from "expo-router";
 import * as Speech from "expo-speech";
 import { useSQLiteContext } from "expo-sqlite";
@@ -10,10 +12,10 @@ import {
   View,
 } from "react-native";
 
+import { Collapsible } from "@/components/Collapsible";
 import { HapticTab } from "@/components/HapticTab";
 import { HighlightText } from "@/components/HighlightText";
 import { Loader } from "@/components/Loader";
-import { MenuActions } from "@/components/MenuActions";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { Card } from "@/components/ui/Card";
@@ -28,28 +30,25 @@ import {
   getAudioFile,
   getDictionaryEntry,
   getExamples,
+  getKanji,
   isBookmarked,
+  KanjiEntry,
   removeBookmark,
   saveAudioFile,
   WordMeaning,
-  getKanji,
-  KanjiEntry,
 } from "@/services/database";
 import {
+  cleanupJpReadings,
   deduplicateEn,
+  findKanji,
   formatEn,
   formatJp,
-  findKanji,
-  cleanupJpReadings,
 } from "@/services/parse";
 import {
   aiExamplesQueryOptions,
   aiSoundQueryOptions,
   craeteWordPrompt,
 } from "@/services/request";
-import { useQuery } from "@tanstack/react-query";
-import { useAudioPlayer } from "expo-audio";
-import { Collapsible } from "@/components/Collapsible";
 
 export default function WordDetailScreen() {
   const tintColor = useThemeColor({}, "tint");
@@ -189,8 +188,8 @@ export default function WordDetailScreen() {
         <Card variant="grouped">
           {details.map((m, idx) => (
             <View key={idx} style={styles.row}>
-              <IconSymbol name="circle.fill" size={8} color={markColor} />
-              <ThemedText key={idx}>{m}</ThemedText>
+              <IconSymbol name="circle.fill" size={6} color={markColor} />
+              <ThemedText size="md">{m}</ThemedText>
             </View>
           ))}
         </Card>
@@ -239,7 +238,6 @@ function ExamplesView({
 }) {
   const db = useSQLiteContext();
   const aiexQuery = useQuery(aiExamplesQueryOptions(craeteWordPrompt(entry)));
-  const aiex = aiexQuery.data;
 
   const handleFetchExamples = async () => {
     const resp = await aiexQuery.refetch();
@@ -297,18 +295,18 @@ function KanjiDetails({ character }: { character: string }) {
     <View style={styles.kanjiDetails}>
       <View style={styles.row}>
         <ThemedText type="subtitle">{details.character}</ThemedText>
-        <ThemedText size="md">
-          {"- " + details.meanings?.join(", ")}
+        <ThemedText size="sm" style={styles.kanjiDesc}>
+          {details.meanings?.join(", ")}
         </ThemedText>
       </View>
       {details.onReadings && (
         <ThemedText type="secondary" size="sm">
-          On: {details.onReadings.join(", ")}
+          {"On: " + details.onReadings.join(", ")}
         </ThemedText>
       )}
       {details.kunReadings && (
         <ThemedText type="secondary" size="sm">
-          Kun: {details.kunReadings.join(", ")}
+          {"Kun: " + details.kunReadings.join(", ")}
         </ThemedText>
       )}
     </View>
@@ -459,5 +457,8 @@ const styles = StyleSheet.create({
   },
   kanjiList: {
     gap: 8,
+  },
+  kanjiDesc: {
+    maxWidth: "90%",
   },
 });
