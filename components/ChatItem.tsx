@@ -10,34 +10,29 @@ import { useThemeColor } from "@/hooks/useThemeColor";
 import { Chat } from "@/services/database";
 import { MenuActions } from "./MenuActions";
 
-export const ChatsHistory = memo(
-  ({
-    chats,
-    handleDelete,
-  }: {
-    chats: Chat[];
-    handleDelete: (id: number) => void;
-  }) => {
-    const markdownStyles = useMdStyles();
+interface Props {
+  data: Chat;
+  handleDelete: (id: number) => void;
+  isLast: boolean;
+}
 
-    return (
-      <View style={styles.list}>
-        {chats.map((c) => (
-          <MenuActions key={c.id} text={c.response}>
-            <Collapsible
-              rightButton={
-                <RemoveButton chat={c} handleDelete={handleDelete} />
-              }
-              title={c.request || c.id.toString()}
-            >
-              <Markdown style={markdownStyles}>{c.response}</Markdown>
-            </Collapsible>
-          </MenuActions>
-        ))}
-      </View>
-    );
-  }
-);
+export const ChatListItem = memo(({ data: c, handleDelete, isLast }: Props) => {
+  const markdownStyles = useMdStyles();
+
+  return (
+    <View style={styles.list}>
+      <MenuActions key={c.id} text={c.response}>
+        <Collapsible
+          rightButton={<RemoveButton chat={c} handleDelete={handleDelete} />}
+          title={c.request || c.id.toString()}
+          initOpened={isLast}
+        >
+          <Markdown style={markdownStyles}>{c.response}</Markdown>
+        </Collapsible>
+      </MenuActions>
+    </View>
+  );
+});
 
 export const RemoveButton = memo(
   ({

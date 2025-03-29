@@ -3,9 +3,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ScrollView, StyleSheet } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import Markdown from "react-native-markdown-display";
+import Animated, { LinearTransition } from "react-native-reanimated";
 
 import { ChatFooterView } from "@/components/ChatFooter";
-import { ChatsHistory } from "@/components/ChatsHistory";
+import { ChatListItem } from "@/components/ChatItem";
 import { ThemedText } from "@/components/ThemedText";
 import { Card } from "@/components/ui/Card";
 import { Colors } from "@/constants/Colors";
@@ -17,7 +18,7 @@ import { ExplainRequestType, getAiExplanation } from "@/services/request";
 export default function ExploreScreen() {
   const db = useSQLiteContext();
   const markdownStyles = useMdStyles();
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<Animated.FlatList<Chat>>(null);
   const [chatsHistory, setChatsHistory] = useState<Chat[]>([]);
   const [currentResponse, setCurrentResponse] = useState<string>("");
 
@@ -40,17 +41,9 @@ export default function ExploreScreen() {
     reqParams: any[]
   ) => {
     const req = getTitle(reqParams, message);
-    const chatId = await addChat(db, req, message);
-    if (typeof chatId === "number") {
-      setChatsHistory((c) => [
-        ...c,
-        {
-          id: 0,
-          request: req,
-          createdAt: new Date().toISOString(),
-          response: message,
-        },
-      ]);
+    const newChat = await addChat(db, req, message);
+    if (newChat) {
+      setChatsHistory((c) => [...c, newChat]);
       setCurrentResponse("");
     }
   };
@@ -82,59 +75,71 @@ export default function ExploreScreen() {
     [stream]
   );
 
+  const renderItem = useCallback(
+    ({ item, index }: { item: Chat; index: number }) => (
+      <ChatListItem
+        data={item}
+        handleDelete={handleDelete}
+        isLast={index === chatsHistory.length - 1}
+      />
+    ),
+    [chatsHistory]
+  );
+
+  const renderFooter = useCallback(
+    () =>
+      currentResponse?.length ? (
+        <Card
+          lightColor={Colors.light.secondaryBackground}
+          darkColor={Colors.dark.secondaryBackground}
+        >
+          <Markdown style={markdownStyles}>{currentResponse}</Markdown>
+        </Card>
+      ) : null,
+    [currentResponse, markdownStyles]
+  );
+
+  const renderEmpty = useCallback(
+    () =>
+      !chatsHistory.length && !currentResponse.length ? (
+        <ThemedText textAlign="center" type="secondary">
+          {"Ask me anything"}
+        </ThemedText>
+      ) : null,
+    [chatsHistory, currentResponse]
+  );
+
   return (
     <KeyboardAvoidingView
       behavior="translate-with-padding"
       keyboardVerticalOffset={96}
       style={styles.container}
     >
-      <ScrollView
+      <Animated.FlatList
+        itemLayoutAnimation={LinearTransition}
         ref={scrollRef}
         style={styles.list}
         contentContainerStyle={styles.scrollContainer}
         keyboardDismissMode="on-drag"
         removeClippedSubviews={true}
-      >
-        <ChatsHistory chats={chatsHistory} handleDelete={handleDelete} />
+        renderItem={renderItem}
+        data={chatsHistory}
+        ListFooterComponent={renderFooter}
+        ListEmptyComponent={renderEmpty}
+      />
 
-        {currentResponse.length ? (
-          <Card
-            lightColor={Colors.light.secondaryBackground}
-            darkColor={Colors.dark.secondaryBackground}
-          >
-            <Markdown style={markdownStyles}>{currentResponse}</Markdown>
-          </Card>
-        ) : null}
-
-        {!chatsHistory.length && !currentResponse.length ? (
-          <ThemedText textAlign="center" type="secondary">
-            {"Ask me anything"}
-          </ThemedText>
-        ) : null}
-      </ScrollView>
       <ChatFooterView handleSubmit={handleSubmit} loading={stream.isLoading} />
     </KeyboardAvoidingView>
   );
 }
 
 function getTitle(reqParams: any[], msg: string) {
-  if (!reqParams || reqParams.length === 0) {
-    return Math.random().toString(36).slice(2, 10);
+  if (!reqParams) {
+    return msg;
   }
-
-  const resp = reqParams[0];
-
-  if (typeof resp !== "string") {
-    return Math.random().toString(36).slice(2, 10);
-  }
-
-  if (resp.length < 36) {
-    return resp.slice(0, 36);
-  }
-
   return reqParams?.[0] && typeof reqParams[0] === "string"
-    ? reqParams[0].slice(0, 36) + "…"
-    : msg.slice(0, 36) + "…";
+    ? reqParams[0]
+    : msg;
 }
 
 const styles = StyleSheet.create({

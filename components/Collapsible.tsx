@@ -19,6 +19,7 @@ interface Props {
   p?: number;
   withIcon?: boolean;
   titleProps?: ThemedTextProps;
+  initOpened?: boolean;
 }
 
 export function Collapsible({
@@ -27,12 +28,13 @@ export function Collapsible({
   rightButton = null,
   p = 12,
   withIcon = true,
+  initOpened = false,
   titleProps = {
     numberOfLines: 1,
     ellipsizeMode: "tail",
   },
 }: PropsWithChildren<Props>) {
-  const opened = useSharedValue(0);
+  const opened = useSharedValue(initOpened ? 1 : 0);
   const theme = useColorScheme() ?? "light";
   const bg = useThemeColor({}, "secondaryBackground");
 

@@ -725,10 +725,10 @@ export async function resetDatabase(db: SQLiteDatabase): Promise<void> {
     await db.closeAsync();
 
     // Step 3: Delete the physical database file and related files to force a complete reinitialize
-    const dbDirectory = FileSystem.documentDirectory + 'SQLite/';
-    const dbPath = dbDirectory + 'jisho_2.db';
-    const walPath = dbPath + '-wal';
-    const shmPath = dbPath + '-shm';
+    const dbDirectory = FileSystem.documentDirectory + "SQLite/";
+    const dbPath = dbDirectory + "jisho_2.db";
+    const walPath = dbPath + "-wal";
+    const shmPath = dbPath + "-shm";
 
     const fileExists = await FileSystem.getInfoAsync(dbPath);
     if (fileExists.exists) {
@@ -747,7 +747,9 @@ export async function resetDatabase(db: SQLiteDatabase): Promise<void> {
       await FileSystem.deleteAsync(shmPath, { idempotent: true });
     }
 
-    console.log("Database files deleted. The app will now recreate the database from the asset on restart.");
+    console.log(
+      "Database files deleted. The app will now recreate the database from the asset on restart."
+    );
 
     // Alert the user that they need to restart the app
     // You'll need to decide how to display this message based on your UI
@@ -898,13 +900,22 @@ export async function addChat(
   db: SQLiteDatabase,
   request: string,
   response: string
-): Promise<number | null> {
+): Promise<Chat | null> {
   try {
     const res = await db.runAsync(
       "INSERT INTO chats (request, response, created_at) VALUES (?, ?, ?)",
       [request, response, new Date().toISOString()]
     );
-    return res.lastInsertRowId;
+    const createdChat = await db.getFirstAsync<DBChat>(
+      "SELECT * FROM chats WHERE id = ?",
+      [res.lastInsertRowId]
+    );
+    return createdChat
+      ? {
+          ...createdChat,
+          createdAt: createdChat.created_at,
+        }
+      : null;
   } catch (error) {
     console.error("Failed to add chat:", error);
     return null;
