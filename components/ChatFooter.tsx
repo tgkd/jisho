@@ -13,8 +13,8 @@ import { HapticTab } from "@/components/HapticTab";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { Colors } from "@/constants/Colors";
 import { useThemeColor } from "@/hooks/useThemeColor";
-import { Pill } from "./ui/Pill";
 import { ExplainRequestType } from "@/services/request";
+import { Pill } from "./ui/Pill";
 
 const requestTypes = [
   { label: "Word", id: ExplainRequestType.V, icon: "vocabulary" },

@@ -54,7 +54,11 @@ export default function ExploreScreen() {
       setCurrentResponse((t) => t + chunk);
       scrollRef.current?.scrollToEnd({ animated: true });
     },
-    handleAddChatAndSeparator
+    handleAddChatAndSeparator,
+    (error) => {
+      console.error("Error fetching data:", error);
+      setCurrentResponse("");
+    }
   );
 
   const handleSubmit = useCallback(

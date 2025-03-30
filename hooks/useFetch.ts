@@ -89,7 +89,8 @@ export const useFetch = <T>(
 export const useTextStream = (
   fetchFn: (...args: any[]) => Promise<any>,
   onChunk: (chunk: string) => void,
-  onComplete?: (fullText: string, reqParams: any[]) => void
+  onComplete?: (fullText: string, reqParams: any[]) => void,
+  onError?: (error: Error) => void,
 ) => {
   const [fullText, setFullText] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -142,6 +143,7 @@ export const useTextStream = (
       }
     } catch (error) {
       setError(error as Error);
+      onError?.(error as Error);
     } finally {
       setIsLoading(false);
     }
