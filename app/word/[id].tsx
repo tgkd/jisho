@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useAudioPlayer } from "expo-audio";
-import { Stack, useLocalSearchParams } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import * as Speech from "expo-speech";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useMemo, useState } from "react";
@@ -125,6 +125,12 @@ export default function WordDetailScreen() {
     }
   };
 
+  const handleSpeech = () => {
+    if (entry) {
+      Speech.speak(entry.word.word, { language: "ja" });
+    }
+  };
+
   if (isLoading) {
     return (
       <ThemedView style={styles.container}>
@@ -177,9 +183,11 @@ export default function WordDetailScreen() {
 
       <ScrollView contentContainerStyle={styles.content}>
         <ThemedView style={styles.headerSection}>
-          <ThemedText type="title" style={styles.word}>
-            {entry.word.word}
-          </ThemedText>
+          <HapticTab onPress={handleSpeech}>
+            <ThemedText type="title" style={styles.word}>
+              {entry.word.word}
+            </ThemedText>
+          </HapticTab>
           <ThemedText type="secondary">
             {formatJp(entry.word.reading, true)}
           </ThemedText>
@@ -278,6 +286,7 @@ function ExamplesView({
 }
 
 function KanjiDetails({ character }: { character: string }) {
+  const router = useRouter();
   const db = useSQLiteContext();
   const [details, setDetails] = useState<KanjiEntry | null>(null);
 
@@ -289,12 +298,24 @@ function KanjiDetails({ character }: { character: string }) {
     loadKanjiDetails();
   }, [character]);
 
-  if (!details) return null;
+  const goToKanji = () => {
+    if (!details) {
+      return;
+    }
+
+    router.push(`/kanji/${details.id}`);
+  };
+
+  if (!details) {
+    return null;
+  }
 
   return (
     <View style={styles.kanjiDetails}>
       <View style={styles.row}>
-        <ThemedText type="subtitle">{details.character}</ThemedText>
+        <HapticTab onPress={goToKanji}>
+          <ThemedText type="subtitle">{details.character}</ThemedText>
+        </HapticTab>
         <ThemedText size="sm" style={styles.kanjiDesc}>
           {details.meanings?.join(", ")}
         </ThemedText>

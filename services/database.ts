@@ -1147,6 +1147,45 @@ export async function getKanjiByUnicode(
   }
 }
 
+export async function getKanjiById(
+  db: SQLiteDatabase,
+  id: number
+): Promise<KanjiEntry | null> {
+  try {
+    const result = await db.getFirstAsync<DBKanji>(
+      "SELECT * FROM kanji WHERE id = ?",
+      [id]
+    );
+
+    if (!result) {
+      return null;
+    }
+
+    // Parse string arrays from DB
+    const onReadings = result.on_readings
+      ? JSON.parse(result.on_readings)
+      : null;
+    const kunReadings = result.kun_readings
+      ? JSON.parse(result.kun_readings)
+      : null;
+    const meanings = result.meanings ? JSON.parse(result.meanings) : null;
+
+    return {
+      id: result.id,
+      character: result.character,
+      jis_code: result.jis_code,
+      unicode: result.unicode,
+      created_at: result.created_at,
+      onReadings,
+      kunReadings,
+      meanings,
+    };
+  } catch (error) {
+    console.error("Failed to get kanji by id:", error);
+    return null;
+  }
+}
+
 export function getKanjiList(db: SQLiteDatabase): Promise<KanjiEntry[]> {
   return db
     .getAllAsync<DBKanji>("SELECT * FROM kanji ORDER BY RANDOM() LIMIT 50")

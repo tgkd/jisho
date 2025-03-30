@@ -82,6 +82,7 @@ export default function RootLayout() {
                       headerRight: () => <BookmarksButton />,
                     })}
                   />
+                  <Stack.Screen name="word/[id]" />
                   <Stack.Screen
                     name="bookmarks"
                     options={{ headerTitle: "しおり" }}
@@ -94,6 +95,7 @@ export default function RootLayout() {
                     name="kanji"
                     options={{ headerTitle: "漢字" }}
                   />
+                  <Stack.Screen name="kanji/[id]" />
                   <Stack.Screen
                     name="settings"
                     options={{

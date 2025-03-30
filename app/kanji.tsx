@@ -1,10 +1,10 @@
-import { Stack, useFocusEffect } from "expo-router";
+import { Stack, useFocusEffect, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useState } from "react";
 import { StyleSheet } from "react-native";
 import Animated, { LinearTransition } from "react-native-reanimated";
 
-import { View } from "react-native";
+import { Pressable, View } from "react-native";
 
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -12,6 +12,8 @@ import { Colors } from "@/constants/Colors";
 import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
 import { KanjiEntry, searchKanji, getKanjiList } from "@/services/database";
 import { Loader } from "@/components/Loader";
+import { IconSymbol } from "@/components/ui/IconSymbol";
+import { useThemeColor } from "@/hooks/useThemeColor";
 
 export default function KanjiScreen() {
   const [search, setSearch] = useState("");
@@ -113,43 +115,52 @@ function KanjiListItem({
   index: number;
   total: number;
 }) {
+  const iconColor = useThemeColor({}, "secondaryText");
   const isFirst = index === 0;
   const isLast = index === total - 1;
+  const router = useRouter();
+
+  const handlePress = () => {
+    router.push(`/kanji/${item.id}`);
+  };
 
   return (
     <>
-      <ThemedView
-        style={[
-          styles.item,
-          isFirst && styles.firstRadius,
-          isLast && styles.lastRadius,
-        ]}
-        lightColor={Colors.light.groupedBackground}
-        darkColor={Colors.dark.groupedBackground}
-      >
-        <View style={styles.col}>
-          <View style={styles.kanjiRow}>
-            <ThemedText size="lg" type="defaultSemiBold">
-              {item.character}
-            </ThemedText>
-            <View style={styles.readings}>
-              {item.onReadings && item.onReadings.length > 0 && (
-                <ThemedText size="sm" type="secondary">
-                  On: {item.onReadings.join(", ")}
-                </ThemedText>
-              )}
-              {item.kunReadings && item.kunReadings.length > 0 && (
-                <ThemedText size="sm" type="secondary">
-                  Kun: {item.kunReadings.join(", ")}
-                </ThemedText>
-              )}
+      <Pressable onPress={handlePress}>
+        <ThemedView
+          style={[
+            styles.item,
+            isFirst && styles.firstRadius,
+            isLast && styles.lastRadius,
+          ]}
+          lightColor={Colors.light.groupedBackground}
+          darkColor={Colors.dark.groupedBackground}
+        >
+          <View style={styles.col}>
+            <View style={styles.kanjiRow}>
+              <ThemedText size="lg" type="defaultSemiBold">
+                {item.character}
+              </ThemedText>
+              <View style={styles.readings}>
+                {item.onReadings && item.onReadings.length > 0 && (
+                  <ThemedText size="sm" type="secondary">
+                    On: {item.onReadings.join(", ")}
+                  </ThemedText>
+                )}
+                {item.kunReadings && item.kunReadings.length > 0 && (
+                  <ThemedText size="sm" type="secondary">
+                    Kun: {item.kunReadings.join(", ")}
+                  </ThemedText>
+                )}
+              </View>
             </View>
+            <ThemedText type="secondary">
+              {item.meanings ? item.meanings.join(", ") : ""}
+            </ThemedText>
           </View>
-          <ThemedText type="secondary">
-            {item.meanings ? item.meanings.join(", ") : ""}
-          </ThemedText>
-        </View>
-      </ThemedView>
+          <IconSymbol color={iconColor} name="chevron.right" size={16} />
+        </ThemedView>
+      </Pressable>
 
       {isLast ? null : <View style={styles.separator} />}
     </>
