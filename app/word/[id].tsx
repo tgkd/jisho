@@ -29,8 +29,8 @@ import {
   ExampleSentence,
   getAudioFile,
   getDictionaryEntry,
-  getExamples,
   getKanji,
+  getWordExamples,
   isBookmarked,
   KanjiEntry,
   removeBookmark,
@@ -93,15 +93,8 @@ export default function WordDetailScreen() {
     if (!entry) {
       return;
     }
-    try {
-      const newDbExamples = await getExamples(db, entry.word);
-      setEntry((prev) => {
-        if (prev) {
-          return { ...prev, examples: newDbExamples };
-        }
-        return prev;
-      });
-    } catch (error) {}
+    const examples = await getWordExamples(db, entry.word);
+    setEntry((prev) => (prev ? { ...prev, examples } : null));
   };
 
   useEffect(() => {
