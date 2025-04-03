@@ -340,7 +340,7 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
 function processSearchQuery(query: string): SearchQuery {
   const result: SearchQuery = {
     original: query,
-    romaji: wanakana.isJapanese(query) ? wanakana.toRomaji(query) : undefined
+    romaji: wanakana.isJapanese(query) ? wanakana.toRomaji(query) : undefined,
   };
 
   // Handle romaji to kana conversions
@@ -351,8 +351,7 @@ function processSearchQuery(query: string): SearchQuery {
   // Handle kana to kana conversions
   else if (wanakana.isHiragana(query)) {
     result.katakana = wanakana.toKatakana(query);
-  }
-  else if (wanakana.isKatakana(query)) {
+  } else if (wanakana.isKatakana(query)) {
     result.hiragana = wanakana.toHiragana(query);
   }
   // Handle mixed input (can contain kanji)
@@ -476,16 +475,18 @@ async function searchByTokens(
       variations.push(wanakana.toHiragana(token));
     }
 
-    const tokenMatches = variations.map(v => `(
+    const tokenMatches = variations.map(
+      (v) => `(
       word LIKE ? OR
       reading LIKE ? OR
       reading_hiragana LIKE ? OR
       kanji LIKE ?
-    )`);
+    )`
+    );
 
     tokenWhereClauses.push(`(${tokenMatches.join(" OR ")})`);
 
-    variations.forEach(v => {
+    variations.forEach((v) => {
       tokenParams.push(`%${v}%`, `%${v}%`, `%${v}%`, `%${v}%`);
     });
   }
@@ -522,13 +523,19 @@ async function searchByTokens(
     `,
     [
       // Exact match ranking params
-      query, query, query, query,
+      query,
+      query,
+      query,
+      query,
       // Prefix match ranking params
-      `${query}%`, `${query}%`, `${query}%`, `${query}%`,
+      `${query}%`,
+      `${query}%`,
+      `${query}%`,
+      `${query}%`,
       // Token search params
       ...tokenParams,
       // Limit
-      limit
+      limit,
     ]
   );
 }
@@ -699,7 +706,7 @@ export async function searchDictionary(
         wanakana.isRomaji(query) ? hiraganaValue : query,
         wanakana.isRomaji(query) ? hiraganaValue : query,
         wanakana.isRomaji(query) ? hiraganaValue : query,
-        limit
+        limit,
       ]
     );
 
@@ -737,7 +744,7 @@ export async function searchDictionary(
           `${katakanaValue}%`,
           `${katakanaValue}%`,
           `${katakanaValue}%`,
-          limit
+          limit,
         ]
       );
     }
@@ -1012,11 +1019,6 @@ export async function addBookmark(db: SQLiteDatabase, wordId: number) {
 export async function removeBookmark(db: SQLiteDatabase, wordId: number) {
   await db.runAsync("DELETE FROM bookmarks WHERE word_id = ?", [wordId]);
 }
-export interface SearchResults<T> {
-  items: T[];
-  totalCount: number;
-  hasMore: boolean;
-}
 
 export async function addToHistory(db: SQLiteDatabase, entry: DictionaryEntry) {
   try {
@@ -1028,6 +1030,16 @@ export async function addToHistory(db: SQLiteDatabase, entry: DictionaryEntry) {
     );
   } catch (error) {
     console.error("Failed to add to history:", error);
+  }
+}
+
+export async function clearBookmarks(db: SQLiteDatabase): Promise<boolean> {
+  try {
+    await db.runAsync("DELETE FROM bookmarks");
+    return true;
+  } catch (error) {
+    console.error("Failed to clear bookmarks:", error);
+    return false;
   }
 }
 

@@ -10,7 +10,11 @@ import { IconSymbol } from "@/components/ui/IconSymbol";
 import { Colors, getHighlightColorValue } from "@/constants/Colors";
 import { SETTINGS_KEYS } from "@/services/storage";
 import { useThemeColor } from "@/hooks/useThemeColor";
-import { resetDatabase } from "@/services/database";
+import {
+  resetDatabase,
+  clearHistory,
+  clearBookmarks,
+} from "@/services/database";
 import { FuriganaText } from "@/components/FuriganaText";
 import { Card } from "@/components/ui/Card";
 
@@ -38,9 +42,7 @@ export default function SettingsScreen() {
   const [showFurigana, setShowFurigana] = useMMKVBoolean(
     SETTINGS_KEYS.SHOW_FURIGANA
   );
-  const [autoPaste, setAutoPaste] = useMMKVBoolean(
-    SETTINGS_KEYS.AUTO_PASTE
-  );
+  const [autoPaste, setAutoPaste] = useMMKVBoolean(SETTINGS_KEYS.AUTO_PASTE);
 
   const handleDatabaseReset = () => {
     Alert.alert(
@@ -70,6 +72,64 @@ export default function SettingsScreen() {
     );
   };
 
+  const handleClearHistory = () => {
+    Alert.alert(
+      "Clear History",
+      "This will clear your search history. This operation cannot be undone. Are you sure you want to continue?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Clear",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await clearHistory(db);
+              Alert.alert("Success", "Search history has been cleared.");
+            } catch (error) {
+              console.error("Failed to clear history:", error);
+              Alert.alert(
+                "Error",
+                "Failed to clear search history. Please try again."
+              );
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleClearBookmarks = () => {
+    Alert.alert(
+      "Clear Bookmarks",
+      "This will clear all your bookmarks. This operation cannot be undone. Are you sure you want to continue?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Clear",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await clearBookmarks(db);
+              Alert.alert("Success", "Bookmarks have been cleared.");
+            } catch (error) {
+              console.error("Failed to clear bookmarks:", error);
+              Alert.alert(
+                "Error",
+                "Failed to clear bookmarks. Please try again."
+              );
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <ThemedView style={styles.container}>
       <Stack.Screen
@@ -81,7 +141,7 @@ export default function SettingsScreen() {
 
       <Card>
         <View style={styles.settingItem}>
-          <ThemedText size="sm">{"ハイライト色"}</ThemedText>
+          <ThemedText size="sm">{"Highlight Color"}</ThemedText>
           <View style={styles.row}>
             {highlightColorOptions.map((o) => (
               <HapticTab
@@ -106,7 +166,7 @@ export default function SettingsScreen() {
 
         <View style={styles.settingItem}>
           <View style={styles.row}>
-            <ThemedText size="sm">{"フリガナ表示"}</ThemedText>
+            <ThemedText size="sm">{"Show Furigana"}</ThemedText>
             <Switch
               value={showFurigana}
               onValueChange={setShowFurigana}
@@ -124,7 +184,7 @@ export default function SettingsScreen() {
 
         <View style={styles.settingItem}>
           <View style={styles.row}>
-            <ThemedText size="sm">{"自動ペースト"}</ThemedText>
+            <ThemedText size="sm">{"Auto Paste"}</ThemedText>
             <Switch
               value={autoPaste}
               onValueChange={setAutoPaste}
@@ -132,24 +192,57 @@ export default function SettingsScreen() {
             />
           </View>
           <ThemedText size="xs" style={styles.description}>
-            クリップボードの内容を自動的に検索ボックスに貼り付けます
+            {"Automatically paste clipboard content into the search box."}
           </ThemedText>
         </View>
       </Card>
 
-      <HapticTab onPress={handleDatabaseReset} style={styles.destructive}>
-        <IconSymbol
-          name="arrow.clockwise"
-          size={20}
-          color={Colors.light.error}
-        />
-        <ThemedText
-          darkColor={Colors.dark.error}
-          lightColor={Colors.light.error}
-        >
-          {"データベースをリセット"}
+      <Card>
+        <ThemedText size="sm" style={styles.sectionTitle}>
+          {"DB"}
         </ThemedText>
-      </HapticTab>
+
+        <HapticTab onPress={handleClearHistory} style={styles.actionButton}>
+          <IconSymbol
+            name="clock.arrow.circlepath"
+            size={20}
+            color={Colors.light.error}
+          />
+          <ThemedText
+            darkColor={Colors.dark.error}
+            lightColor={Colors.light.error}
+          >
+            {"Clear Search History"}
+          </ThemedText>
+        </HapticTab>
+
+        <HapticTab onPress={handleClearBookmarks} style={styles.actionButton}>
+          <IconSymbol
+            name="bookmark.slash"
+            size={20}
+            color={Colors.light.error}
+          />
+          <ThemedText
+            darkColor={Colors.dark.error}
+            lightColor={Colors.light.error}
+          >
+            {"Clear Bookmarks"}
+          </ThemedText>
+        </HapticTab>
+        <HapticTab onPress={handleDatabaseReset} style={styles.actionButton}>
+          <IconSymbol
+            name="arrow.clockwise"
+            size={20}
+            color={Colors.light.error}
+          />
+          <ThemedText
+            darkColor={Colors.dark.error}
+            lightColor={Colors.light.error}
+          >
+            {"Reset Database"}
+          </ThemedText>
+        </HapticTab>
+      </Card>
     </ThemedView>
   );
 }
@@ -179,16 +272,7 @@ const styles = StyleSheet.create({
     borderColor: "rgba(0, 0, 0, 0.1)",
     borderRadius: 8,
   },
-  destructive: {
-    display: "flex",
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    gap: 8,
-    backgroundColor: "rgba(255, 59, 48, 0.1)",
-  },
+
   active: {
     borderColor: "rgba(0, 0, 0, 0.2)",
     borderWidth: 2,
@@ -202,5 +286,16 @@ const styles = StyleSheet.create({
   },
   description: {
     color: Colors.light.textSecondary,
+  },
+  sectionTitle: {
+    marginBottom: 12,
+    fontWeight: "500",
+  },
+  actionButton: {
+    display: "flex",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+    gap: 8,
   },
 });
