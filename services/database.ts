@@ -1,9 +1,8 @@
-import { SQLiteDatabase } from "expo-sqlite";
 import * as FileSystem from "expo-file-system";
-import { Asset } from "expo-asset";
+import { SQLiteDatabase } from "expo-sqlite";
+import { Alert } from "react-native";
 import * as wanakana from "wanakana";
 import { AiExample } from "./request";
-import { Alert } from "react-native";
 
 type DBDictEntry = {
   id: number;
@@ -121,7 +120,7 @@ interface SearchQuery {
 }
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
-  const DATABASE_VERSION = 9;
+  const DATABASE_VERSION = 10;
 
   try {
     const versionResult = await db.getFirstAsync<{ user_version: number }>(
@@ -296,6 +295,39 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
       currentDbVersion = 9;
     }
 
+    if (currentDbVersion < 10) {
+      await db.execAsync(`
+
+        CREATE VIRTUAL TABLE IF NOT EXISTS words_fts USING fts5(
+          word,
+          reading,
+          reading_hiragana,
+          kanji,
+          content='words',
+          content_rowid='id'
+        );
+
+        CREATE TRIGGER IF NOT EXISTS words_ai AFTER INSERT ON words BEGIN
+          INSERT INTO words_fts(rowid, word, reading, reading_hiragana, kanji)
+          VALUES (new.id, new.word, new.reading, new.reading_hiragana, new.kanji);
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS words_ad AFTER DELETE ON words BEGIN
+          INSERT INTO words_fts(words_fts, rowid, word, reading, reading_hiragana, kanji)
+          VALUES('delete', old.id, old.word, old.reading, old.reading_hiragana, old.kanji);
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS words_au AFTER UPDATE ON words BEGIN
+          INSERT INTO words_fts(words_fts, rowid, word, reading, reading_hiragana, kanji)
+          VALUES('delete', old.id, old.word, old.reading, old.reading_hiragana, old.kanji);
+          INSERT INTO words_fts(rowid, word, reading, reading_hiragana, kanji)
+          VALUES (new.id, new.word, new.reading, new.reading_hiragana, new.kanji);
+        END;
+        `);
+      await db.execAsync(`PRAGMA user_version = 10`);
+      currentDbVersion = 10;
+    }
+
     console.log(
       `Database migrations completed. Current version: ${currentDbVersion}`
     );
@@ -306,18 +338,29 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
 }
 
 function processSearchQuery(query: string): SearchQuery {
-  const result: SearchQuery = { original: query };
+  const result: SearchQuery = {
+    original: query,
+    romaji: wanakana.isJapanese(query) ? wanakana.toRomaji(query) : undefined,
+  };
 
+  // Handle romaji to kana conversions
   if (wanakana.isRomaji(query)) {
     result.hiragana = wanakana.toHiragana(query);
     result.katakana = wanakana.toKatakana(query);
-  } else if (wanakana.isJapanese(query)) {
-    result.romaji = wanakana.toRomaji(query);
-    if (wanakana.isKatakana(query)) {
-      result.hiragana = wanakana.toHiragana(query);
-    } else if (wanakana.isHiragana(query)) {
-      result.katakana = wanakana.toKatakana(query);
-    }
+  }
+  // Handle kana to kana conversions
+  else if (wanakana.isHiragana(query)) {
+    result.katakana = wanakana.toKatakana(query);
+  } else if (wanakana.isKatakana(query)) {
+    result.hiragana = wanakana.toHiragana(query);
+  }
+  // Handle mixed input (can contain kanji)
+  else if (wanakana.isJapanese(query)) {
+    const hiragana = wanakana.toHiragana(query);
+    const katakana = wanakana.toKatakana(query);
+
+    if (hiragana !== query) result.hiragana = hiragana;
+    if (katakana !== query) result.katakana = katakana;
   }
 
   return result;
@@ -329,18 +372,26 @@ function tokenizeJp(text: string) {
   return tokens.map((t) => (typeof t === "string" ? t : t.value));
 }
 
-export async function searchDictionary(
-  db: SQLiteDatabase,
-  query: string,
-  withMeanings = true
-): Promise<{
+interface SearchDictionaryOptions {
+  withMeanings?: boolean;
+  limit?: number;
+  minQueryLength?: number;
+}
+
+interface SearchDictionaryResult {
   words: DictionaryEntry[];
   meanings: Map<number, WordMeaning[]>;
-}> {
-  const processedQuery = processSearchQuery(query);
+  error?: string;
+}
+
+function buildWhereClause(processedQuery: SearchQuery): {
+  whereClauses: string[];
+  params: string[];
+} {
   const whereClauses: string[] = [];
   const params: string[] = [];
 
+  // Original query search
   whereClauses.push(`(
     word LIKE ? OR
     reading LIKE ? OR
@@ -359,7 +410,7 @@ export async function searchDictionary(
     `%${processedQuery.original}%`
   );
 
-  // hiragana search
+  // Hiragana search
   if (processedQuery.hiragana) {
     whereClauses.push(`(
       word LIKE ? OR
@@ -379,7 +430,7 @@ export async function searchDictionary(
     );
   }
 
-  // katakana search
+  // Katakana search
   if (processedQuery.katakana) {
     whereClauses.push(`(
       word LIKE ? OR
@@ -395,174 +446,334 @@ export async function searchDictionary(
     );
   }
 
-  let words = await db.getAllAsync<DBDictEntry>(
-    `
-    SELECT * FROM words
-    WHERE
-      ${whereClauses.join(" OR ")}
-      AND length(word) >= ${Math.min(query.length, 2)}
-    GROUP BY word
-    ORDER BY
-      CASE
-        WHEN word = ? THEN 1
-        WHEN reading = ? THEN 2
-        WHEN kanji = ? THEN 3
-        WHEN word LIKE ? THEN 4
-        WHEN reading LIKE ? THEN 5
-        WHEN kanji LIKE ? THEN 6
-        ELSE 7
-      END,
-      length(word)
-    LIMIT 50
-    `,
-    [...params, query, query, query, `${query}%`, `${query}%`, `${query}%`]
-  );
+  return { whereClauses, params };
+}
 
-  // Add fallback to search by Japanese tokens if no results found
-  if (words.length === 0 && wanakana.isJapanese(query)) {
-    const tokens = tokenizeJp(query);
-    if (tokens.length > 0) {
-      const tokenWhereClauses = [];
-      const tokenParams = [];
+async function searchByTokens(
+  db: SQLiteDatabase,
+  query: string,
+  limit: number = 30
+): Promise<DBDictEntry[]> {
+  const tokens = tokenizeJp(query);
+  if (tokens.length === 0) return [];
 
-      for (const token of tokens) {
-        if (token.length < 2) continue; // Skip very short tokens
+  const tokenWhereClauses: string[] = [];
+  const tokenParams: string[] = [];
 
-        tokenWhereClauses.push(`(
-          word LIKE ? OR
-          reading LIKE ? OR
-          kanji LIKE ?
-        )`);
+  for (const token of tokens) {
+    if (token.length < 2) continue;
 
-        tokenParams.push(`%${token}%`, `%${token}%`, `%${token}%`);
-      }
-
-      if (tokenWhereClauses.length > 0) {
-        const tokenResults = await db.getAllAsync<DBDictEntry>(
-          `
-          SELECT * FROM words
-          WHERE ${tokenWhereClauses.join(" OR ")}
-          GROUP BY word
-          ORDER BY length(word)
-          LIMIT 30
-          `,
-          tokenParams
-        );
-
-        words = [...words, ...tokenResults];
-      }
+    // Get all possible forms of the token
+    const variations = [token];
+    if (wanakana.isRomaji(token)) {
+      // Handle romaji input by converting to hiragana and katakana
+      variations.push(wanakana.toHiragana(token));
+      variations.push(wanakana.toKatakana(token));
+    } else if (wanakana.isHiragana(token)) {
+      variations.push(wanakana.toKatakana(token));
+    } else if (wanakana.isKatakana(token)) {
+      variations.push(wanakana.toHiragana(token));
     }
+
+    const tokenMatches = variations.map(
+      (v) => `(
+      word LIKE ? OR
+      reading LIKE ? OR
+      reading_hiragana LIKE ? OR
+      kanji LIKE ?
+    )`
+    );
+
+    tokenWhereClauses.push(`(${tokenMatches.join(" OR ")})`);
+
+    variations.forEach((v) => {
+      tokenParams.push(`%${v}%`, `%${v}%`, `%${v}%`, `%${v}%`);
+    });
   }
 
-  let entries: DictionaryEntry[] = words.map((word) => ({
-    ...word,
-    readingHiragana: word.reading_hiragana,
-  }));
+  if (tokenWhereClauses.length === 0) return [];
 
-  if (withMeanings) {
-    const meaningsMap = new Map<number, WordMeaning[]>();
-    await Promise.all(
-      words.map(async (word) => {
-        const meanings = await db.getAllAsync<DBWordMeaning>(
-          `
+  return await db.getAllAsync<DBDictEntry>(
+    `
+    WITH matches AS (
+      SELECT
+        w.*,
+        MIN(
+          CASE
+            WHEN w.word = ? OR w.kanji = ? THEN 1
+            WHEN w.reading = ? OR w.reading_hiragana = ? THEN 2
+            WHEN w.word LIKE ? OR w.kanji LIKE ? THEN 3
+            WHEN w.reading LIKE ? OR w.reading_hiragana LIKE ? THEN 4
+            ELSE 5
+          END
+        ) as match_rank,
+        MIN(length(w.word)) as word_length
+      FROM words w
+      WHERE ${tokenWhereClauses.join(" OR ")}
+      GROUP BY w.id
+    )
+    SELECT w.*
+    FROM words w
+    JOIN matches m ON w.id = m.id
+    ORDER BY
+      m.match_rank,
+      m.word_length,
+      w.position
+    LIMIT ?
+    `,
+    [
+      // Exact match ranking params
+      query,
+      query,
+      query,
+      query,
+      // Prefix match ranking params
+      `${query}%`,
+      `${query}%`,
+      `${query}%`,
+      `${query}%`,
+      // Token search params
+      ...tokenParams,
+      // Limit
+      limit,
+    ]
+  );
+}
+
+async function fetchMeanings(
+  db: SQLiteDatabase,
+  words: DBDictEntry[]
+): Promise<Map<number, WordMeaning[]>> {
+  const meaningsMap = new Map<number, WordMeaning[]>();
+
+  await Promise.all(
+    words.map(async (word) => {
+      const meanings = await db.getAllAsync<DBWordMeaning>(
+        `
         SELECT meaning, part_of_speech, field, misc, info
         FROM meanings
         WHERE word_id = ?
         `,
-          [word.id]
-        );
+        [word.id]
+      );
 
-        meaningsMap.set(
-          word.id,
-          meanings.map((m) => ({
-            ...m,
-            wordId: word.id,
-            partOfSpeech: m.part_of_speech || null,
-          }))
+      meaningsMap.set(
+        word.id,
+        meanings.map((m) => ({
+          ...m,
+          wordId: word.id,
+          partOfSpeech: m.part_of_speech || null,
+        }))
+      );
+    })
+  );
+
+  return meaningsMap;
+}
+
+export async function searchDictionary(
+  db: SQLiteDatabase,
+  query: string,
+  options: SearchDictionaryOptions = {}
+): Promise<SearchDictionaryResult> {
+  const { withMeanings = true, limit = 50, minQueryLength = 1 } = options;
+
+  try {
+    // Input validation
+    if (!query || query.trim().length < minQueryLength) {
+      return {
+        words: [],
+        meanings: new Map(),
+        error: `Query must be at least ${minQueryLength} character(s) long`,
+      };
+    }
+
+    const searchTerms: string[] = [];
+    const processedQuery = processSearchQuery(query.trim());
+
+    // Ensure we have non-undefined values for SQLite params
+    const hiraganaValue = processedQuery.hiragana || "";
+    const katakanaValue = processedQuery.katakana || "";
+
+    if (wanakana.isRomaji(query)) {
+      const hiragana = wanakana.toHiragana(query);
+      const katakana = wanakana.toKatakana(query);
+
+      // Build search terms for romaji input with proper FTS5 syntax
+      searchTerms.push(
+        // Exact matches
+        `reading:${hiragana}`,
+        `reading_hiragana:${hiragana}`,
+        `reading:${katakana}`,
+        `word:${katakana}`,
+
+        // Prefix matches (supported in FTS5)
+        `reading:${hiragana}* OR reading_hiragana:${hiragana}*`,
+        `reading:${katakana}* OR word:${katakana}*`,
+
+        // Don't use infix matches with asterisks in the middle - not supported in FTS5
+
+        // Kanji matches
+        `kanji:${katakana} OR kanji:${katakana}*`
+      );
+    } else {
+      // Build search terms for regular input
+      searchTerms.push(
+        // Exact matches
+        `word:${query} OR reading:${query} OR kanji:${query}`,
+
+        // Prefix matches (supported in FTS5)
+        `word:${query}* OR reading:${query}* OR kanji:${query}*`
+
+        // Removed infix searches with asterisks in the middle
+      );
+
+      // Add Japanese script variations
+      if (hiraganaValue) {
+        searchTerms.push(
+          // Direct matches
+          `reading:${hiraganaValue} OR reading_hiragana:${hiraganaValue}`,
+
+          // Prefix matches (supported in FTS5)
+          `reading:${hiraganaValue}* OR reading_hiragana:${hiraganaValue}*`,
+
+          // Removed infix searches with asterisks in the middle
+
+          // In case hiragana appears in kanji field
+          `kanji:${hiraganaValue} OR kanji:${hiraganaValue}*`
         );
-      })
+      }
+
+      if (katakanaValue) {
+        searchTerms.push(
+          // Direct matches
+          `reading:${katakanaValue} OR word:${katakanaValue}`,
+
+          // Prefix matches (supported in FTS5)
+          `reading:${katakanaValue}* OR word:${katakanaValue}*`,
+
+          // Removed infix searches with asterisks in the middle
+
+          // In case katakana appears in kanji field
+          `kanji:${katakanaValue} OR kanji:${katakanaValue}*`
+        );
+      }
+    }
+
+    // Build main search query
+    let words = await db.getAllAsync<DBDictEntry>(
+      `
+      WITH matches AS (
+        SELECT w.*, bm25(words_fts) as rank
+        FROM words_fts f
+        JOIN words w ON w.id = f.rowid
+        WHERE f.words_fts MATCH ?
+        ORDER BY rank
+      )
+      SELECT DISTINCT w.*
+      FROM words w
+      JOIN matches m ON w.id = m.id
+      WHERE length(w.word) >= ${Math.min(query.length, 2)}
+      GROUP BY w.word
+      ORDER BY
+        CASE
+          WHEN w.word = ? OR w.reading = ? OR w.reading_hiragana = ? OR w.kanji = ? THEN 1
+          WHEN w.word LIKE ? OR w.reading LIKE ? OR w.reading_hiragana LIKE ? OR w.kanji LIKE ? THEN 2
+          ELSE m.rank + 3
+        END,
+        CASE
+          WHEN w.word = ? OR w.kanji = ? THEN 1
+          WHEN w.reading = ? OR w.reading_hiragana = ? THEN 2
+          ELSE 3
+        END,
+        length(w.word)
+      LIMIT ?
+      `,
+      [
+        searchTerms.join(" OR "),
+        // For primary exact matches - use appropriate form based on input type with fallback to original query
+        wanakana.isRomaji(query) ? hiraganaValue : query,
+        wanakana.isRomaji(query) ? hiraganaValue : query,
+        wanakana.isRomaji(query) ? hiraganaValue : query,
+        wanakana.isRomaji(query) ? hiraganaValue : query,
+        // For prefix matches - use appropriate form based on input type
+        wanakana.isRomaji(query) ? `${hiraganaValue}%` : `${query}%`,
+        wanakana.isRomaji(query) ? `${hiraganaValue}%` : `${query}%`,
+        wanakana.isRomaji(query) ? `${hiraganaValue}%` : `${query}%`,
+        wanakana.isRomaji(query) ? `${hiraganaValue}%` : `${query}%`,
+        // For secondary ranking (prioritize kanji and word matches)
+        wanakana.isRomaji(query) ? hiraganaValue : query,
+        wanakana.isRomaji(query) ? hiraganaValue : query,
+        wanakana.isRomaji(query) ? hiraganaValue : query,
+        wanakana.isRomaji(query) ? hiraganaValue : query,
+        limit,
+      ]
     );
+
+    // If no results from primary search and romaji input, try with katakana
+    if (words.length === 0 && wanakana.isRomaji(query) && katakanaValue) {
+      words = await db.getAllAsync<DBDictEntry>(
+        `
+        WITH matches AS (
+          SELECT w.*, bm25(words_fts) as rank
+          FROM words_fts f
+          JOIN words w ON w.id = f.rowid
+          WHERE f.words_fts MATCH ?
+          ORDER BY rank
+        )
+        SELECT DISTINCT w.*
+        FROM words w
+        JOIN matches m ON w.id = m.id
+        WHERE length(w.word) >= ${Math.min(query.length, 2)}
+        GROUP BY w.word
+        ORDER BY
+          CASE
+            WHEN w.word = ? OR w.reading = ? OR w.kanji = ? THEN 1
+            WHEN w.word LIKE ? OR w.reading LIKE ? OR w.kanji LIKE ? THEN 2
+            ELSE m.rank + 3
+          END,
+          length(w.word)
+        LIMIT ?
+        `,
+        [
+          // Fixed FTS5 query syntax - no double quotes
+          `word:${katakanaValue} OR reading:${katakanaValue} OR kanji:${katakanaValue}`,
+          katakanaValue,
+          katakanaValue,
+          katakanaValue,
+          `${katakanaValue}%`,
+          `${katakanaValue}%`,
+          `${katakanaValue}%`,
+          limit,
+        ]
+      );
+    }
+
+    // Fallback token search if still no results
+    if (words.length === 0) {
+      // Try token search for any input type
+      words = await searchByTokens(db, query);
+    }
+
+    const entries: DictionaryEntry[] = words.map((word) => ({
+      ...word,
+      readingHiragana: word.reading_hiragana,
+    }));
+
+    const meanings = withMeanings ? await fetchMeanings(db, words) : new Map();
 
     return {
       words: entries,
-      meanings: meaningsMap,
+      meanings,
+    };
+  } catch (error) {
+    console.error("Search error:", error);
+    return {
+      words: [],
+      meanings: new Map(),
+      error: "An error occurred while searching the dictionary",
     };
   }
-
-  return {
-    words: entries,
-    meanings: new Map(),
-  };
-}
-
-export async function searchExamples(
-  db: SQLiteDatabase,
-  query: string,
-  limit: number = 20,
-  wordId?: number
-): Promise<ExampleSentence[]> {
-  // If wordId is provided, search by word_id first
-  if (wordId !== undefined) {
-    const examplesByWordId = await db.getAllAsync<DBExampleSentence>(
-      `
-      SELECT id, japanese_text, english_text, tokens, example_id
-      FROM examples
-      WHERE word_id = ?
-      LIMIT ?
-      `,
-      [wordId, limit]
-    );
-
-    // If we found examples by word_id, return them
-    if (examplesByWordId && examplesByWordId.length > 0) {
-      return examplesByWordId.map((e) => ({
-        ...e,
-        japaneseText: e.japanese_text,
-        englishText: e.english_text,
-        exampleId: e.example_id,
-      }));
-    }
-  }
-
-  // Otherwise, fall back to text search
-  const processedQuery = processSearchQuery(query);
-  const whereClauses: string[] = [];
-  const params: string[] = [];
-
-  whereClauses.push(`japanese_text LIKE ?`);
-  params.push(`%${processedQuery.original}%`);
-
-  if (processedQuery.hiragana) {
-    whereClauses.push(`japanese_text LIKE ?`);
-    params.push(`%${processedQuery.hiragana}%`);
-  }
-
-  if (processedQuery.katakana) {
-    whereClauses.push(`japanese_text LIKE ?`);
-    params.push(`%${processedQuery.katakana}%`);
-  }
-
-  if (processedQuery.original) {
-    whereClauses.push(`tokens LIKE ?`);
-    params.push(`%${processedQuery.original}%`);
-  }
-
-  const examples = await db.getAllAsync<DBExampleSentence>(
-    `
-    SELECT id, japanese_text, english_text, tokens, example_id
-    FROM examples
-    WHERE ${whereClauses.join(" OR ")}
-    LIMIT ?
-    `,
-    [...params, limit]
-  );
-
-  return examples.map((e) => ({
-    ...e,
-    japaneseText: e.japanese_text,
-    englishText: e.english_text,
-    exampleId: e.example_id || null,
-  }));
 }
 
 async function addExample(
@@ -621,7 +832,7 @@ export async function getDictionaryEntry(
     );
 
     if (withExamples) {
-      const examples = await getExamples(db, dbWordToDictEntry(word));
+      const examples = await getWordExamples(db, dbWordToDictEntry(word));
 
       return {
         word: {
@@ -652,7 +863,7 @@ export async function getDictionaryEntry(
   }
 }
 
-export async function getExamples(
+export async function getWordExamples(
   db: SQLiteDatabase,
   word: DictionaryEntry
 ): Promise<ExampleSentence[]> {
@@ -678,18 +889,18 @@ export async function getExamples(
       }));
     }
 
-    const examples = await db.getAllAsync<DBExampleSentence>(
+    const examplesByText = await db.getAllAsync<DBExampleSentence>(
       `
     SELECT id, japanese_text, english_text, tokens, example_id
     FROM examples
-    WHERE japanese_text LIKE ? OR japanese_text LIKE ?
+    WHERE japanese_text LIKE ?
     ORDER BY length(japanese_text)
     LIMIT 5
     `,
-      [`%${word.word}%`, `%${word.reading}%`]
+      [`%${word.word}%`]
     );
 
-    return examples.map((e) => ({
+    return examplesByText.map((e) => ({
       ...e,
       japaneseText: e.japanese_text,
       englishText: e.english_text,
@@ -808,11 +1019,6 @@ export async function addBookmark(db: SQLiteDatabase, wordId: number) {
 export async function removeBookmark(db: SQLiteDatabase, wordId: number) {
   await db.runAsync("DELETE FROM bookmarks WHERE word_id = ?", [wordId]);
 }
-export interface SearchResults<T> {
-  items: T[];
-  totalCount: number;
-  hasMore: boolean;
-}
 
 export async function addToHistory(db: SQLiteDatabase, entry: DictionaryEntry) {
   try {
@@ -824,6 +1030,16 @@ export async function addToHistory(db: SQLiteDatabase, entry: DictionaryEntry) {
     );
   } catch (error) {
     console.error("Failed to add to history:", error);
+  }
+}
+
+export async function clearBookmarks(db: SQLiteDatabase): Promise<boolean> {
+  try {
+    await db.runAsync("DELETE FROM bookmarks");
+    return true;
+  } catch (error) {
+    console.error("Failed to clear bookmarks:", error);
+    return false;
   }
 }
 
