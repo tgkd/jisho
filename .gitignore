@@ -43,3 +43,6 @@ normal-jp-main/
 
 .env
 jm/
+
+.github/copilot-instructions.md
+.vscode/
