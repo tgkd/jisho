@@ -588,79 +588,99 @@ export async function searchDictionary(
       };
     }
 
-    const searchTerms: string[] = [];
     const processedQuery = processSearchQuery(query.trim());
 
     // Ensure we have non-undefined values for SQLite params
     const hiraganaValue = processedQuery.hiragana || "";
     const katakanaValue = processedQuery.katakana || "";
 
+    // Detect if input is a single kanji character
+    const isSingleKanji = query.length === 1 &&
+      !wanakana.isHiragana(query) &&
+      !wanakana.isKatakana(query) &&
+      wanakana.isJapanese(query);
+
+    // For single kanji searches, we'll bypass the FTS search and use direct SQL LIKE queries
+    // This is more reliable for finding words containing a specific kanji character
+    if (isSingleKanji) {
+      const words = await db.getAllAsync<DBDictEntry>(
+        `
+        SELECT DISTINCT w.*
+        FROM words w
+        WHERE w.kanji LIKE ? OR w.word = ?
+        ORDER BY
+          CASE
+            WHEN w.word = ? THEN 1
+            WHEN w.kanji = ? THEN 2
+            WHEN w.kanji LIKE ? THEN 3
+            ELSE 4
+          END,
+          length(w.word)
+        LIMIT ?
+        `,
+        [
+          `%${query}%`, // Contains match for kanji field
+          query,        // Exact match for word field
+          query,        // For ranking: exact match word
+          query,        // For ranking: exact match kanji
+          `%${query}%`, // For ranking: contains kanji
+          limit,
+        ]
+      );
+
+      // Continue with the same processing as before
+      const entries: DictionaryEntry[] = words.map((word) => ({
+        ...word,
+        readingHiragana: word.reading_hiragana,
+      }));
+
+      const meanings = withMeanings ? await fetchMeanings(db, words) : new Map();
+
+      return {
+        words: entries,
+        meanings,
+      };
+    }
+
+    // For non-single-kanji searches, use the FTS approach
+    const searchTerms: string[] = [];
+
     if (wanakana.isRomaji(query)) {
+      // Build search terms for romaji input with proper FTS5 syntax
       const hiragana = wanakana.toHiragana(query);
       const katakana = wanakana.toKatakana(query);
 
-      // Build search terms for romaji input with proper FTS5 syntax
       searchTerms.push(
-        // Exact matches
-        `reading:${hiragana}`,
-        `reading_hiragana:${hiragana}`,
-        `reading:${katakana}`,
-        `word:${katakana}`,
-
-        // Prefix matches (supported in FTS5)
-        `reading:${hiragana}* OR reading_hiragana:${hiragana}*`,
-        `reading:${katakana}* OR word:${katakana}*`,
-
-        // Don't use infix matches with asterisks in the middle - not supported in FTS5
-
-        // Kanji matches
-        `kanji:${katakana} OR kanji:${katakana}*`
+        `reading:"${hiragana}" OR reading_hiragana:"${hiragana}" OR reading:"${katakana}" OR word:"${katakana}"`,
+        `reading:"${hiragana}"* OR reading_hiragana:"${hiragana}"* OR reading:"${katakana}"* OR word:"${katakana}"*`,
+        `kanji:"${katakana}" OR kanji:"${katakana}"*`
       );
     } else {
       // Build search terms for regular input
       searchTerms.push(
-        // Exact matches
-        `word:${query} OR reading:${query} OR kanji:${query}`,
-
-        // Prefix matches (supported in FTS5)
-        `word:${query}* OR reading:${query}* OR kanji:${query}*`
-
-        // Removed infix searches with asterisks in the middle
+        `word:"${query}" OR reading:"${query}" OR kanji:"${query}"`,
+        `word:"${query}"* OR reading:"${query}"* OR kanji:"${query}"*`
       );
 
       // Add Japanese script variations
       if (hiraganaValue) {
         searchTerms.push(
-          // Direct matches
-          `reading:${hiraganaValue} OR reading_hiragana:${hiraganaValue}`,
-
-          // Prefix matches (supported in FTS5)
-          `reading:${hiraganaValue}* OR reading_hiragana:${hiraganaValue}*`,
-
-          // Removed infix searches with asterisks in the middle
-
-          // In case hiragana appears in kanji field
-          `kanji:${hiraganaValue} OR kanji:${hiraganaValue}*`
+          `reading:"${hiraganaValue}" OR reading_hiragana:"${hiraganaValue}"`,
+          `reading:"${hiraganaValue}"* OR reading_hiragana:"${hiraganaValue}"*`,
+          `kanji:"${hiraganaValue}" OR kanji:"${hiraganaValue}"*`
         );
       }
 
       if (katakanaValue) {
         searchTerms.push(
-          // Direct matches
-          `reading:${katakanaValue} OR word:${katakanaValue}`,
-
-          // Prefix matches (supported in FTS5)
-          `reading:${katakanaValue}* OR word:${katakanaValue}*`,
-
-          // Removed infix searches with asterisks in the middle
-
-          // In case katakana appears in kanji field
-          `kanji:${katakanaValue} OR kanji:${katakanaValue}*`
+          `reading:"${katakanaValue}" OR word:"${katakanaValue}"`,
+          `reading:"${katakanaValue}"* OR word:"${katakanaValue}"*`,
+          `kanji:"${katakanaValue}" OR kanji:"${katakanaValue}"*`
         );
       }
     }
 
-    // Build main search query
+    // Build main search query for non-single-kanji searches
     let words = await db.getAllAsync<DBDictEntry>(
       `
       WITH matches AS (
@@ -691,12 +711,12 @@ export async function searchDictionary(
       `,
       [
         searchTerms.join(" OR "),
-        // For primary exact matches - use appropriate form based on input type with fallback to original query
+        // For primary exact matches - use appropriate form based on input type
         wanakana.isRomaji(query) ? hiraganaValue : query,
         wanakana.isRomaji(query) ? hiraganaValue : query,
         wanakana.isRomaji(query) ? hiraganaValue : query,
         wanakana.isRomaji(query) ? hiraganaValue : query,
-        // For prefix matches - use appropriate form based on input type
+        // For prefix matches
         wanakana.isRomaji(query) ? `${hiraganaValue}%` : `${query}%`,
         wanakana.isRomaji(query) ? `${hiraganaValue}%` : `${query}%`,
         wanakana.isRomaji(query) ? `${hiraganaValue}%` : `${query}%`,
@@ -736,8 +756,8 @@ export async function searchDictionary(
         LIMIT ?
         `,
         [
-          // Fixed FTS5 query syntax - no double quotes
-          `word:${katakanaValue} OR reading:${katakanaValue} OR kanji:${katakanaValue}`,
+          // Fixed FTS5 query syntax with proper quoting
+          `word:"${katakanaValue}" OR reading:"${katakanaValue}" OR kanji:"${katakanaValue}"`,
           katakanaValue,
           katakanaValue,
           katakanaValue,

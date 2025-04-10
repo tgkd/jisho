@@ -61,11 +61,8 @@ export default function HomeScreen() {
       return;
     }
 
-    const tokens = getJpTokens(text).map((t) => ({ id: t, label: t }));
-
-    if (tokens.length > 1) {
-      setTokens(tokens);
-    }
+    const tokensRes = getJpTokens(text).map((t) => ({ id: t, label: t }));
+    setTokens(tokensRes.length > 1 ? tokensRes : []);
 
     try {
       const searchResults = await searchDictionary(db, text);
