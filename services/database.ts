@@ -119,6 +119,49 @@ interface SearchQuery {
   romaji?: string;
 }
 
+/**
+ * Options for configuring dictionary search behavior
+ */
+export interface SearchDictionaryOptions {
+  /**
+   * Whether to fetch meanings for search results
+   * @default true
+   */
+  withMeanings?: boolean;
+
+  /**
+   * Maximum number of results to return
+   * @default 50
+   */
+  limit?: number;
+
+  /**
+   * Minimum query length required
+   * @default 1
+   */
+  minQueryLength?: number;
+}
+
+/**
+ * Result of a dictionary search operation
+ */
+export interface SearchDictionaryResult {
+  /**
+   * Dictionary entries matching the search query
+   */
+  words: DictionaryEntry[];
+
+  /**
+   * Map of word ID to array of word meanings
+   */
+  meanings: Map<number, WordMeaning[]>;
+
+  /**
+   * Error message if search failed
+   */
+  error?: string;
+}
+
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
   const DATABASE_VERSION = 10;
 
@@ -372,84 +415,7 @@ function tokenizeJp(text: string) {
   return tokens.map((t) => (typeof t === "string" ? t : t.value));
 }
 
-interface SearchDictionaryOptions {
-  withMeanings?: boolean;
-  limit?: number;
-  minQueryLength?: number;
-}
-
-interface SearchDictionaryResult {
-  words: DictionaryEntry[];
-  meanings: Map<number, WordMeaning[]>;
-  error?: string;
-}
-
-function buildWhereClause(processedQuery: SearchQuery): {
-  whereClauses: string[];
-  params: string[];
-} {
-  const whereClauses: string[] = [];
-  const params: string[] = [];
-
-  // Original query search
-  whereClauses.push(`(
-    word LIKE ? OR
-    reading LIKE ? OR
-    kanji LIKE ? OR
-    word LIKE ? OR
-    reading LIKE ? OR
-    kanji LIKE ?
-  )`);
-
-  params.push(
-    `${processedQuery.original}%`,
-    `${processedQuery.original}%`,
-    `${processedQuery.original}%`,
-    `%${processedQuery.original}%`,
-    `%${processedQuery.original}%`,
-    `%${processedQuery.original}%`
-  );
-
-  // Hiragana search
-  if (processedQuery.hiragana) {
-    whereClauses.push(`(
-      word LIKE ? OR
-      reading LIKE ? OR
-      reading_hiragana LIKE ? OR
-      word LIKE ? OR
-      reading LIKE ? OR
-      reading_hiragana LIKE ?
-    )`);
-    params.push(
-      `${processedQuery.hiragana}%`,
-      `${processedQuery.hiragana}%`,
-      `${processedQuery.hiragana}%`,
-      `%${processedQuery.hiragana}%`,
-      `%${processedQuery.hiragana}%`,
-      `%${processedQuery.hiragana}%`
-    );
-  }
-
-  // Katakana search
-  if (processedQuery.katakana) {
-    whereClauses.push(`(
-      word LIKE ? OR
-      reading LIKE ? OR
-      word LIKE ? OR
-      reading LIKE ?
-    )`);
-    params.push(
-      `${processedQuery.katakana}%`,
-      `${processedQuery.katakana}%`,
-      `%${processedQuery.katakana}%`,
-      `%${processedQuery.katakana}%`
-    );
-  }
-
-  return { whereClauses, params };
-}
-
-async function searchByTokens(
+async function searchByTokensDeduped(
   db: SQLiteDatabase,
   query: string,
   limit: number = 30
@@ -466,7 +432,6 @@ async function searchByTokens(
     // Get all possible forms of the token
     const variations = [token];
     if (wanakana.isRomaji(token)) {
-      // Handle romaji input by converting to hiragana and katakana
       variations.push(wanakana.toHiragana(token));
       variations.push(wanakana.toKatakana(token));
     } else if (wanakana.isHiragana(token)) {
@@ -511,14 +476,28 @@ async function searchByTokens(
       FROM words w
       WHERE ${tokenWhereClauses.join(" OR ")}
       GROUP BY w.id
+    ),
+    deduped AS (
+      SELECT
+        w.*,
+        m.match_rank,
+        m.word_length,
+        ROW_NUMBER() OVER (
+          PARTITION BY w.word, w.reading
+          ORDER BY
+            m.match_rank,
+            m.word_length,
+            w.position
+        ) as row_num
+      FROM words w
+      JOIN matches m ON w.id = m.id
     )
-    SELECT w.*
-    FROM words w
-    JOIN matches m ON w.id = m.id
+    SELECT * FROM deduped
+    WHERE row_num = 1
     ORDER BY
-      m.match_rank,
-      m.word_length,
-      w.position
+      match_rank,
+      word_length,
+      position
     LIMIT ?
     `,
     [
@@ -571,228 +550,57 @@ async function fetchMeanings(
   return meaningsMap;
 }
 
+/**
+ * Performs dictionary search using the most appropriate strategy based on input
+ * @param db - SQLite database connection
+ * @param query - User search query
+ * @param options - Search configuration options
+ * @returns Search results with words and their meanings
+ */
 export async function searchDictionary(
   db: SQLiteDatabase,
   query: string,
   options: SearchDictionaryOptions = {}
 ): Promise<SearchDictionaryResult> {
   const { withMeanings = true, limit = 50, minQueryLength = 1 } = options;
+  // const startTime = performance.now();
 
   try {
     // Input validation
     if (!query || query.trim().length < minQueryLength) {
-      return {
-        words: [],
-        meanings: new Map(),
-        error: `Query must be at least ${minQueryLength} character(s) long`,
-      };
+      return createEmptyResult(`Query must be at least ${minQueryLength} character(s) long`);
     }
 
     const processedQuery = processSearchQuery(query.trim());
 
-    // Ensure we have non-undefined values for SQLite params
-    const hiraganaValue = processedQuery.hiragana || "";
-    const katakanaValue = processedQuery.katakana || "";
+    // Choose appropriate search strategy based on query type
+    if (isSingleKanjiCharacter(query)) {
+      const results = await searchBySingleKanji(db, query, { limit });
+      const meanings = withMeanings ? await fetchMeanings(db, results) : new Map();
 
-    // Detect if input is a single kanji character
-    const isSingleKanji = query.length === 1 &&
-      !wanakana.isHiragana(query) &&
-      !wanakana.isKatakana(query) &&
-      wanakana.isJapanese(query);
-
-    // For single kanji searches, we'll bypass the FTS search and use direct SQL LIKE queries
-    // This is more reliable for finding words containing a specific kanji character
-    if (isSingleKanji) {
-      const words = await db.getAllAsync<DBDictEntry>(
-        `
-        SELECT DISTINCT w.*
-        FROM words w
-        WHERE w.kanji LIKE ? OR w.word = ?
-        ORDER BY
-          CASE
-            WHEN w.word = ? THEN 1
-            WHEN w.kanji = ? THEN 2
-            WHEN w.kanji LIKE ? THEN 3
-            ELSE 4
-          END,
-          length(w.word)
-        LIMIT ?
-        `,
-        [
-          `%${query}%`, // Contains match for kanji field
-          query,        // Exact match for word field
-          query,        // For ranking: exact match word
-          query,        // For ranking: exact match kanji
-          `%${query}%`, // For ranking: contains kanji
-          limit,
-        ]
-      );
-
-      // Continue with the same processing as before
-      const entries: DictionaryEntry[] = words.map((word) => ({
-        ...word,
-        readingHiragana: word.reading_hiragana,
-      }));
-
-      const meanings = withMeanings ? await fetchMeanings(db, words) : new Map();
-
-      return {
-        words: entries,
-        meanings,
-      };
+      return formatSearchResults(results, meanings);
     }
 
-    // For non-single-kanji searches, use the FTS approach
-    const searchTerms: string[] = [];
+    // Try full-text search first
+    const ftsResults = await searchByFTS(db, processedQuery, { limit });
 
-    if (wanakana.isRomaji(query)) {
-      // Build search terms for romaji input with proper FTS5 syntax
-      const hiragana = wanakana.toHiragana(query);
-      const katakana = wanakana.toKatakana(query);
+    if (ftsResults.length > 0) {
+      const meanings = withMeanings ? await fetchMeanings(db, ftsResults) : new Map();
 
-      searchTerms.push(
-        `reading:"${hiragana}" OR reading_hiragana:"${hiragana}" OR reading:"${katakana}" OR word:"${katakana}"`,
-        `reading:"${hiragana}"* OR reading_hiragana:"${hiragana}"* OR reading:"${katakana}"* OR word:"${katakana}"*`,
-        `kanji:"${katakana}" OR kanji:"${katakana}"*`
-      );
-    } else {
-      // Build search terms for regular input
-      searchTerms.push(
-        `word:"${query}" OR reading:"${query}" OR kanji:"${query}"`,
-        `word:"${query}"* OR reading:"${query}"* OR kanji:"${query}"*`
-      );
-
-      // Add Japanese script variations
-      if (hiraganaValue) {
-        searchTerms.push(
-          `reading:"${hiraganaValue}" OR reading_hiragana:"${hiraganaValue}"`,
-          `reading:"${hiraganaValue}"* OR reading_hiragana:"${hiraganaValue}"*`,
-          `kanji:"${hiraganaValue}" OR kanji:"${hiraganaValue}"*`
-        );
-      }
-
-      if (katakanaValue) {
-        searchTerms.push(
-          `reading:"${katakanaValue}" OR word:"${katakanaValue}"`,
-          `reading:"${katakanaValue}"* OR word:"${katakanaValue}"*`,
-          `kanji:"${katakanaValue}" OR kanji:"${katakanaValue}"*`
-        );
-      }
+      return formatSearchResults(ftsResults, meanings);
     }
 
-    // Build main search query for non-single-kanji searches
-    let words = await db.getAllAsync<DBDictEntry>(
-      `
-      WITH matches AS (
-        SELECT w.*, bm25(words_fts) as rank
-        FROM words_fts f
-        JOIN words w ON w.id = f.rowid
-        WHERE f.words_fts MATCH ?
-        ORDER BY rank
-      )
-      SELECT DISTINCT w.*
-      FROM words w
-      JOIN matches m ON w.id = m.id
-      WHERE length(w.word) >= ${Math.min(query.length, 2)}
-      GROUP BY w.word
-      ORDER BY
-        CASE
-          WHEN w.word = ? OR w.reading = ? OR w.reading_hiragana = ? OR w.kanji = ? THEN 1
-          WHEN w.word LIKE ? OR w.reading LIKE ? OR w.reading_hiragana LIKE ? OR w.kanji LIKE ? THEN 2
-          ELSE m.rank + 3
-        END,
-        CASE
-          WHEN w.word = ? OR w.kanji = ? THEN 1
-          WHEN w.reading = ? OR w.reading_hiragana = ? THEN 2
-          ELSE 3
-        END,
-        length(w.word)
-      LIMIT ?
-      `,
-      [
-        searchTerms.join(" OR "),
-        // For primary exact matches - use appropriate form based on input type
-        wanakana.isRomaji(query) ? hiraganaValue : query,
-        wanakana.isRomaji(query) ? hiraganaValue : query,
-        wanakana.isRomaji(query) ? hiraganaValue : query,
-        wanakana.isRomaji(query) ? hiraganaValue : query,
-        // For prefix matches
-        wanakana.isRomaji(query) ? `${hiraganaValue}%` : `${query}%`,
-        wanakana.isRomaji(query) ? `${hiraganaValue}%` : `${query}%`,
-        wanakana.isRomaji(query) ? `${hiraganaValue}%` : `${query}%`,
-        wanakana.isRomaji(query) ? `${hiraganaValue}%` : `${query}%`,
-        // For secondary ranking (prioritize kanji and word matches)
-        wanakana.isRomaji(query) ? hiraganaValue : query,
-        wanakana.isRomaji(query) ? hiraganaValue : query,
-        wanakana.isRomaji(query) ? hiraganaValue : query,
-        wanakana.isRomaji(query) ? hiraganaValue : query,
-        limit,
-      ]
-    );
+    // Fall back to token search if FTS didn't yield results
+    const tokenResults = await searchByTokensDeduped(db, query, limit);
+    const meanings = withMeanings ? await fetchMeanings(db, tokenResults) : new Map();
 
-    // If no results from primary search and romaji input, try with katakana
-    if (words.length === 0 && wanakana.isRomaji(query) && katakanaValue) {
-      words = await db.getAllAsync<DBDictEntry>(
-        `
-        WITH matches AS (
-          SELECT w.*, bm25(words_fts) as rank
-          FROM words_fts f
-          JOIN words w ON w.id = f.rowid
-          WHERE f.words_fts MATCH ?
-          ORDER BY rank
-        )
-        SELECT DISTINCT w.*
-        FROM words w
-        JOIN matches m ON w.id = m.id
-        WHERE length(w.word) >= ${Math.min(query.length, 2)}
-        GROUP BY w.word
-        ORDER BY
-          CASE
-            WHEN w.word = ? OR w.reading = ? OR w.kanji = ? THEN 1
-            WHEN w.word LIKE ? OR w.reading LIKE ? OR w.kanji LIKE ? THEN 2
-            ELSE m.rank + 3
-          END,
-          length(w.word)
-        LIMIT ?
-        `,
-        [
-          // Fixed FTS5 query syntax with proper quoting
-          `word:"${katakanaValue}" OR reading:"${katakanaValue}" OR kanji:"${katakanaValue}"`,
-          katakanaValue,
-          katakanaValue,
-          katakanaValue,
-          `${katakanaValue}%`,
-          `${katakanaValue}%`,
-          `${katakanaValue}%`,
-          limit,
-        ]
-      );
-    }
+    // const endTime = performance.now();
+    // console.debug(`Token search completed in ${Math.round(endTime - startTime)}ms`);
 
-    // Fallback token search if still no results
-    if (words.length === 0) {
-      // Try token search for any input type
-      words = await searchByTokens(db, query);
-    }
-
-    const entries: DictionaryEntry[] = words.map((word) => ({
-      ...word,
-      readingHiragana: word.reading_hiragana,
-    }));
-
-    const meanings = withMeanings ? await fetchMeanings(db, words) : new Map();
-
-    return {
-      words: entries,
-      meanings,
-    };
+    return formatSearchResults(tokenResults, meanings);
   } catch (error) {
     console.error("Search error:", error);
-    return {
-      words: [],
-      meanings: new Map(),
-      error: "An error occurred while searching the dictionary",
-    };
+    return createEmptyResult("An error occurred while searching the dictionary");
   }
 }
 
@@ -1448,4 +1256,269 @@ export function getKanjiList(db: SQLiteDatabase): Promise<KanjiEntry[]> {
         };
       });
     });
+}
+
+/**
+ * Creates a SQL clause for ranking search results by relevance
+ * @param wordField - The word field parameter placeholder
+ * @param readingField - The reading field parameter placeholder
+ * @param hiraganaField - The hiragana reading field parameter placeholder
+ * @param kanjiField - The kanji field parameter placeholder
+ * @returns SQL CASE statement for ranking results
+ */
+function createRankingClause(
+  wordField: string,
+  readingField: string,
+  hiraganaField: string,
+  kanjiField: string
+): string {
+  return `
+    CASE
+      WHEN word = ${wordField} OR reading = ${readingField} OR reading_hiragana = ${hiraganaField} OR kanji = ${kanjiField} THEN 1
+      WHEN word LIKE ${wordField} || '%' OR reading LIKE ${readingField} || '%' OR reading_hiragana LIKE ${hiraganaField} || '%' OR kanji LIKE ${kanjiField} || '%' THEN 2
+      ELSE rank + 3
+    END
+  `;
+}
+
+/**
+ * Creates an empty search result with an optional error message
+ * @param error - Optional error message
+ * @returns Empty search result
+ */
+function createEmptyResult(error?: string): SearchDictionaryResult {
+  return {
+    words: [],
+    meanings: new Map(),
+    error,
+  };
+}
+
+/**
+ * Formats raw database entries into the expected result format
+ * @param entries - Database dictionary entries
+ * @param meanings - Map of word IDs to meanings
+ * @returns Formatted search result
+ */
+function formatSearchResults(
+  entries: DBDictEntry[],
+  meanings: Map<number, WordMeaning[]>
+): SearchDictionaryResult {
+  return {
+    words: entries.map((word) => ({
+      ...word,
+      readingHiragana: word.reading_hiragana,
+    })),
+    meanings,
+  };
+}
+
+/**
+ * Checks if a string is a single kanji character
+ * @param query - String to check
+ * @returns True if the string is a single Japanese kanji character
+ */
+function isSingleKanjiCharacter(query: string): boolean {
+  return (
+    query.length === 1 &&
+    !wanakana.isHiragana(query) &&
+    !wanakana.isKatakana(query) &&
+    wanakana.isJapanese(query)
+  );
+}
+
+/**
+ * Builds an optimized FTS match expression
+ * @param query - The processed search query with variations
+ * @returns A simplified FTS5 match query expression
+ */
+function buildFtsMatchExpression(query: SearchQuery): string {
+  const terms: string[] = [];
+
+  // Add exact match terms (higher priority)
+  terms.push(`"${query.original}"^2`); // Higher weight for exact matches
+
+  // Add prefix match terms
+  terms.push(`"${query.original}"*`);
+
+  // Add script variations when available
+  if (query.hiragana) {
+    terms.push(`"${query.hiragana}"`, `"${query.hiragana}"*`);
+  }
+
+  if (query.katakana) {
+    terms.push(`"${query.katakana}"`, `"${query.katakana}"*`);
+  }
+
+  if (query.romaji) {
+    terms.push(`"${query.romaji}"`, `"${query.romaji}"*`);
+  }
+
+  return terms.join(" OR ");
+}
+
+/**
+ * Creates a common SQL template for deduplicating search results
+ * @param matchSubquery - The subquery that produces initial matches
+ * @param rankingClause - The CASE expression for ranking results
+ * @param minWordLength - Minimum word length to consider
+ * @returns SQL query string for deduplication
+ */
+function createDeduplicationQuery(
+  matchSubquery: string,
+  rankingClause: string,
+  minWordLength: number = 1
+): string {
+  return `
+    WITH matches AS (
+      ${matchSubquery}
+    ),
+    deduped AS (
+      SELECT
+        w.*,
+        m.rank,
+        ROW_NUMBER() OVER (
+          PARTITION BY w.word, w.reading
+          ORDER BY ${rankingClause}, length(w.word)
+        ) as row_num
+      FROM words w
+      JOIN matches m ON w.id = m.id
+      WHERE length(w.word) >= ${minWordLength}
+    )
+    SELECT * FROM deduped
+    WHERE row_num = 1
+    ORDER BY ${rankingClause}, length(word)
+    LIMIT ?
+  `;
+}
+
+/**
+ * Searches for dictionary entries containing a single kanji character
+ * @param db - SQLite database connection
+ * @param kanji - Single kanji character to search
+ * @param options - Search options including limit
+ * @returns Array of matching dictionary entries
+ */
+async function searchBySingleKanji(
+  db: SQLiteDatabase,
+  kanji: string,
+  options: { limit: number }
+): Promise<DBDictEntry[]> {
+  // Use a simplified query with consistent parameter naming
+  return db.getAllAsync<DBDictEntry>(`
+    WITH matched_words AS (
+      SELECT
+        w.*,
+        CASE
+          WHEN w.word = ? THEN 1
+          WHEN w.kanji = ? THEN 2
+          WHEN w.kanji LIKE ? THEN 3
+          ELSE 4
+        END as match_rank,
+        length(w.word) as word_length
+      FROM words w
+      WHERE w.kanji LIKE ? OR w.word = ?
+    ),
+    deduped AS (
+      SELECT
+        *,
+        ROW_NUMBER() OVER (
+          PARTITION BY word, reading
+          ORDER BY match_rank, word_length
+        ) as row_num
+      FROM matched_words
+    )
+    SELECT * FROM deduped
+    WHERE row_num = 1
+    ORDER BY match_rank, word_length
+    LIMIT ?
+  `, [
+    kanji,          // Exact word match
+    kanji,          // Exact kanji match
+    `%${kanji}%`,   // Kanji contains match
+    `%${kanji}%`,   // WHERE clause kanji contains
+    kanji,          // WHERE clause exact word
+    options.limit
+  ]);
+}
+
+/**
+ * Searches the dictionary using Full-Text Search
+ * @param db - SQLite database connection
+ * @param query - Processed search query
+ * @param options - Search options
+ * @returns Array of matching dictionary entries
+ */
+async function searchByFTS(
+  db: SQLiteDatabase,
+  query: SearchQuery,
+  options: { limit: number }
+): Promise<DBDictEntry[]> {
+  const matchExpression = buildFtsMatchExpression(query);
+  const originalQuery = query.original;
+  const hiraganaQuery = query.hiragana || originalQuery;
+
+  return db.getAllAsync<DBDictEntry>(
+    `
+    WITH matches AS (
+      SELECT w.*, bm25(words_fts) as rank
+      FROM words_fts f
+      JOIN words w ON w.id = f.rowid
+      WHERE f.words_fts MATCH ?
+      ORDER BY rank
+    ),
+    deduped AS (
+      SELECT
+        w.*,
+        m.rank,
+        ROW_NUMBER() OVER (
+          PARTITION BY w.word, w.reading
+          ORDER BY
+            CASE
+              WHEN w.word = ? OR w.reading = ? OR w.reading_hiragana = ? OR w.kanji = ? THEN 1
+              WHEN w.word LIKE ? OR w.reading LIKE ? OR w.reading_hiragana LIKE ? OR w.kanji LIKE ? THEN 2
+              ELSE m.rank + 3
+            END,
+            length(w.word)
+        ) as row_num
+      FROM words w
+      JOIN matches m ON w.id = m.id
+      WHERE length(w.word) >= ${Math.min(originalQuery.length, 2)}
+    )
+    SELECT * FROM deduped
+    WHERE row_num = 1
+    ORDER BY
+      CASE
+        WHEN word = ? OR reading = ? OR reading_hiragana = ? OR kanji = ? THEN 1
+        WHEN word LIKE ? OR reading LIKE ? OR reading_hiragana LIKE ? OR kanji LIKE ? THEN 2
+        ELSE rank + 3
+      END,
+      length(word)
+    LIMIT ?
+    `,
+    [
+      matchExpression,
+      // For partitioning and ranking
+      hiraganaQuery,
+      hiraganaQuery,
+      hiraganaQuery,
+      hiraganaQuery,
+      // For partitioning and ranking - prefixes
+      `${hiraganaQuery}%`,
+      `${hiraganaQuery}%`,
+      `${hiraganaQuery}%`,
+      `${hiraganaQuery}%`,
+      // For final ordering - exact matches
+      hiraganaQuery,
+      hiraganaQuery,
+      hiraganaQuery,
+      hiraganaQuery,
+      // For final ordering - prefixes
+      `${hiraganaQuery}%`,
+      `${hiraganaQuery}%`,
+      `${hiraganaQuery}%`,
+      `${hiraganaQuery}%`,
+      options.limit
+    ]
+  );
 }
