@@ -691,20 +691,27 @@ export async function getDictionaryEntry(
   }
 }
 
+/**
+ * Retrieves example sentences for a given dictionary entry
+ * @param db - SQLite database connection
+ * @param word - Dictionary entry to find examples for
+ * @returns Array of example sentences containing the word
+ */
 export async function getWordExamples(
   db: SQLiteDatabase,
   word: DictionaryEntry
 ): Promise<ExampleSentence[]> {
   try {
     const id = word.id;
+    // First try: Get examples directly linked to the word ID
     const examplesByWordId = await db.getAllAsync<DBExampleSentence>(
       `
-    SELECT id, japanese_text, english_text, tokens, example_id
-    FROM examples
-    WHERE word_id = ?
-    ORDER BY length(japanese_text)
-    LIMIT 5
-    `,
+      SELECT id, japanese_text, english_text, tokens, example_id
+      FROM examples
+      WHERE word_id = ?
+      ORDER BY length(japanese_text)
+      LIMIT 5
+      `,
       [id]
     );
 
@@ -717,15 +724,34 @@ export async function getWordExamples(
       }));
     }
 
+    // Second try: Search for examples containing the exact word
+    // Use token boundaries with the JSON_EACH function if tokens are available
+    // Otherwise use a more precise text pattern match
     const examplesByText = await db.getAllAsync<DBExampleSentence>(
       `
-    SELECT id, japanese_text, english_text, tokens, example_id
-    FROM examples
-    WHERE japanese_text LIKE ?
-    ORDER BY length(japanese_text)
-    LIMIT 5
-    `,
-      [`%${word.word}%`]
+      SELECT id, japanese_text, english_text, tokens, example_id
+      FROM examples
+      WHERE 
+        -- Try to match using tokens if available
+        (tokens IS NOT NULL AND tokens != '' AND 
+         (json_valid(tokens) AND 
+          EXISTS(SELECT 1 FROM json_each(tokens) WHERE value = ?)))
+        OR
+        -- If no tokens or not valid JSON, try pattern matching
+        (japanese_text LIKE ? AND
+         (japanese_text LIKE ? || '%' OR 
+          japanese_text LIKE '%' || ? OR
+          japanese_text LIKE '%' || ? || '%'))
+      ORDER BY length(japanese_text)
+      LIMIT 5
+      `,
+      [
+        word.word,             // Exact token match
+        `%${word.word}%`,      // Contains word
+        word.word,             // Starts with word
+        word.word,             // Ends with word
+        word.word              // Contains word with potential boundaries
+      ]
     );
 
     return examplesByText.map((e) => ({
@@ -739,6 +765,7 @@ export async function getWordExamples(
     return [];
   }
 }
+
 export async function resetDatabase(db: SQLiteDatabase): Promise<void> {
   try {
     console.log("Starting database reset process...");
