@@ -2062,7 +2062,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/eslint-plugin-query@npm:^5.72.2":
+"@tanstack/eslint-plugin-query@npm:^5.73.3":
   version: 5.73.3
   resolution: "@tanstack/eslint-plugin-query@npm:5.73.3"
   dependencies:
@@ -2073,21 +2073,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/query-core@npm:5.72.2":
-  version: 5.72.2
-  resolution: "@tanstack/query-core@npm:5.72.2"
-  checksum: 10c0/b1e4670c327a9f7e4892b5eb0c423ae230e440b30b749796595ecd7e19a683f613dd94e81fa97e420d765d2325493f5a0dfe3f6fe2ed860c2522c52a281c3e03
+"@tanstack/query-core@npm:5.74.4":
+  version: 5.74.4
+  resolution: "@tanstack/query-core@npm:5.74.4"
+  checksum: 10c0/e74d0520b2ee14c8a65f9ff00e335cb9d25453b8af08d776ff3f7a6ba24178cbf4d6a884412df5a0747737e4ca87f637dafaad2c0f0e6afd7cd22e32e0d7dced
   languageName: node
   linkType: hard
 
-"@tanstack/react-query@npm:5.72.2":
-  version: 5.72.2
-  resolution: "@tanstack/react-query@npm:5.72.2"
+"@tanstack/react-query@npm:5.74.4":
+  version: 5.74.4
+  resolution: "@tanstack/react-query@npm:5.74.4"
   dependencies:
-    "@tanstack/query-core": "npm:5.72.2"
+    "@tanstack/query-core": "npm:5.74.4"
   peerDependencies:
     react: ^18 || ^19
-  checksum: 10c0/4d0e3252aca29c9e59f5d023250b8f1524a5388f400f1c4fd2aa8bdbd971a5a424e53dd8c48b11b252ff1892fab982d144fec3436d529f47373a2cfbdd5e9548
+  checksum: 10c0/4434b1764efd5e5a7f35046e7411fed06d42372ebbd6e784dcfd81c3d107b41c86fec2b59652fccadb1bab25ca35ef9b6720c7f5c89d6e4302cf1d2f60291200
   languageName: node
   linkType: hard
 
@@ -4966,8 +4966,8 @@ __metadata:
     "@react-navigation/bottom-tabs": "npm:^7.2.0"
     "@react-navigation/elements": "npm:^2.3.8"
     "@react-navigation/native": "npm:^7.0.14"
-    "@tanstack/eslint-plugin-query": "npm:^5.72.2"
-    "@tanstack/react-query": "npm:5.72.2"
+    "@tanstack/eslint-plugin-query": "npm:^5.73.3"
+    "@tanstack/react-query": "npm:5.74.4"
     "@types/react": "npm:~19.0.10"
     csv-parser: "npm:^3.2.0"
     expo: "npm:^53.0.0-preview.5"
@@ -4997,10 +4997,10 @@ __metadata:
     react-native-context-menu-view: "npm:^1.18.0"
     react-native-gesture-handler: "npm:~2.24.0"
     react-native-keyboard-aware-scroll-view: "npm:^0.9.5"
-    react-native-keyboard-controller: "npm:^1.17.0"
+    react-native-keyboard-controller: "npm:^1.17.1"
     react-native-markdown-display: "npm:^7.0.2"
     react-native-mmkv: "npm:^3.2.0"
-    react-native-reanimated: "npm:~3.17.3"
+    react-native-reanimated: "npm:~3.17.5"
     react-native-safe-area-context: "npm:5.3.0"
     react-native-screens: "npm:~4.10.0"
     react-native-uitextview: "npm:^1.4.0"
@@ -6750,16 +6750,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-keyboard-controller@npm:^1.17.0":
-  version: 1.17.0
-  resolution: "react-native-keyboard-controller@npm:1.17.0"
+"react-native-keyboard-controller@npm:^1.17.1":
+  version: 1.17.1
+  resolution: "react-native-keyboard-controller@npm:1.17.1"
   dependencies:
     react-native-is-edge-to-edge: "npm:^1.1.6"
   peerDependencies:
     react: "*"
     react-native: "*"
     react-native-reanimated: ">=3.0.0"
-  checksum: 10c0/f59170e5d1805b41c3e794456ae1e1bf36714cf8fe52e593fcc88026ec957a7200637e72a75e578434a88312fe50a20fc9216f86fd89291747ae280c92419abe
+  checksum: 10c0/d36ba3c18b30a9bbcaf845136f319e4f2e13bf633600db69bce2d82d295b36ed672586a9fa81a726bfc68da61228c2c4c8134213d3c0c25f6626e0618a3aeaf9
   languageName: node
   linkType: hard
 
@@ -6788,9 +6788,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-reanimated@npm:~3.17.3":
-  version: 3.17.3
-  resolution: "react-native-reanimated@npm:3.17.3"
+"react-native-reanimated@npm:~3.17.5":
+  version: 3.17.5
+  resolution: "react-native-reanimated@npm:3.17.5"
   dependencies:
     "@babel/plugin-transform-arrow-functions": "npm:^7.0.0-0"
     "@babel/plugin-transform-class-properties": "npm:^7.0.0-0"
@@ -6808,7 +6808,7 @@ __metadata:
     "@babel/core": ^7.0.0-0
     react: "*"
     react-native: "*"
-  checksum: 10c0/63dcd555fdb117d44bd42bb7a959b6e7db3f632af8aa0f1417b8557946f59db58062a8b481c0db32064739bad8c3e36ff10dc2858e9b26884abe9578b7c08ee7
+  checksum: 10c0/22788541546cf3e818f0ad9fc9fb1cb53fd7b398d5f49078cd6adf8064957663d97de4e60de9e7894a359d2379685a9dd5d69183c3e13b5e4e78f2d49333921a
   languageName: node
   linkType: hard
 

@@ -306,7 +306,7 @@ function KanjiDetails({ character }: { character: string }) {
   return (
     <View style={styles.kanjiDetails}>
       <View style={styles.row}>
-        <HapticTab onPress={goToKanji}>
+        <HapticTab onPress={goToKanji} hitSlop={12}>
           <ThemedText type="subtitle">{details.character}</ThemedText>
         </HapticTab>
         <ThemedText size="sm" style={styles.kanjiDesc}>

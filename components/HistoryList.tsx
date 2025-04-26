@@ -12,7 +12,7 @@ import Animated, {
 import { Colors } from "@/constants/Colors";
 import { useThemeColor } from "@/hooks/useThemeColor";
 import { HistoryEntry } from "@/services/database";
-import { formatEn } from "@/services/parse";
+import { formatEn, formatJp } from "@/services/parse";
 import { HapticTab } from "./HapticTab";
 import { ThemedText } from "./ThemedText";
 import { ThemedView } from "./ThemedView";
@@ -65,7 +65,7 @@ export const HistoryListItem = ({
                 <ThemedText type="defaultSemiBold">
                   {item.word + " "}
                 </ThemedText>
-                <ThemedText size="sm">{item.reading}</ThemedText>
+                <ThemedText size="sm">{formatJp(item.reading, false)}</ThemedText>
               </Text>
               <ThemedText type="secondary" style={styles.meaning}>
                 {formatEn(item.meaning, "none", { truncateAll: 30 })}

@@ -128,8 +128,8 @@ function ReadingsSection({ entry }: { entry: KanjiEntry }) {
                   <ThemedText>{r}</ThemedText>
                   <HapticTab onPress={() => handleSpeech(r)}>
                     <IconSymbol
-                      name="speaker.1.fill"
-                      size={16}
+                      name="play.circle"
+                      size={24}
                       color={tintColor}
                     />
                   </HapticTab>
@@ -148,8 +148,8 @@ function ReadingsSection({ entry }: { entry: KanjiEntry }) {
                   <ThemedText>{r}</ThemedText>
                   <HapticTab onPress={() => handleSpeech(r)}>
                     <IconSymbol
-                      name="speaker.1.fill"
-                      size={16}
+                      name="play.circle"
+                      size={24}
                       color={tintColor}
                     />
                   </HapticTab>
