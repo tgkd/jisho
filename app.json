@@ -31,9 +31,7 @@
       "expo-router",
       "expo-splash-screen",
       "expo-sqlite",
-      "expo-audio",
-      "expo-font",
-      "expo-web-browser"
+      "expo-audio"
     ],
     "experiments": {
       "typedRoutes": true

@@ -8,25 +8,25 @@
 
 /* Begin PBXBuildFile section */
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
+		201CBDF7FD4222BFAA0FB0B2 /* libPods-jisho.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 53AF66CA2EA28300CC8CCF05 /* libPods-jisho.a */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		9DFAC07D9D56C7FD8459F806 /* libPods-jisho.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7F0436221030E756FE878B30 /* libPods-jisho.a */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
-		D1D20AA90F8C313BE4A4511A /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02960D8BF97070956FF1E5AE /* ExpoModulesProvider.swift */; };
-		DEE32E2766D523E6CDD12DAD /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 98863D20699A1062A9027054 /* PrivacyInfo.xcprivacy */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
+		F24139DD80626AD100E1CF95 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18237108CE55B73C43A079E6 /* ExpoModulesProvider.swift */; };
+		FC04D20956D0B40B7552EB42 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D9DB476F4E7B9B5F44536908 /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		02960D8BF97070956FF1E5AE /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-jisho/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* jisho.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = jisho.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = jisho/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = jisho/Info.plist; sourceTree = "<group>"; };
-		1902A31714D559B1D20387F6 /* Pods-jisho.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-jisho.release.xcconfig"; path = "Target Support Files/Pods-jisho/Pods-jisho.release.xcconfig"; sourceTree = "<group>"; };
-		7F0436221030E756FE878B30 /* libPods-jisho.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-jisho.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		98863D20699A1062A9027054 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = jisho/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		15B2B836124F65F20C9A4E8B /* Pods-jisho.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-jisho.debug.xcconfig"; path = "Target Support Files/Pods-jisho/Pods-jisho.debug.xcconfig"; sourceTree = "<group>"; };
+		18237108CE55B73C43A079E6 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-jisho/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
+		53AF66CA2EA28300CC8CCF05 /* libPods-jisho.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-jisho.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = jisho/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
-		C080E297D51DFCA569BF07FD /* Pods-jisho.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-jisho.debug.xcconfig"; path = "Target Support Files/Pods-jisho/Pods-jisho.debug.xcconfig"; sourceTree = "<group>"; };
+		D07914D4ACE9E360B8CD09FE /* Pods-jisho.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-jisho.release.xcconfig"; path = "Target Support Files/Pods-jisho/Pods-jisho.release.xcconfig"; sourceTree = "<group>"; };
+		D9DB476F4E7B9B5F44536908 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = jisho/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = jisho/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* jisho-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "jisho-Bridging-Header.h"; path = "jisho/jisho-Bridging-Header.h"; sourceTree = "<group>"; };
@@ -37,21 +37,13 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				9DFAC07D9D56C7FD8459F806 /* libPods-jisho.a in Frameworks */,
+				201CBDF7FD4222BFAA0FB0B2 /* libPods-jisho.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		04FCCF9B54D0783095996F09 /* ExpoModulesProviders */ = {
-			isa = PBXGroup;
-			children = (
-				86EFBA208839DD4D2C5362CD /* jisho */,
-			);
-			name = ExpoModulesProviders;
-			sourceTree = "<group>";
-		};
 		13B07FAE1A68108700A75B9A /* jisho */ = {
 			isa = PBXGroup;
 			children = (
@@ -61,7 +53,7 @@
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				98863D20699A1062A9027054 /* PrivacyInfo.xcprivacy */,
+				D9DB476F4E7B9B5F44536908 /* PrivacyInfo.xcprivacy */,
 			);
 			name = jisho;
 			sourceTree = "<group>";
@@ -70,18 +62,17 @@
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				7F0436221030E756FE878B30 /* libPods-jisho.a */,
+				53AF66CA2EA28300CC8CCF05 /* libPods-jisho.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
-		3DC8825AE88561F90B63F42F /* Pods */ = {
+		540690BE105AB535E02A742D /* jisho */ = {
 			isa = PBXGroup;
 			children = (
-				C080E297D51DFCA569BF07FD /* Pods-jisho.debug.xcconfig */,
-				1902A31714D559B1D20387F6 /* Pods-jisho.release.xcconfig */,
+				18237108CE55B73C43A079E6 /* ExpoModulesProvider.swift */,
 			);
-			path = Pods;
+			name = jisho;
 			sourceTree = "<group>";
 		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
@@ -98,8 +89,8 @@
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				3DC8825AE88561F90B63F42F /* Pods */,
-				04FCCF9B54D0783095996F09 /* ExpoModulesProviders */,
+				D82F846AA08A65F35DC31BC0 /* Pods */,
+				CCE62C80AE554207886FDCF1 /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -114,14 +105,6 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		86EFBA208839DD4D2C5362CD /* jisho */ = {
-			isa = PBXGroup;
-			children = (
-				02960D8BF97070956FF1E5AE /* ExpoModulesProvider.swift */,
-			);
-			name = jisho;
-			sourceTree = "<group>";
-		};
 		BB2F792B24A3F905000567C9 /* Supporting */ = {
 			isa = PBXGroup;
 			children = (
@@ -129,6 +112,23 @@
 			);
 			name = Supporting;
 			path = jisho/Supporting;
+			sourceTree = "<group>";
+		};
+		CCE62C80AE554207886FDCF1 /* ExpoModulesProviders */ = {
+			isa = PBXGroup;
+			children = (
+				540690BE105AB535E02A742D /* jisho */,
+			);
+			name = ExpoModulesProviders;
+			sourceTree = "<group>";
+		};
+		D82F846AA08A65F35DC31BC0 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				15B2B836124F65F20C9A4E8B /* Pods-jisho.debug.xcconfig */,
+				D07914D4ACE9E360B8CD09FE /* Pods-jisho.release.xcconfig */,
+			);
+			path = Pods;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -139,13 +139,13 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "jisho" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				BB4178DC2F1850F410BB2888 /* [Expo] Configure project */,
+				F977D9F9BF59210B74096479 /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				EFAE91FD1295442894F199B7 /* [CP] Embed Pods Frameworks */,
+				756232DB4DB586131C74DD23 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -195,7 +195,7 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				DEE32E2766D523E6CDD12DAD /* PrivacyInfo.xcprivacy in Resources */,
+				FC04D20956D0B40B7552EB42 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -239,6 +239,24 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
+		756232DB4DB586131C74DD23 /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-jisho/Pods-jisho-frameworks.sh",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputPaths = (
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-jisho/Pods-jisho-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
 		800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -273,7 +291,7 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-jisho/Pods-jisho-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		BB4178DC2F1850F410BB2888 /* [Expo] Configure project */ = {
+		F977D9F9BF59210B74096479 /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
@@ -292,24 +310,6 @@
 			shellPath = /bin/sh;
 			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-jisho/expo-configure-project.sh\"\n";
 		};
-		EFAE91FD1295442894F199B7 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-jisho/Pods-jisho-frameworks.sh",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputPaths = (
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-jisho/Pods-jisho-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -318,7 +318,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				D1D20AA90F8C313BE4A4511A /* ExpoModulesProvider.swift in Sources */,
+				F24139DD80626AD100E1CF95 /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -327,14 +327,12 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = C080E297D51DFCA569BF07FD /* Pods-jisho.debug.xcconfig */;
+			baseConfigurationReference = 15B2B836124F65F20C9A4E8B /* Pods-jisho.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = jisho/jisho.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 56;
+				CURRENT_PROJECT_VERSION = 60;
 				DEVELOPMENT_TEAM = ULU867Y7LC;
 				ENABLE_BITCODE = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -343,13 +341,12 @@
 				);
 				INFOPLIST_FILE = jisho/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = tango;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.8;
+				MARKETING_VERSION = 1.1.10;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -358,7 +355,6 @@
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
 				PRODUCT_BUNDLE_IDENTIFIER = app.jisho.loc;
 				PRODUCT_NAME = jisho;
-				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_OBJC_BRIDGING_HEADER = "jisho/jisho-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -369,24 +365,21 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 1902A31714D559B1D20387F6 /* Pods-jisho.release.xcconfig */;
+			baseConfigurationReference = D07914D4ACE9E360B8CD09FE /* Pods-jisho.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = jisho/jisho.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 56;
+				CURRENT_PROJECT_VERSION = 60;
 				DEVELOPMENT_TEAM = ULU867Y7LC;
 				INFOPLIST_FILE = jisho/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = tango;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.8;
+				MARKETING_VERSION = 1.1.10;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -395,7 +388,6 @@
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
 				PRODUCT_BUNDLE_IDENTIFIER = app.jisho.loc;
 				PRODUCT_NAME = jisho;
-				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_OBJC_BRIDGING_HEADER = "jisho/jisho-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
