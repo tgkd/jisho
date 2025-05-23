@@ -21,12 +21,14 @@ import { ThemedText } from "./ThemedText";
 import { IconSymbol, IconSymbolName } from "./ui/IconSymbol";
 import { Colors } from "@/constants/Colors";
 
+export type PopupMenuItem = {
+  label: string;
+  onPress: () => void;
+  icon: IconSymbolName;
+};
+
 export interface Props {
-  items: Array<{
-    label: string;
-    onPress: () => void;
-    icon: IconSymbolName;
-  }>;
+  items: PopupMenuItem[];
   buttonView: React.ReactNode;
 }
 

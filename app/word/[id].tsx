@@ -49,11 +49,15 @@ import {
   aiSoundQueryOptions,
   craeteWordPrompt,
 } from "@/services/request";
+import { useMMKVString } from "react-native-mmkv";
+import { SETTINGS_KEYS } from "@/services/storage";
 
 export default function WordDetailScreen() {
   const tintColor = useThemeColor({}, "tint");
   const markColor = useThemeColor({}, "text");
   const params = useLocalSearchParams();
+  const [apiAuthUsername] = useMMKVString(SETTINGS_KEYS.API_AUTH_USERNAME);
+  const aiAvailable = !!apiAuthUsername;
   const title = typeof params.title === "string" ? params.title : "Details";
   const [entry, setEntry] = useState<{
     word: DictionaryEntry;
@@ -238,6 +242,8 @@ function ExamplesView({
   refreshExamples: () => Promise<void>;
 }) {
   const db = useSQLiteContext();
+  const [apiAuthUsername] = useMMKVString(SETTINGS_KEYS.API_AUTH_USERNAME);
+  const aiAvailable = !!apiAuthUsername;
   const aiexQuery = useQuery(aiExamplesQueryOptions(craeteWordPrompt(entry)));
 
   const handleFetchExamples = async () => {
@@ -261,19 +267,22 @@ function ExamplesView({
             idx={idx}
             word={entry.word.word}
             wordId={entry.word.id}
+            aiAvailable={aiAvailable}
           />
         ))}
         {entry.examples.length === 0 ? (
           <ThemedText type="secondary">{"No examples found"}</ThemedText>
         ) : null}
       </Card>
-      <Pressable
-        style={styles.examplesLoading}
-        disabled={aiexQuery.isLoading}
-        onPress={handleFetchExamples}
-      >
-        <ThemedText>{aiexQuery.isLoading ? "Loading..." : "✨🤖✨"}</ThemedText>
-      </Pressable>
+      {aiAvailable && (
+        <Pressable
+          style={styles.examplesLoading}
+          disabled={aiexQuery.isLoading}
+          onPress={handleFetchExamples}
+        >
+          <ThemedText>{aiexQuery.isLoading ? "Loading..." : "✨🤖✨"}</ThemedText>
+        </Pressable>
+      )}
     </>
   );
 }
@@ -332,11 +341,13 @@ function ExampleRow({
   idx,
   word,
   wordId,
+  aiAvailable,
 }: {
   e: ExampleSentence;
   idx: number;
   word: string;
   wordId: number;
+  aiAvailable: boolean;
 }) {
   const tintColor = useThemeColor({}, "tint");
   const db = useSQLiteContext();
@@ -351,6 +362,11 @@ function ExampleRow({
   };
 
   const handlePlayText = async () => {
+    if (!aiAvailable) {
+      fallbackToSpeech();
+      return;
+    }
+
     try {
       const localAudio = await getAudioFile(db, wordId, e.id);
 
@@ -390,9 +406,9 @@ function ExampleRow({
       <HapticTab
         style={styles.icon}
         onPress={handlePlayText}
-        disabled={loading}
+        disabled={aiAvailable && loading}
       >
-        {loading ? (
+        {aiAvailable && loading ? (
           <ActivityIndicator size="small" />
         ) : (
           <IconSymbol name="play.circle" size={24} color={tintColor} />

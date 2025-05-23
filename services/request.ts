@@ -3,6 +3,7 @@ import { queryOptions } from "@tanstack/react-query";
 import * as FileSystem from "expo-file-system";
 
 import { DictionaryEntry, ExampleSentence, WordMeaning } from "./database";
+import { settingsStorage, SETTINGS_KEYS } from "./storage";
 
 export enum ExplainRequestType {
   V = "vocabulary",
@@ -35,14 +36,19 @@ export function craeteWordPrompt(
 //   return ;
 // }
 
-const DEFAULT_OPTIONS: FetchRequestInit = {
-  headers: {
-    Authorization: `Basic ${btoa(
-      `${process.env.EXPO_PUBLIC_AUTH_USERNAME}:${process.env.EXPO_PUBLIC_AUTH_PASSWORD}`
-    )}`,
-  },
-  credentials: "include",
-};
+function getDefaultOptions(): FetchRequestInit {
+  const username = settingsStorage.getString(
+    SETTINGS_KEYS.API_AUTH_USERNAME
+  );
+  const password = settingsStorage.getString(
+    SETTINGS_KEYS.API_AUTH_PASSWORD
+  );
+  const headers: Record<string, string> = {};
+  if (username && password) {
+    headers.Authorization = `Basic ${btoa(`${username}:${password}`)}`;
+  }
+  return { headers, credentials: "include" };
+}
 
 export const aiExamplesQueryOptions = (
   prompt: string | null,
@@ -61,7 +67,7 @@ export const aiExamplesQueryOptions = (
         {
           signal,
           method: "GET",
-          ...DEFAULT_OPTIONS,
+          ...getDefaultOptions(),
         }
       );
 
@@ -82,19 +88,19 @@ export function getAiExplanation(signal?: AbortSignal | null) {
     if (!prompt) {
       return Promise.resolve(new Response());
     }
+    const defaultOptions = getDefaultOptions();
+    const headers = {
+      ...defaultOptions.headers,
+      Accept: "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    };
     return fetch(
       `${process.env.EXPO_PUBLIC_BASE_URL}/explain/${provider}?prompt=${prompt}&type=${type}`,
       {
         signal: signal || undefined,
-        headers: {
-          Authorization: `Basic ${btoa(
-            `${process.env.EXPO_PUBLIC_AUTH_USERNAME}:${process.env.EXPO_PUBLIC_AUTH_PASSWORD}`
-          )}`,
-          Accept: "text/event-stream",
-          "Cache-Control": "no-cache",
-          Connection: "keep-alive",
-        },
-        credentials: "include",
+        headers,
+        credentials: defaultOptions.credentials,
       }
     );
   };
@@ -115,18 +121,25 @@ export const aiSoundQueryOptions = (
         FileSystem.cacheDirectory
       }audio_${Date.now()}.mp3`;
 
+      const username = settingsStorage.getString(
+        SETTINGS_KEYS.API_AUTH_USERNAME
+      );
+      const password = settingsStorage.getString(
+        SETTINGS_KEYS.API_AUTH_PASSWORD
+      );
+      const headers: Record<string, string> = {
+        Accept: "audio/mpeg",
+      };
+      if (username && password) {
+        headers.Authorization = `Basic ${btoa(`${username}:${password}`)}`;
+      }
       const downloadResult = await FileSystem.downloadAsync(
         `${process.env.EXPO_PUBLIC_BASE_URL}/sound/${
           o.provider
         }?prompt=${encodeURIComponent(prompt)}`,
         tempFilePath,
         {
-          headers: {
-            Authorization: `Basic ${btoa(
-              `${process.env.EXPO_PUBLIC_AUTH_USERNAME}:${process.env.EXPO_PUBLIC_AUTH_PASSWORD}`
-            )}`,
-            Accept: "audio/mpeg",
-          },
+          headers,
         }
       );
 

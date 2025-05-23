@@ -20,12 +20,14 @@ import {
 import { setAudioModeAsync } from "expo-audio";
 
 import { Loader } from "@/components/Loader";
-import { PopupMenu } from "@/components/PopupMenu";
+import { PopupMenu, PopupMenuItem } from "@/components/PopupMenu";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { migrateDbIfNeeded } from "@/services/database";
 import { queryClient } from "@/services/queryClient";
+import { useMMKVString } from "react-native-mmkv";
+import { SETTINGS_KEYS } from "@/services/storage";
 
 const DATABASE_PATH = "../assets/db/dict_2.db";
 
@@ -116,14 +118,11 @@ export default function RootLayout() {
 }
 
 function BookmarksButton() {
+  const [apiAuthUsername] = useMMKVString(SETTINGS_KEYS.API_AUTH_USERNAME);
   const router = useRouter();
 
   const navigateToBookmarks = () => {
     router.push("/bookmarks");
-  };
-
-  const navigateToExplore = () => {
-    router.push("/explore");
   };
 
   const navigateToKanji = () => {
@@ -134,6 +133,39 @@ function BookmarksButton() {
     router.push("/settings");
   };
 
+  const navigateToExplore = () => {
+    router.push("/explore");
+  };
+
+  const aiItem: PopupMenuItem[] = apiAuthUsername
+    ? [
+        {
+          label: "質問",
+          onPress: navigateToExplore,
+          icon: "sparkles",
+        },
+      ]
+    : [];
+
+  const items: PopupMenuItem[] = [
+    {
+      label: "しおり",
+      onPress: navigateToBookmarks,
+      icon: "bookmark",
+    },
+    {
+      label: "漢字",
+      onPress: navigateToKanji,
+      icon: "book.closed",
+    },
+    {
+      label: "設定",
+      onPress: navigateToSettings,
+      icon: "gearshape",
+    },
+    ...aiItem,
+  ];
+
   return (
     <PopupMenu
       buttonView={
@@ -143,28 +175,7 @@ function BookmarksButton() {
           size={32}
         />
       }
-      items={[
-        {
-          label: "しおり",
-          onPress: navigateToBookmarks,
-          icon: "bookmark",
-        },
-        {
-          label: "質問",
-          onPress: navigateToExplore,
-          icon: "sparkles",
-        },
-        {
-          label: "漢字",
-          onPress: navigateToKanji,
-          icon: "book.closed",
-        },
-        {
-          label: "設定",
-          onPress: navigateToSettings,
-          icon: "gearshape",
-        },
-      ]}
+      items={items}
     />
   );
 }

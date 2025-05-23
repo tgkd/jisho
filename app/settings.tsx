@@ -1,6 +1,6 @@
 import { Stack } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
-import { Alert, StyleSheet, Switch, View } from "react-native";
+import { Alert, StyleSheet, Switch, View, TextInput } from "react-native";
 import { useMMKVString, useMMKVBoolean } from "react-native-mmkv";
 
 import { HapticTab } from "@/components/HapticTab";
@@ -30,7 +30,6 @@ const highlightColorOptions: Array<{
 
 export default function SettingsScreen() {
   const db = useSQLiteContext();
-  const dividerColor = useThemeColor({}, "separator");
   const [highlightColorState, setHighlightColor] = useMMKVString(
     SETTINGS_KEYS.HIGHLIGHT_COLOR
   );
@@ -43,6 +42,12 @@ export default function SettingsScreen() {
     SETTINGS_KEYS.SHOW_FURIGANA
   );
   const [autoPaste, setAutoPaste] = useMMKVBoolean(SETTINGS_KEYS.AUTO_PASTE);
+  const [apiAuthUsername, setApiAuthUsername] = useMMKVString(
+    SETTINGS_KEYS.API_AUTH_USERNAME
+  );
+  const [apiAuthPassword, setApiAuthPassword] = useMMKVString(
+    SETTINGS_KEYS.API_AUTH_PASSWORD
+  );
 
   const handleDatabaseReset = () => {
     Alert.alert(
@@ -199,8 +204,36 @@ export default function SettingsScreen() {
 
       <Card>
         <ThemedText size="sm" style={styles.sectionTitle}>
-          {"DB"}
+          {"AI API Credentials"}
         </ThemedText>
+
+        <View style={styles.settingItem}>
+          <ThemedText size="sm">{"API Username"}</ThemedText>
+          <TextInput
+            style={styles.textInput}
+            value={apiAuthUsername}
+            onChangeText={setApiAuthUsername}
+            placeholder="Username"
+            autoCapitalize="none"
+          />
+        </View>
+        <View style={styles.settingItem}>
+          <ThemedText size="sm">{"API Password"}</ThemedText>
+          <TextInput
+            style={styles.textInput}
+            value={apiAuthPassword}
+            onChangeText={setApiAuthPassword}
+            placeholder="Password"
+            autoCapitalize="none"
+            secureTextEntry
+          />
+        </View>
+        <ThemedText size="xs" style={styles.description}>
+          {"Provide API credentials to enable AI features."}
+        </ThemedText>
+
+      </Card>
+      <Card>
 
         <HapticTab onPress={handleClearHistory} style={styles.actionButton}>
           <IconSymbol
@@ -297,5 +330,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 8,
     gap: 8,
+  },
+  textInput: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.light.separator,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
   },
 });
