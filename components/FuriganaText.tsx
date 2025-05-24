@@ -8,7 +8,6 @@ import { ThemedText } from "./ThemedText";
 
 type BaseProps = {
   word: string;
-  showFuri?: boolean;
   textStyle?: TextStyle;
   [key: string]: any;
 };
@@ -25,13 +24,10 @@ export function FuriganaText({
   word,
   reading,
   furi,
-  showFuri = true,
   textStyle = {},
   ...props
 }: Props) {
-  const [showFurigana, setShowFurigana] = useMMKVBoolean(
-    SETTINGS_KEYS.SHOW_FURIGANA
-  );
+  const [showFurigana] = useMMKVBoolean(SETTINGS_KEYS.SHOW_FURIGANA);
 
   const pairs = React.useMemo(
     () => combineFuri(word, reading, furi),

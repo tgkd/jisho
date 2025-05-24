@@ -17,6 +17,7 @@ import { HapticTab } from "@/components/HapticTab";
 import { HighlightText } from "@/components/HighlightText";
 import { Loader } from "@/components/Loader";
 import { ThemedText } from "@/components/ThemedText";
+import { FuriganaText } from "@/components/FuriganaText";
 import { ThemedView } from "@/components/ThemedView";
 import { Card } from "@/components/ui/Card";
 import { IconSymbol } from "@/components/ui/IconSymbol";
@@ -280,7 +281,9 @@ function ExamplesView({
           disabled={aiexQuery.isLoading}
           onPress={handleFetchExamples}
         >
-          <ThemedText>{aiexQuery.isLoading ? "Loading..." : "✨🤖✨"}</ThemedText>
+          <ThemedText>
+            {aiexQuery.isLoading ? "Loading..." : "✨🤖✨"}
+          </ThemedText>
         </Pressable>
       )}
     </>

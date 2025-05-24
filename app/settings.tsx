@@ -169,23 +169,23 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        <View style={styles.settingItem}>
+        {/* <View style={styles.settingItem}>
           <View style={styles.row}>
             <ThemedText size="sm">{"Show Furigana"}</ThemedText>
+            <ThemedText size="sm" style={styles.description}>
+              {"not available yet"}
+            </ThemedText>
             <Switch
               value={showFurigana}
+              disabled
               onValueChange={setShowFurigana}
               style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
             />
           </View>
           <View style={styles.center}>
-            <FuriganaText
-              word="振り仮名"
-              reading="ふりがな"
-              showFuri={showFurigana}
-            />
+            <FuriganaText word="振り仮名" reading="ふりがな" />
           </View>
-        </View>
+        </View> */}
 
         <View style={styles.settingItem}>
           <View style={styles.row}>
@@ -197,18 +197,17 @@ export default function SettingsScreen() {
             />
           </View>
           <ThemedText size="xs" style={styles.description}>
-            {"Automatically paste clipboard content into the search box."}
+            {"Automatically paste clipboard content into the search box"}
           </ThemedText>
         </View>
       </Card>
 
       <Card>
         <ThemedText size="sm" style={styles.sectionTitle}>
-          {"AI API Credentials"}
+          {"Credentials"}
         </ThemedText>
-
         <View style={styles.settingItem}>
-          <ThemedText size="sm">{"API Username"}</ThemedText>
+          <ThemedText size="sm">{"User"}</ThemedText>
           <TextInput
             style={styles.textInput}
             value={apiAuthUsername}
@@ -218,7 +217,7 @@ export default function SettingsScreen() {
           />
         </View>
         <View style={styles.settingItem}>
-          <ThemedText size="sm">{"API Password"}</ThemedText>
+          <ThemedText size="sm">{"Password"}</ThemedText>
           <TextInput
             style={styles.textInput}
             value={apiAuthPassword}
@@ -229,12 +228,10 @@ export default function SettingsScreen() {
           />
         </View>
         <ThemedText size="xs" style={styles.description}>
-          {"Provide API credentials to enable AI features."}
+          {"Provide API credentials to enable AI features"}
         </ThemedText>
-
       </Card>
       <Card>
-
         <HapticTab onPress={handleClearHistory} style={styles.actionButton}>
           <IconSymbol
             name="clock.arrow.circlepath"

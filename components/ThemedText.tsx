@@ -70,6 +70,7 @@ export function ThemedText({
 
   return (
     <Text
+      uiTextView
       style={[
         { color },
         type === "default" ? styles.default : undefined,
