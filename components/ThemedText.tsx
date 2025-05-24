@@ -8,6 +8,8 @@ import { useThemeColor } from "@/hooks/useThemeColor";
 export type ThemedTextProps = TextProps & {
   lightColor?: string;
   darkColor?: string;
+  selectable?: boolean;
+  uiTextView?: boolean;
   textAlign?: "auto" | "left" | "right" | "center" | "justify";
   size?: "lg" | "md" | "sm" | "xs";
   type?:
@@ -25,6 +27,7 @@ export function ThemedText({
   darkColor,
   type = "default",
   selectable = true,
+  uiTextView = true,
   textAlign,
   size,
   ...rest
@@ -70,7 +73,7 @@ export function ThemedText({
 
   return (
     <Text
-      uiTextView
+      uiTextView={uiTextView}
       style={[
         { color },
         type === "default" ? styles.default : undefined,

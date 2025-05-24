@@ -61,13 +61,19 @@ export const HistoryListItem = ({
               lightColor={Colors.light.groupedBackground}
               darkColor={Colors.dark.groupedBackground}
             >
-              <Text numberOfLines={1}>
-                <ThemedText type="defaultSemiBold">
+              <ThemedText uiTextView={false}>
+                <ThemedText type="defaultSemiBold" uiTextView={false}>
                   {item.word + " "}
                 </ThemedText>
-                <ThemedText size="sm">{formatJp(item.reading, false)}</ThemedText>
-              </Text>
-              <ThemedText type="secondary" style={styles.meaning}>
+                <ThemedText size="sm" uiTextView={false}>
+                  {formatJp(item.reading, false)}
+                </ThemedText>
+              </ThemedText>
+              <ThemedText
+                type="secondary"
+                style={styles.meaning}
+                uiTextView={false}
+              >
                 {formatEn(item.meaning, "none", { truncateAll: 30 })}
               </ThemedText>
             </ThemedView>

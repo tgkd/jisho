@@ -122,6 +122,14 @@ export default function HomeScreen() {
     });
   };
 
+  const handleCancelButtonPress = () => {
+    setSearch("");
+    setResults([]);
+    setTokens([]);
+    searchBarRef.current?.setText("");
+    searchBarRef.current?.blur();
+  };
+
   const renderItem = ({
     index,
     item,
@@ -158,6 +166,7 @@ export default function HomeScreen() {
             ref: searchBarRef,
             shouldShowHintSearchIcon: true,
             onFocus,
+            onCancelButtonPress: handleCancelButtonPress,
           },
         }}
       />

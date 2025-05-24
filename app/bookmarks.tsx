@@ -202,18 +202,23 @@ function BookmarkListItem({
           lightColor={Colors.light.groupedBackground}
           darkColor={Colors.dark.groupedBackground}
         >
-          <View style={styles.col}>
-            <Text numberOfLines={1}>
-              <ThemedText type="defaultSemiBold">{item.word + " "}</ThemedText>
-              <ThemedText size="sm">{item.reading}</ThemedText>
-            </Text>
-            <ThemedText type="secondary">
-              {item.meaning
-                ? formatEn(item.meaning, "none")
-                : formatJp(item.reading)}
+          <ThemedText uiTextView={false}>
+            <ThemedText type="defaultSemiBold" uiTextView={false}>
+              {item.word + " "}
             </ThemedText>
-          </View>
-          <IconSymbol color={iconColor} name="chevron.right" size={16} />
+            <ThemedText size="sm" uiTextView={false}>
+              {formatJp(item.reading, false)}
+            </ThemedText>
+          </ThemedText>
+          <ThemedText
+            type="secondary"
+            style={styles.meaning}
+            uiTextView={false}
+          >
+            {item.meaning
+              ? formatEn(item.meaning, "none")
+              : formatJp(item.reading)}
+          </ThemedText>
         </ThemedView>
 
         {isLast ? null : <View style={styles.separator} />}
@@ -275,12 +280,11 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   item: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 4,
+    flexDirection: "column",
+    flexWrap: "wrap",
     paddingVertical: 12,
     paddingHorizontal: 8,
+    gap: 4,
   },
   titleRow: {
     flexDirection: "row",
@@ -306,5 +310,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     width: ACTION_WIDTH,
+  },
+  meaning: {
+    maxWidth: "90%",
   },
 });

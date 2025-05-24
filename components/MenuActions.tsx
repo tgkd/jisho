@@ -31,7 +31,7 @@ export function MenuActions({
   const handleCtxMenu = (
     e: NativeSyntheticEvent<ContextMenuOnPressNativeEvent>
   ) => {
-    switch (e.nativeEvent.name.toLocaleLowerCase()) {
+    switch (e.nativeEvent.name?.toLowerCase()) {
       case "copy":
         handleCopy();
         break;
