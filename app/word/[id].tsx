@@ -52,13 +52,12 @@ import {
 } from "@/services/request";
 import { useMMKVString } from "react-native-mmkv";
 import { SETTINGS_KEYS } from "@/services/storage";
+import { useLocalAI } from "@/providers/LocalAIProvider";
 
 export default function WordDetailScreen() {
   const tintColor = useThemeColor({}, "tint");
   const markColor = useThemeColor({}, "text");
   const params = useLocalSearchParams();
-  const [apiAuthUsername] = useMMKVString(SETTINGS_KEYS.API_AUTH_USERNAME);
-  const aiAvailable = !!apiAuthUsername;
   const title = typeof params.title === "string" ? params.title : "Details";
   const [entry, setEntry] = useState<{
     word: DictionaryEntry;
@@ -243,11 +242,22 @@ function ExamplesView({
   refreshExamples: () => Promise<void>;
 }) {
   const db = useSQLiteContext();
-  const [apiAuthUsername] = useMMKVString(SETTINGS_KEYS.API_AUTH_USERNAME);
-  const aiAvailable = !!apiAuthUsername;
+  const localai = useLocalAI();
   const aiexQuery = useQuery(aiExamplesQueryOptions(craeteWordPrompt(entry)));
+  const [apiAuthUsername] = useMMKVString(SETTINGS_KEYS.API_AUTH_USERNAME);
+  const aiAvailable = !!apiAuthUsername || localai.enabled;
 
   const handleFetchExamples = async () => {
+    if (localai.enabled) {
+      localai.generateExamples(entry.word.word, (resp) => {
+        addExamplesList(entry.word.id, resp, db)
+          .then(() => refreshExamples())
+          .catch((error) => console.error("Failed to save examples:", error));
+      });
+
+      return;
+    }
+
     const resp = await aiexQuery.refetch();
     if (resp.data) {
       await addExamplesList(entry.word.id, resp.data, db);

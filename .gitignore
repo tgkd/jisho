@@ -46,3 +46,4 @@ jm/
 
 .github/copilot-instructions.md
 .vscode/
+.aider*
