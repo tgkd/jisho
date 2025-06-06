@@ -6,16 +6,19 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useRef,
+  useState,
 } from "react";
 import {
-  LLAMA3_2_1B_SPINQUANT,
-  LLAMA3_2_1B_TOKENIZER,
-  LLAMA3_2_TOKENIZER_CONFIG,
+  QWEN3_0_6B,
+  QWEN3_TOKENIZER,
+  QWEN3_TOKENIZER_CONFIG,
   LLMTool,
   useLLM,
   type Message,
 } from "react-native-executorch";
-import { useMMKVBoolean, useMMKVString } from "react-native-mmkv";
+
+import { useMMKVBoolean } from "react-native-mmkv";
 
 export interface AIProviderValue {
   generateExamples: (
@@ -27,16 +30,13 @@ export interface AIProviderValue {
     type: ExplainRequestType,
     onChunk: (text: string) => void
   ) => Promise<void>;
-
   toggleState: () => void;
-
   downloadProgress: number | undefined;
   isReady: boolean;
   isGenerating: boolean;
   enabled: boolean;
   error: string | null;
   interrupt: () => void;
-
   messageHistory: Message[];
   clearHistory: () => void;
 }
@@ -56,11 +56,15 @@ function getSystemPromptForType(type: ExplainRequestType): string {
 
 export function LocalAIProvider({ children }: { children: ReactNode }) {
   const [enabled, setEnabled] = useMMKVBoolean(SETTINGS_KEYS.LOCAL_AI_ENABLED);
+  const [isGeneratingExamples, setIsGeneratingExamples] = useState(false);
+  const examplesCallbackRef = useRef<((examples: AiExample[]) => void) | null>(
+    null
+  );
 
   const llm = useLLM({
-    modelSource: LLAMA3_2_1B_SPINQUANT,
-    tokenizerSource: LLAMA3_2_1B_TOKENIZER,
-    tokenizerConfigSource: LLAMA3_2_TOKENIZER_CONFIG,
+    modelSource: QWEN3_0_6B,
+    tokenizerSource: QWEN3_TOKENIZER,
+    tokenizerConfigSource: QWEN3_TOKENIZER_CONFIG,
     preventLoad: !enabled,
   });
 
@@ -78,9 +82,6 @@ export function LocalAIProvider({ children }: { children: ReactNode }) {
             if (call.toolName === "examples_formatter") {
               if (call.arguments) {
                 try {
-                  // The LLM should provide arguments matching the tool's schema,
-                  // which is an object like { sentences: [...] }.
-                  // We stringify this directly.
                   return JSON.stringify(call.arguments);
                 } catch (e) {
                   console.error("Error stringifying tool arguments:", e);
@@ -93,11 +94,10 @@ export function LocalAIProvider({ children }: { children: ReactNode }) {
             }
             return null;
           },
-          // displayToolCalls: true, // Optional: for debugging
         },
       });
     }
-  }, [llm.isReady, enabled]); // Added llm.isReady and enabled to re-configure if needed
+  }, [llm.isReady, enabled]);
 
   const toggleState = useCallback(() => {
     if (enabled) {
@@ -110,15 +110,84 @@ export function LocalAIProvider({ children }: { children: ReactNode }) {
     }
   }, [enabled, llm, setEnabled]);
 
-  // console.log("LLM:", llm.isReady, llm.isGenerating, llm.response); // Original log
-  console.log("LLM State:", llm.isReady, llm.isGenerating, "Response available:", !!llm.response);
+  const parseExamples = useCallback(
+    (responseString: string | null): AiExample[] => {
+      if (!responseString) {
+        console.warn("No response string to parse for examples");
+        return [];
+      }
 
+      console.log("Raw response for parsing examples:", responseString);
 
+      let cleanedString = responseString;
+
+      const codeBlockPattern = /```(?:json)?\s*\n?([\s\S]*?)\n?```/;
+      const match = responseString.match(codeBlockPattern);
+
+      if (match && match[1]) {
+        cleanedString = match[1].trim();
+      }
+
+      const eotIndex = cleanedString.indexOf("<|eot_id|>");
+      if (eotIndex !== -1) {
+        cleanedString = cleanedString.substring(0, eotIndex).trim();
+      }
+
+      console.log("Cleaned string for parsing:", cleanedString);
+
+      try {
+        const parsedResponse = JSON.parse(cleanedString);
+        const examples: AiExample[] = parsedResponse.sentences;
+
+        if (!examples || !Array.isArray(examples)) {
+          console.error(
+            "Parsed response does not contain a 'sentences' array:",
+            parsedResponse
+          );
+          return [];
+        }
+
+        return examples;
+      } catch (e) {
+        console.error(
+          "Error parsing cleaned LLM response for examples:",
+          e,
+          "Cleaned string was:",
+          cleanedString
+        );
+        return [];
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    if (!llm.isGenerating && isGeneratingExamples) {
+      console.log(
+        "Example generation finished. Processing response:",
+        llm.response
+      );
+
+      const examples = parseExamples(llm.response);
+
+      if (examplesCallbackRef.current) {
+        examplesCallbackRef.current(examples);
+        examplesCallbackRef.current = null;
+      }
+
+      setIsGeneratingExamples(false);
+    }
+  }, [llm.response, llm.isGenerating, isGeneratingExamples, parseExamples]);
   const generateExamples = useCallback(
     async (prompt: string, onComplete: (resp: AiExample[]) => void) => {
+      setIsGeneratingExamples(true);
+      examplesCallbackRef.current = onComplete;
+
       if (!llm.isReady || !enabled) {
         console.warn("LLM not ready or not enabled for generating examples.");
-        onComplete([]);
+        setIsGeneratingExamples(false);
+        if (onComplete) onComplete([]);
+        examplesCallbackRef.current = null;
         return;
       }
 
@@ -127,42 +196,15 @@ export function LocalAIProvider({ children }: { children: ReactNode }) {
           { role: "system", content: EXAMPLES_PROMPT },
           { role: "user", content: prompt },
         ]);
-
-        if (llm.response) {
-          console.log("LLM raw response for examples:", llm.response);
-          try {
-            const parsedResponse = JSON.parse(llm.response);
-            // The prompt now guides the LLM to return JSON matching the tool's output structure,
-            // which should be an object like { sentences: [...] }.
-            const examples: AiExample[] = parsedResponse.sentences;
-            if (!examples || !Array.isArray(examples)) {
-              console.error("Parsed response does not contain a 'sentences' array:", parsedResponse);
-              onComplete([]);
-            } else {
-              onComplete(examples);
-            }
-          } catch (e) {
-            console.error(
-              "Error parsing LLM response for examples:",
-              e,
-              "Raw response was:",
-              llm.response
-            );
-            onComplete([]);
-          }
-        } else {
-          console.warn("LLM generated no response for examples.");
-          onComplete([]);
-        }
       } catch (error) {
-        console.error("Error during llm.generate for examples:", error);
-        onComplete([]);
+        console.error("Error during llm.generate call for examples:", error);
+        if (onComplete) onComplete([]);
+        examplesCallbackRef.current = null;
+        setIsGeneratingExamples(false);
       }
     },
     [llm, enabled]
   );
-
-  // const handleExamplesGenerateEnd = useCallback((txt: string) => {}, []); // Already removed in previous step, ensuring it stays removed.
 
   const explainText = useCallback(
     async (
@@ -221,7 +263,7 @@ export function useLocalAI() {
   return ctx;
 }
 
-const MAX_TOKENS = 512; // Ensure this is appropriate for the model and expected output size
+const MAX_TOKENS = 512;
 
 const EXAMPLES_PROMPT = `
 # Japanese Language Expert & Tool User
@@ -292,7 +334,7 @@ const TOOL_DEFINITIONS: LLMTool[] = [
     description:
       "Formats 3-5 Japanese-English example sentence pairs based on user input.",
     parameters: {
-      type: "dict", // Assuming "dict" is the expected type by react-native-executorch, otherwise use "object"
+      type: "dict",
       properties: {
         sentences: {
           type: "array",
