@@ -218,6 +218,15 @@ export default function SettingsScreen() {
               style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
             />
           </View>
+          {
+            localAi.enabled && localAi.downloadProgress ? (
+              <View style={styles.row}>
+                <ThemedText size="xs" style={styles.description}>
+                  {`Downloading model: ${localAi.downloadProgress}%`}
+                </ThemedText>
+              </View>
+            ) : null
+          }
           <ThemedText size="xs" style={styles.description}>
             {"Enable local AI features (requires model download)"}
           </ThemedText>

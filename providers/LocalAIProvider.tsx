@@ -3,6 +3,7 @@ import { SETTINGS_KEYS } from "@/services/storage";
 import type { ReactNode } from "react";
 import React, {
   createContext,
+  use,
   useCallback,
   useContext,
   useEffect,
@@ -28,7 +29,8 @@ export interface AIProviderValue {
   explainText: (
     text: string,
     type: ExplainRequestType,
-    onChunk: (text: string) => void
+    onChunk: (text: string) => void,
+    onComplete: (fullResponse: string, error?: string) => void
   ) => Promise<void>;
   toggleState: () => void;
   downloadProgress: number | undefined;
@@ -39,27 +41,22 @@ export interface AIProviderValue {
   interrupt: () => void;
   messageHistory: Message[];
   clearHistory: () => void;
+  genType: "examples" | "explain" | null;
+  currentResponse: string;
 }
 
 const AIContext = createContext<AIProviderValue | undefined>(undefined);
 
-function getSystemPromptForType(type: ExplainRequestType): string {
-  switch (type) {
-    case ExplainRequestType.V:
-      return "You are a helpful Japanese language learning assistant. Explain vocabulary words, their meanings, usage, and provide examples in a clear and educational way.";
-    case ExplainRequestType.G:
-      return "You are a helpful Japanese language learning assistant. Explain grammar patterns, their usage, conjugations, and provide clear examples with explanations.";
-    default:
-      return "You are a helpful Japanese language learning assistant.";
-  }
-}
-
 export function LocalAIProvider({ children }: { children: ReactNode }) {
   const [enabled, setEnabled] = useMMKVBoolean(SETTINGS_KEYS.LOCAL_AI_ENABLED);
-  const [isGeneratingExamples, setIsGeneratingExamples] = useState(false);
+  const [genType, setGenType] = useState<"examples" | "explain" | null>(null);
   const examplesCallbackRef = useRef<((examples: AiExample[]) => void) | null>(
     null
   );
+  const explainCallbackRef = useRef<{
+    onChunk: (text: string) => void;
+    onComplete: (fullResponse: string, error?: string) => void;
+  } | null>(null);
 
   const llm = useLLM({
     modelSource: QWEN3_0_6B,
@@ -110,83 +107,43 @@ export function LocalAIProvider({ children }: { children: ReactNode }) {
     }
   }, [enabled, llm, setEnabled]);
 
-  const parseExamples = useCallback(
-    (responseString: string | null): AiExample[] => {
-      if (!responseString) {
-        console.warn("No response string to parse for examples");
-        return [];
-      }
+  useEffect(() => {
+    if (genType !== "examples") {
+      return;
+    }
 
-      console.log("Raw response for parsing examples:", responseString);
-
-      let cleanedString = responseString;
-
-      const codeBlockPattern = /```(?:json)?\s*\n?([\s\S]*?)\n?```/;
-      const match = responseString.match(codeBlockPattern);
-
-      if (match && match[1]) {
-        cleanedString = match[1].trim();
-      }
-
-      const eotIndex = cleanedString.indexOf("<|eot_id|>");
-      if (eotIndex !== -1) {
-        cleanedString = cleanedString.substring(0, eotIndex).trim();
-      }
-
-      console.log("Cleaned string for parsing:", cleanedString);
-
-      try {
-        const parsedResponse = JSON.parse(cleanedString);
-        const examples: AiExample[] = parsedResponse.sentences;
-
-        if (!examples || !Array.isArray(examples)) {
-          console.error(
-            "Parsed response does not contain a 'sentences' array:",
-            parsedResponse
-          );
-          return [];
-        }
-
-        return examples;
-      } catch (e) {
-        console.error(
-          "Error parsing cleaned LLM response for examples:",
-          e,
-          "Cleaned string was:",
-          cleanedString
-        );
-        return [];
-      }
-    },
-    []
-  );
+    if (!llm.isGenerating) {
+      examplesCallbackRef.current?.(parseExamples(llm.response));
+      examplesCallbackRef.current = null;
+    }
+  }, [llm.response, llm.isGenerating, genType]);
 
   useEffect(() => {
-    if (!llm.isGenerating && isGeneratingExamples) {
-      console.log(
-        "Example generation finished. Processing response:",
-        llm.response
-      );
-
-      const examples = parseExamples(llm.response);
-
-      if (examplesCallbackRef.current) {
-        examplesCallbackRef.current(examples);
-        examplesCallbackRef.current = null;
-      }
-
-      setIsGeneratingExamples(false);
+    if (genType !== "explain") {
+      return;
     }
-  }, [llm.response, llm.isGenerating, isGeneratingExamples, parseExamples]);
+
+    if (llm.isGenerating) {
+      explainCallbackRef.current?.onChunk(llm.response);
+      return;
+    }
+
+    if (llm.response) {
+      explainCallbackRef.current?.onComplete(llm.response);
+      explainCallbackRef.current = null;
+      setGenType(null);
+    }
+  }, [llm.response, llm.isGenerating, genType]);
+
   const generateExamples = useCallback(
     async (prompt: string, onComplete: (resp: AiExample[]) => void) => {
-      setIsGeneratingExamples(true);
+      setGenType("examples");
       examplesCallbackRef.current = onComplete;
 
       if (!llm.isReady || !enabled) {
         console.warn("LLM not ready or not enabled for generating examples.");
-        setIsGeneratingExamples(false);
-        if (onComplete) onComplete([]);
+        setGenType(null);
+        onComplete([]);
         examplesCallbackRef.current = null;
         return;
       }
@@ -198,37 +155,50 @@ export function LocalAIProvider({ children }: { children: ReactNode }) {
         ]);
       } catch (error) {
         console.error("Error during llm.generate call for examples:", error);
-        if (onComplete) onComplete([]);
+        onComplete([]);
         examplesCallbackRef.current = null;
-        setIsGeneratingExamples(false);
+        setGenType(null);
       }
     },
     [llm, enabled]
   );
 
-  const explainText = useCallback(
-    async (
-      text: string,
-      type: ExplainRequestType,
-      onChunk: (text: string) => void
-    ) => {
-      if (!llm.isReady || !enabled) {
-        return;
-      }
+  const explainText = async (
+    text: string,
+    type: ExplainRequestType,
+    onChunk: (text: string) => void,
+    onComplete: (fullResponse: string, error?: string) => void
+  ) => {
+    if (!llm.isReady || !enabled) {
+      console.warn("LLM not ready or not enabled for explaining text.");
+      onComplete("", "LLM not available");
+      return;
+    }
 
-      const systemPrompt = getSystemPromptForType(type);
+    setGenType("explain");
+    explainCallbackRef.current = { onChunk, onComplete };
 
-      try {
-        await llm.generate([
-          { role: "system", content: systemPrompt },
-          { role: "user", content: text },
-        ]);
-      } catch (error) {
-        console.error("Error explaining text:", error);
-      }
-    },
-    [llm, enabled]
-  );
+    let systemPrompt = "";
+
+    if (type === "vocabulary") {
+      systemPrompt = generateWordExplanationPrompt(text);
+    } else {
+      systemPrompt = EXPLAIN_GRAMMAR;
+    }
+
+    try {
+      await llm.generate([
+        { role: "system", content: systemPrompt },
+        { role: "user", content: text },
+      ]);
+    } catch (error) {
+      console.error("Error explaining text:", error);
+
+      onComplete("", error instanceof Error ? error.message : "Unknown error");
+      explainCallbackRef.current = null;
+      setGenType(null);
+    }
+  };
 
   const clearHistory = useCallback(() => {
     if (llm.messageHistory.length > 0) {
@@ -246,6 +216,8 @@ export function LocalAIProvider({ children }: { children: ReactNode }) {
         downloadProgress: llm.downloadProgress,
         isReady: llm.isReady,
         isGenerating: llm.isGenerating,
+        genType,
+        currentResponse: llm.response,
         error: llm.error,
         interrupt: llm.interrupt,
         messageHistory: llm.messageHistory,
@@ -262,6 +234,64 @@ export function useLocalAI() {
   if (!ctx) throw new Error("useLocalAI must be used within AIProvider");
   return ctx;
 }
+
+const parseExamples = (responseString: string | null): AiExample[] => {
+  if (!responseString) {
+    console.warn("No response string to parse for examples");
+    return [];
+  }
+
+  let cleanedString = responseString;
+
+  const codeBlockPattern = /```(?:json)?\s*\n?([\s\S]*?)\n?```/;
+  const match = responseString.match(codeBlockPattern);
+
+  if (match && match[1]) {
+    cleanedString = match[1].trim();
+  }
+
+  const eotIndex = cleanedString.indexOf("<|eot_id|>");
+  if (eotIndex !== -1) {
+    cleanedString = cleanedString.substring(0, eotIndex).trim();
+  }
+
+  try {
+    const parsedResponse = JSON.parse(cleanedString);
+    const examples: AiExample[] = parsedResponse.sentences;
+
+    if (!examples || !Array.isArray(examples)) {
+      console.error(
+        "Parsed response does not contain a 'sentences' array:",
+        parsedResponse
+      );
+      return [];
+    }
+
+    return examples
+      .filter(
+        (e) =>
+          e.jp &&
+          e.jp_reading &&
+          e.en &&
+          typeof e.jp === "string" &&
+          typeof e.jp_reading === "string" &&
+          typeof e.en === "string"
+      )
+      .map((e) => ({
+        jp: e.jp.trim(),
+        jp_reading: e.jp_reading.trim(),
+        en: e.en.trim(),
+      }));
+  } catch (e) {
+    console.error(
+      "Error parsing cleaned LLM response for examples:",
+      e,
+      "Cleaned string was:",
+      cleanedString
+    );
+    return [];
+  }
+};
 
 const MAX_TOKENS = 512;
 
@@ -366,3 +396,118 @@ const TOOL_DEFINITIONS: LLMTool[] = [
     },
   },
 ];
+
+const EXPLAIN_GRAMMAR = `
+**[Pattern/Phrase]** means **"[translation]"** and functions to [grammatical role/purpose].
+
+### Structure Analysis
+- **[Component 1]**: [function explanation]
+- **[Component 2]**: [function explanation]
+- **Pattern formula:** [X + Y + Z pattern notation]
+
+### Usage Examples
+- **Basic usage:**
+  - **[Japanese sentence]**
+    *([ふりがな], [romaji])*
+    → "[English translation]"
+
+- **Variation:**
+  - **[Japanese sentence]**
+    *([ふりがな], [romaji])*
+    → "[English translation]"
+
+### Related Constructions
+**[Related Pattern 1]**
+- Meaning: [meaning]
+- When to use: [context]
+- Difference: [how it differs from main pattern]
+
+**[Related Pattern 2]**
+- Meaning: [meaning]
+- When to use: [context]
+- Difference: [how it differs from main pattern]
+
+### Usage Rules
+- **Correct structure:** [specific syntactic requirements]
+- **Common mistakes:** [errors to avoid]
+- **Register awareness:** [formality considerations]
+`;
+
+const generateWordExplanationPrompt = (prompt: string) => {
+  // Check if the prompt contains kanji characters
+  const containsKanji = /[\u4e00-\u9faf]/.test(prompt);
+
+  let basePrompt = `
+**[Word (ふりがな, romaji)]** - *[part of speech]*
+Means **"[primary translation]"** or **"[secondary translation],"** specifically referring to **[precise meaning]**.`;
+
+  // Add kanji analysis section if the word contains kanji
+  if (containsKanji) {
+    basePrompt += `
+
+### Kanji Analysis
+For each kanji in the word:
+- **[Kanji 1 (ふりがな, romaji)]** → Strokes: [number], JLPT: [level]
+  - **Readings**: On: [on'yomi], Kun: [kun'yomi]
+  - **Core meaning:** "[core meaning]"
+
+- **[Kanji 2 (ふりがな, romaji)]** → Strokes: [number], JLPT: [level]
+  - **Readings**: On: [on'yomi], Kun: [kun'yomi]
+  - **Core meaning:** "[core meaning]"
+
+**Combined meaning:** "[compound meaning]" with nuance of **[specific connotation]**`;
+  }
+
+  // Add usage examples
+  basePrompt += `
+
+### Usage Examples
+- **Casual context:**
+  - **[Japanese sentence]**
+    *([ふりがな], [romaji])*
+    → "[English translation]"
+
+- **Formal context:**
+  - **[Japanese sentence]**
+    *([ふりがな], [romaji])*
+    → "[English translation]"`;
+
+  // Add common compounds if word contains kanji
+  if (containsKanji) {
+    basePrompt += `
+
+### Common Compounds
+- **[Compound 1]** ([reading]) - "[meaning]"
+- **[Compound 2]** ([reading]) - "[meaning]"
+- **[Compound 3]** ([reading]) - "[meaning]"`;
+  }
+
+  // Add similar words comparison
+  basePrompt += `
+
+### Similar Words Comparison
+**[Similar Word 1]**
+- Reading: [reading]
+- Meaning: [core meaning]
+- Usage: [when/how used]
+- Nuance: [specific connotation]
+
+**[Similar Word 2]**
+- Reading: [reading]
+- Meaning: [core meaning]
+- Usage: [when/how used]
+- Nuance: [specific connotation]
+
+### Usage Summary
+- **Standard usage:** [typical context]
+- **Special considerations:** [politeness level, gender associations]
+- **Common collocations:** [words/phrases often used with it]`;
+
+  // Add mnemonic if word contains kanji
+  if (containsKanji) {
+    basePrompt += `
+- **Mnemonic:** [memorable image/story to help remember the kanji]`;
+  }
+
+  return basePrompt;
+};

@@ -4,7 +4,7 @@ import {
   ThemeProvider,
 } from "@react-navigation/native";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { LocalAIProvider } from "../providers/LocalAIProvider";
+import { LocalAIProvider, useLocalAI } from "../providers/LocalAIProvider";
 import { Stack, useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { SQLiteProvider } from "expo-sqlite";
@@ -122,6 +122,8 @@ export default function RootLayout() {
 
 function BookmarksButton() {
   const [apiAuthUsername] = useMMKVString(SETTINGS_KEYS.API_AUTH_USERNAME);
+  const localAi = useLocalAI();
+  const aiEnabled = !!apiAuthUsername || localAi.enabled;
   const router = useRouter();
 
   const navigateToBookmarks = () => {
@@ -140,7 +142,7 @@ function BookmarksButton() {
     router.push("/explore");
   };
 
-  const aiItem: PopupMenuItem[] = apiAuthUsername
+  const aiItem: PopupMenuItem[] = aiEnabled
     ? [
         {
           label: "質問",
