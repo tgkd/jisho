@@ -4,6 +4,7 @@ import {
   ThemeProvider,
 } from "@react-navigation/native";
 import { QueryClientProvider } from "@tanstack/react-query";
+import { LocalAIProvider } from "../providers/LocalAIProvider";
 import { Stack, useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { SQLiteProvider } from "expo-sqlite";
@@ -60,59 +61,61 @@ export default function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <GestureHandlerRootView style={styles.container}>
-        <Suspense fallback={<Loader />}>
-          <SQLiteProvider
-            databaseName="jisho_2.db"
-            assetSource={{
-              assetId: require(DATABASE_PATH),
-            }}
-            onInit={migrateDbIfNeeded}
-            useSuspense
-          >
-            <ThemeProvider
-              value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
+      <LocalAIProvider>
+        <GestureHandlerRootView style={styles.container}>
+          <Suspense fallback={<Loader />}>
+            <SQLiteProvider
+              databaseName="jisho_2.db"
+              assetSource={{
+                assetId: require(DATABASE_PATH),
+              }}
+              onInit={migrateDbIfNeeded}
+              useSuspense
             >
-              <KeyboardProvider>
-                <Stack>
-                  <Stack.Screen
-                    name="index"
-                    options={() => ({
-                      headerTitle: "Search",
-                      headerTitleStyle: styles.headerTitle,
-                      headerBackTitleStyle: styles.headerBackTitle,
-                      headerRight: () => <BookmarksButton />,
-                    })}
-                  />
-                  <Stack.Screen name="word/[id]" />
-                  <Stack.Screen
-                    name="bookmarks"
-                    options={{ headerTitle: "しおり" }}
-                  />
-                  <Stack.Screen
-                    name="explore"
-                    options={{ headerTitle: "質問" }}
-                  />
-                  <Stack.Screen
-                    name="kanji"
-                    options={{ headerTitle: "漢字" }}
-                  />
-                  <Stack.Screen name="kanji/[id]" />
-                  <Stack.Screen
-                    name="settings"
-                    options={{
-                      headerTitle: "設定",
-                      presentation: "modal",
-                    }}
-                  />
-                </Stack>
-              </KeyboardProvider>
+              <ThemeProvider
+                value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
+              >
+                <KeyboardProvider>
+                  <Stack>
+                    <Stack.Screen
+                      name="index"
+                      options={() => ({
+                        headerTitle: "Search",
+                        headerTitleStyle: styles.headerTitle,
+                        headerBackTitleStyle: styles.headerBackTitle,
+                        headerRight: () => <BookmarksButton />,
+                      })}
+                    />
+                    <Stack.Screen name="word/[id]" />
+                    <Stack.Screen
+                      name="bookmarks"
+                      options={{ headerTitle: "しおり" }}
+                    />
+                    <Stack.Screen
+                      name="explore"
+                      options={{ headerTitle: "質問" }}
+                    />
+                    <Stack.Screen
+                      name="kanji"
+                      options={{ headerTitle: "漢字" }}
+                    />
+                    <Stack.Screen name="kanji/[id]" />
+                    <Stack.Screen
+                      name="settings"
+                      options={{
+                        headerTitle: "設定",
+                        presentation: "modal",
+                      }}
+                    />
+                  </Stack>
+                </KeyboardProvider>
 
-              <StatusBar style="auto" />
-            </ThemeProvider>
-          </SQLiteProvider>
-        </Suspense>
-      </GestureHandlerRootView>
+                <StatusBar style="auto" />
+              </ThemeProvider>
+            </SQLiteProvider>
+          </Suspense>
+        </GestureHandlerRootView>
+      </LocalAIProvider>
     </QueryClientProvider>
   );
 }
