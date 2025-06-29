@@ -76,7 +76,7 @@ export default function HomeScreen() {
     } finally {
       setLoading(false);
     }
-  }, 500);
+  }, 300);
 
   const handleChange = (text: string) => {
     setLoading(true);

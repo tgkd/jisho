@@ -9,20 +9,23 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
       await db.getFirstAsync("SELECT COUNT(*) FROM sqlite_master");
     } catch (corruptionError: any) {
       console.error("Database corruption detected:", corruptionError?.message);
-      if (corruptionError?.message?.includes("database disk image is malformed") || 
-          corruptionError?.message?.includes("database is locked")) {
-        
+      if (
+        corruptionError?.message?.includes(
+          "database disk image is malformed"
+        ) ||
+        corruptionError?.message?.includes("database is locked")
+      ) {
         // Import File System to manually delete the corrupted database
         const FileSystem = await import("expo-file-system");
         const dbPath = db.databasePath;
-        
+
         console.log("Deleting corrupted database at:", dbPath);
-        
+
         // Close the database first
         try {
           await db.closeAsync();
         } catch {}
-        
+
         // Delete the corrupted database file
         try {
           await FileSystem.deleteAsync(dbPath, { idempotent: true });
@@ -31,9 +34,11 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
         } catch (deleteError) {
           console.error("Error deleting corrupted database:", deleteError);
         }
-        
+
         // Force app restart by throwing an error that SQLiteProvider will handle
-        throw new Error("Database corrupted and deleted - restart required for fresh copy");
+        throw new Error(
+          "Database corrupted and deleted - restart required for fresh copy"
+        );
       }
       throw corruptionError;
     }
@@ -239,6 +244,11 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
         `);
       await db.execAsync(`PRAGMA user_version = 10`);
       currentDbVersion = 10;
+    }
+
+    if (currentDbVersion < 11) {
+      await db.execAsync(`PRAGMA user_version = 11`);
+      currentDbVersion = 11;
     }
 
     console.log(

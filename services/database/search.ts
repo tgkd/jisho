@@ -151,28 +151,38 @@ async function fetchMeanings(
   words: DBDictEntry[]
 ): Promise<Map<number, WordMeaning[]>> {
   const meaningsMap = new Map<number, WordMeaning[]>();
+  
+  if (words.length === 0) return meaningsMap;
 
-  await Promise.all(
-    words.map(async (word) => {
-      const meanings = await db.getAllAsync<DBWordMeaning>(
-        `
-        SELECT meaning, part_of_speech, field, misc, info
-        FROM meanings
-        WHERE word_id = ?
-        `,
-        [word.id]
-      );
-
-      meaningsMap.set(
-        word.id,
-        meanings.map((m) => ({
-          ...m,
-          wordId: word.id,
-          partOfSpeech: m.part_of_speech || null,
-        }))
-      );
-    })
+  // Single batched query instead of N individual queries
+  const wordIds = words.map(w => w.id);
+  const placeholders = wordIds.map(() => '?').join(',');
+  
+  const meanings = await db.getAllAsync<DBWordMeaning>(
+    `
+    SELECT id, word_id, meaning, part_of_speech, field, misc, info
+    FROM meanings
+    WHERE word_id IN (${placeholders})
+    ORDER BY word_id
+    `,
+    wordIds
   );
+
+  // Group meanings by word_id
+  meanings.forEach((m) => {
+    if (!meaningsMap.has(m.word_id)) {
+      meaningsMap.set(m.word_id, []);
+    }
+    meaningsMap.get(m.word_id)!.push({
+      id: m.id,
+      meaning: m.meaning,
+      field: m.field,
+      misc: m.misc,
+      info: m.info,
+      wordId: m.word_id,
+      partOfSpeech: m.part_of_speech || null,
+    });
+  });
 
   return meaningsMap;
 }
@@ -264,6 +274,13 @@ async function searchByFTS(
         WHEN word LIKE ? OR reading LIKE ? OR reading_hiragana LIKE ? OR kanji LIKE ? THEN 2
         ELSE rank + 3
       END,
+      CASE 
+        WHEN reading_hiragana = ? THEN 1
+        WHEN reading = ? THEN 2
+        WHEN word = ? THEN 3
+        WHEN kanji = ? THEN 4
+        ELSE 5
+      END,
       length(word)
     LIMIT ?
     `,
@@ -285,6 +302,10 @@ async function searchByFTS(
       `${hiraganaQuery}%`,
       `${hiraganaQuery}%`,
       `${hiraganaQuery}%`,
+      hiraganaQuery,
+      hiraganaQuery,
+      hiraganaQuery,
+      hiraganaQuery,
       options.limit
     ]
     );
@@ -299,114 +320,85 @@ async function searchByTiers(
   processedQuery: SearchQuery,
   limit: number
 ): Promise<DBDictEntry[]> {
-  const allResults: DBDictEntry[] = [];
-  const seenIds = new Set<number>();
-
-  // Tier 1: Exact matches (fastest - uses indexes)
-  const exactResults = await searchExactMatches(db, processedQuery, Math.min(limit, 20));
-  exactResults.forEach(result => {
-    if (!seenIds.has(result.id)) {
-      allResults.push(result);
-      seenIds.add(result.id);
+  // Build search conditions for all query variations
+  const searchTerms: string[] = [];
+  [processedQuery.original, processedQuery.hiragana, processedQuery.katakana, processedQuery.romaji].forEach(term => {
+    if (term && !searchTerms.includes(term)) {
+      searchTerms.push(term);
     }
   });
 
-  // Tier 2: Prefix matches (fast - can use indexes)
-  if (allResults.length < limit) {
-    const prefixResults = await searchPrefixMatches(db, processedQuery, Math.min(limit - allResults.length, 30));
-    prefixResults.forEach(result => {
-      if (!seenIds.has(result.id)) {
-        allResults.push(result);
-        seenIds.add(result.id);
-      }
-    });
-  }
+  if (searchTerms.length === 0) return [];
 
-  // Tier 3: Contains matches (slower)
-  if (allResults.length < Math.min(limit, 10)) {
-    const containsResults = await searchContainsMatches(db, processedQuery, Math.min(limit - allResults.length, 40));
-    containsResults.forEach(result => {
-      if (!seenIds.has(result.id)) {
-        allResults.push(result);
-        seenIds.add(result.id);
-      }
-    });
-  }
-
-  return allResults.slice(0, limit);
-}
-
-async function searchExactMatches(
-  db: SQLiteDatabase,
-  query: SearchQuery,
-  limit: number
-): Promise<DBDictEntry[]> {
-  const conditions: string[] = [];
+  // Use UNION ALL for better performance than complex CTE
+  const queries: string[] = [];
   const params: string[] = [];
 
-  // Add exact match conditions
-  [query.original, query.hiragana, query.katakana, query.romaji].forEach(term => {
-    if (term) {
-      conditions.push('word = ? OR reading = ? OR reading_hiragana = ? OR kanji = ?');
-      params.push(term, term, term, term);
-    }
+  // Tier 1: Exact matches with sub-ranking
+  searchTerms.forEach(term => {
+    queries.push(`
+      SELECT DISTINCT *, 1 as match_rank, length(word) as word_length,
+        CASE 
+          WHEN reading_hiragana = ? THEN 1
+          WHEN reading = ? THEN 2
+          WHEN word = ? THEN 3
+          WHEN kanji = ? THEN 4
+          ELSE 5
+        END as sub_rank
+      FROM words 
+      WHERE word = ? OR reading = ? OR reading_hiragana = ? OR kanji = ?
+    `);
+    params.push(term, term, term, term, term, term, term, term);
   });
 
-  if (conditions.length === 0) return [];
+  // Tier 2: Prefix matches with sub-ranking
+  searchTerms.forEach(term => {
+    queries.push(`
+      SELECT DISTINCT *, 2 as match_rank, length(word) as word_length,
+        CASE 
+          WHEN reading_hiragana LIKE ? THEN 1
+          WHEN reading LIKE ? THEN 2
+          WHEN word LIKE ? THEN 3
+          WHEN kanji LIKE ? THEN 4
+          ELSE 5
+        END as sub_rank
+      FROM words 
+      WHERE (word LIKE ? OR reading LIKE ? OR reading_hiragana LIKE ? OR kanji LIKE ?)
+      AND NOT (word = ? OR reading = ? OR reading_hiragana = ? OR kanji = ?)
+    `);
+    params.push(`${term}%`, `${term}%`, `${term}%`, `${term}%`, `${term}%`, `${term}%`, `${term}%`, `${term}%`, term, term, term, term);
+  });
+
+  // Tier 3: Contains matches with sub-ranking
+  searchTerms.forEach(term => {
+    queries.push(`
+      SELECT DISTINCT *, 3 as match_rank, length(word) as word_length,
+        CASE 
+          WHEN reading_hiragana LIKE ? THEN 1
+          WHEN reading LIKE ? THEN 2
+          WHEN word LIKE ? THEN 3
+          WHEN kanji LIKE ? THEN 4
+          ELSE 5
+        END as sub_rank
+      FROM words 
+      WHERE (word LIKE ? OR reading LIKE ? OR reading_hiragana LIKE ? OR kanji LIKE ?)
+      AND NOT (word LIKE ? OR reading LIKE ? OR reading_hiragana LIKE ? OR kanji LIKE ?)
+    `);
+    params.push(`%${term}%`, `%${term}%`, `%${term}%`, `%${term}%`, `%${term}%`, `%${term}%`, `%${term}%`, `%${term}%`, `${term}%`, `${term}%`, `${term}%`, `${term}%`);
+  });
 
   return await db.getAllAsync<DBDictEntry>(
-    `SELECT DISTINCT * FROM words WHERE ${conditions.join(' OR ')} ORDER BY position LIMIT ?`,
+    `
+    SELECT id, word, reading, reading_hiragana, kanji, position
+    FROM (${queries.join(' UNION ALL ')})
+    GROUP BY id
+    ORDER BY MIN(match_rank), MIN(sub_rank), MIN(word_length), position
+    LIMIT ?
+    `,
     [...params, limit]
   );
 }
 
-async function searchPrefixMatches(
-  db: SQLiteDatabase,
-  query: SearchQuery,
-  limit: number
-): Promise<DBDictEntry[]> {
-  const conditions: string[] = [];
-  const params: string[] = [];
-
-  // Add prefix match conditions
-  [query.original, query.hiragana, query.katakana].forEach(term => {
-    if (term) {
-      conditions.push('word LIKE ? OR reading LIKE ? OR reading_hiragana LIKE ? OR kanji LIKE ?');
-      params.push(`${term}%`, `${term}%`, `${term}%`, `${term}%`);
-    }
-  });
-
-  if (conditions.length === 0) return [];
-
-  return await db.getAllAsync<DBDictEntry>(
-    `SELECT DISTINCT * FROM words WHERE ${conditions.join(' OR ')} ORDER BY length(word), position LIMIT ?`,
-    [...params, limit]
-  );
-}
-
-async function searchContainsMatches(
-  db: SQLiteDatabase,
-  query: SearchQuery,
-  limit: number
-): Promise<DBDictEntry[]> {
-  const conditions: string[] = [];
-  const params: string[] = [];
-
-  // Add contains match conditions  
-  [query.original, query.hiragana, query.katakana].forEach(term => {
-    if (term) {
-      conditions.push('word LIKE ? OR reading LIKE ? OR reading_hiragana LIKE ? OR kanji LIKE ?');
-      params.push(`%${term}%`, `%${term}%`, `%${term}%`, `%${term}%`);
-    }
-  });
-
-  if (conditions.length === 0) return [];
-
-  return await db.getAllAsync<DBDictEntry>(
-    `SELECT DISTINCT * FROM words WHERE ${conditions.join(' OR ')} ORDER BY length(word), position LIMIT ?`,
-    [...params, limit]
-  );
-}
 
 export async function searchDictionary(
   db: SQLiteDatabase,
@@ -429,11 +421,13 @@ export async function searchDictionary(
       return formatSearchResults(results, meanings);
     }
 
-    // Try FTS first if available
-    const ftsResults = await searchByFTS(db, processedQuery, { limit });
-    if (ftsResults.length > 0) {
-      const meanings = withMeanings ? await fetchMeanings(db, ftsResults) : new Map();
-      return formatSearchResults(ftsResults, meanings);
+    // Try FTS first if available (but skip for short queries where reading matches are important)
+    if (query.trim().length > 2) {
+      const ftsResults = await searchByFTS(db, processedQuery, { limit });
+      if (ftsResults.length > 0) {
+        const meanings = withMeanings ? await fetchMeanings(db, ftsResults) : new Map();
+        return formatSearchResults(ftsResults, meanings);
+      }
     }
 
     // Use optimized tiered search

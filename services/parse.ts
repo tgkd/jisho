@@ -226,7 +226,7 @@ export function basicFuri(word = "", reading = "") {
   const innerWordTokens = tokenize(
     removeExtraneousKana(word, bikago, okurigana)
   );
-  let innerReadingChars = removeExtraneousKana(reading, bikago, okurigana);
+  const innerReadingString = removeExtraneousKana(reading, bikago, okurigana);
 
   const kanjiOddKanaEvenRegex = RegExp(
     innerWordTokens
@@ -234,8 +234,8 @@ export function basicFuri(word = "", reading = "") {
       .join("")
   );
 
-  [, ...innerReadingChars] =
-    innerReadingChars.match(kanjiOddKanaEvenRegex) || [];
+  const matchResult = innerReadingString.match(kanjiOddKanaEvenRegex) || [];
+  const innerReadingChars = matchResult.slice(1);
 
   const ret = zip(innerReadingChars, innerWordTokens).map(
     ([reading, word = ""]) =>
@@ -427,10 +427,28 @@ function removeJpSymbols(text: string): string {
   return text.replace(/[\u3000-\u303F\uFF00-\uFFEF]/g, "");
 }
 
+// Memoization cache for token segmentation
+const tokenCache = new Map<string, string[]>();
+
 export function getJpTokens(text: string): string[] {
-  return segmenter(text)
+  if (tokenCache.has(text)) {
+    return tokenCache.get(text)!;
+  }
+  
+  const tokens = segmenter(text)
     .map(removeJpSymbols)
     .filter((t) => t.length > 1 && isJapanese(t));
+  
+  // Cache result (limit cache size to prevent memory leaks)
+  if (tokenCache.size > 100) {
+    const firstKey = tokenCache.keys().next().value;
+    if (firstKey !== undefined) {
+      tokenCache.delete(firstKey);
+    }
+  }
+  tokenCache.set(text, tokens);
+  
+  return tokens;
 }
 
 export function cleanupMdStr(text: string): string {
