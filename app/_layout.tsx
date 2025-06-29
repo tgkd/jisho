@@ -68,10 +68,6 @@ export default function RootLayout() {
               databaseName="jisho_2.db"
               assetSource={{
                 assetId: require(DATABASE_PATH),
-                forceOverwrite: true,
-              }}
-              options={{
-                useNewConnection: true,
               }}
               onInit={migrateDbIfNeeded}
               useSuspense
