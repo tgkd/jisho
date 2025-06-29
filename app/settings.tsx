@@ -26,6 +26,7 @@ import {
 } from "@/services/database";
 import { FuriganaText } from "@/components/FuriganaText";
 import { Card } from "@/components/ui/Card";
+import { useLocalAI } from "@/providers/LocalAIProvider";
 
 const highlightColorOptions: Array<{
   label: string;
@@ -56,6 +57,7 @@ export default function SettingsScreen() {
   const [apiAuthUsername, setApiAuthUsername] = useMMKVString(
     SETTINGS_KEYS.API_AUTH_USERNAME
   );
+  const localAi = useLocalAI();
   const [apiAuthPassword, setApiAuthPassword] = useMMKVString(
     SETTINGS_KEYS.API_AUTH_PASSWORD
   );
@@ -155,6 +157,10 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleChangeLocalAiEnabled = (value: boolean) => {
+    localAi.toggleState();
+  };
+
   return (
     <ThemedView style={styles.container}>
       <Stack.Screen
@@ -189,6 +195,43 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        <View style={styles.settingItem}>
+          <View style={styles.row}>
+            <ThemedText size="sm">{"Auto Paste"}</ThemedText>
+            <Switch
+              value={autoPaste}
+              onValueChange={setAutoPaste}
+              style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
+            />
+          </View>
+          <ThemedText size="xs" style={styles.description}>
+            {"Automatically paste clipboard content into the search box"}
+          </ThemedText>
+        </View>
+
+        <View style={styles.settingItem}>
+          <View style={styles.row}>
+            <ThemedText size="sm">{"Local AI Enabled"}</ThemedText>
+            <Switch
+              value={localAi.enabled}
+              onValueChange={handleChangeLocalAiEnabled}
+              style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
+            />
+          </View>
+          {
+            localAi.enabled && localAi.downloadProgress ? (
+              <View style={styles.row}>
+                <ThemedText size="xs" style={styles.description}>
+                  {`Downloading model: ${localAi.downloadProgress}%`}
+                </ThemedText>
+              </View>
+            ) : null
+          }
+          <ThemedText size="xs" style={styles.description}>
+            {"Enable local AI features (requires model download)"}
+          </ThemedText>
+        </View>
+
         {/* <View style={styles.settingItem}>
           <View style={styles.row}>
             <ThemedText size="sm">{"Show Furigana"}</ThemedText>
@@ -206,20 +249,6 @@ export default function SettingsScreen() {
             <FuriganaText word="振り仮名" reading="ふりがな" />
           </View>
         </View> */}
-
-        <View style={styles.settingItem}>
-          <View style={styles.row}>
-            <ThemedText size="sm">{"Auto Paste"}</ThemedText>
-            <Switch
-              value={autoPaste}
-              onValueChange={setAutoPaste}
-              style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
-            />
-          </View>
-          <ThemedText size="xs" style={styles.description}>
-            {"Automatically paste clipboard content into the search box"}
-          </ThemedText>
-        </View>
       </Card>
 
       <Card>

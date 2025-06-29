@@ -52,13 +52,12 @@ import {
 } from "@/services/request";
 import { useMMKVString } from "react-native-mmkv";
 import { SETTINGS_KEYS } from "@/services/storage";
+import { useLocalAI } from "@/providers/LocalAIProvider";
 
 export default function WordDetailScreen() {
   const tintColor = useThemeColor({}, "tint");
   const markColor = useThemeColor({}, "text");
   const params = useLocalSearchParams();
-  const [apiAuthUsername] = useMMKVString(SETTINGS_KEYS.API_AUTH_USERNAME);
-  const aiAvailable = !!apiAuthUsername;
   const title = typeof params.title === "string" ? params.title : "Details";
   const [entry, setEntry] = useState<{
     word: DictionaryEntry;
@@ -243,11 +242,23 @@ function ExamplesView({
   refreshExamples: () => Promise<void>;
 }) {
   const db = useSQLiteContext();
-  const [apiAuthUsername] = useMMKVString(SETTINGS_KEYS.API_AUTH_USERNAME);
-  const aiAvailable = !!apiAuthUsername;
+  const localai = useLocalAI();
   const aiexQuery = useQuery(aiExamplesQueryOptions(craeteWordPrompt(entry)));
+  const [apiAuthUsername] = useMMKVString(SETTINGS_KEYS.API_AUTH_USERNAME);
+  const aiAvailable = !!apiAuthUsername || localai.enabled;
+  const generating = aiexQuery.isLoading || localai.isGenerating;
 
   const handleFetchExamples = async () => {
+    if (localai.enabled) {
+      localai.generateExamples(entry.word.word, (resp) => {
+        addExamplesList(entry.word.id, resp, db)
+          .then(() => refreshExamples())
+          .catch((error) => console.error("Failed to save examples:", error));
+      });
+
+      return;
+    }
+
     const resp = await aiexQuery.refetch();
     if (resp.data) {
       await addExamplesList(entry.word.id, resp.data, db);
@@ -268,7 +279,6 @@ function ExamplesView({
             idx={idx}
             word={entry.word.word}
             wordId={entry.word.id}
-            aiAvailable={aiAvailable}
           />
         ))}
         {entry.examples.length === 0 ? (
@@ -278,12 +288,10 @@ function ExamplesView({
       {aiAvailable && (
         <Pressable
           style={styles.examplesLoading}
-          disabled={aiexQuery.isLoading}
+          disabled={generating}
           onPress={handleFetchExamples}
         >
-          <ThemedText>
-            {aiexQuery.isLoading ? "Loading..." : "✨🤖✨"}
-          </ThemedText>
+          <ThemedText>{generating ? "Loading..." : "✨🤖✨"}</ThemedText>
         </Pressable>
       )}
     </>
@@ -344,13 +352,11 @@ function ExampleRow({
   idx,
   word,
   wordId,
-  aiAvailable,
 }: {
   e: ExampleSentence;
   idx: number;
   word: string;
   wordId: number;
-  aiAvailable: boolean;
 }) {
   const tintColor = useThemeColor({}, "tint");
   const db = useSQLiteContext();
@@ -358,6 +364,8 @@ function ExampleRow({
   const soundQuery = useQuery(
     aiSoundQueryOptions(cleanupJpReadings(e.japaneseText))
   );
+  const [apiAuthUsername] = useMMKVString(SETTINGS_KEYS.API_AUTH_USERNAME);
+  const remoteAiEnabled = !!apiAuthUsername;
   const loading = soundQuery.isLoading;
 
   const fallbackToSpeech = () => {
@@ -365,7 +373,7 @@ function ExampleRow({
   };
 
   const handlePlayText = async () => {
-    if (!aiAvailable) {
+    if (!remoteAiEnabled) {
       fallbackToSpeech();
       return;
     }
@@ -409,9 +417,9 @@ function ExampleRow({
       <HapticTab
         style={styles.icon}
         onPress={handlePlayText}
-        disabled={aiAvailable && loading}
+        disabled={remoteAiEnabled && loading}
       >
-        {aiAvailable && loading ? (
+        {remoteAiEnabled && loading ? (
           <ActivityIndicator size="small" />
         ) : (
           <IconSymbol name="play.circle" size={24} color={tintColor} />

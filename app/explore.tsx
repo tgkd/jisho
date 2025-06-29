@@ -1,6 +1,6 @@
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ScrollView, StyleSheet } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import Markdown from "react-native-markdown-display";
 import Animated, { LinearTransition } from "react-native-reanimated";
@@ -12,12 +12,14 @@ import { Card } from "@/components/ui/Card";
 import { Colors } from "@/constants/Colors";
 import { useTextStream } from "@/hooks/useFetch";
 import { useMdStyles } from "@/hooks/useMdStyles";
+import { useLocalAI } from "@/providers/LocalAIProvider";
 import { addChat, Chat, getChats, removeChatById } from "@/services/database";
 import { ExplainRequestType, getAiExplanation } from "@/services/request";
 
 export default function ExploreScreen() {
   const db = useSQLiteContext();
   const markdownStyles = useMdStyles();
+  const localAI = useLocalAI();
   const scrollRef = useRef<Animated.FlatList<Chat>>(null);
   const [chatsHistory, setChatsHistory] = useState<Chat[]>([]);
   const [currentResponse, setCurrentResponse] = useState<string>("");
@@ -71,12 +73,36 @@ export default function ExploreScreen() {
 
       try {
         setCurrentResponse("");
-        await stream.fetchData(query, type);
+
+        if (localAI.enabled && localAI.isReady) {
+          await localAI.explainText(
+            query,
+            type,
+            (full: string) => {
+              setCurrentResponse(full);
+              scrollRef.current?.scrollToEnd({ animated: true });
+            },
+            async (fullResponse: string, error?: string) => {
+              if (error) {
+                console.error("Local AI error:", error);
+                setCurrentResponse("");
+                return;
+              }
+
+              if (fullResponse) {
+                await handleAddChatAndSeparator(fullResponse, [query]);
+              }
+            }
+          );
+        } else {
+          // Fallback to remote AI
+          await stream.fetchData(query, type);
+        }
       } catch (error) {
         console.error("Search failed:", error);
       }
     },
-    [stream]
+    [stream, localAI, handleAddChatAndSeparator, scrollRef]
   );
 
   const renderItem = useCallback(
@@ -106,9 +132,11 @@ export default function ExploreScreen() {
   const renderEmpty = useCallback(
     () =>
       !chatsHistory.length && !currentResponse.length ? (
-        <ThemedText textAlign="center" type="secondary">
-          {"Ask me anything"}
-        </ThemedText>
+        <View style={styles.emptyMsg}>
+          <ThemedText textAlign="center" type="secondary">
+            {"Ask me anything"}
+          </ThemedText>
+        </View>
       ) : null,
     [chatsHistory, currentResponse]
   );
@@ -132,7 +160,10 @@ export default function ExploreScreen() {
         ListEmptyComponent={renderEmpty}
       />
 
-      <ChatFooterView handleSubmit={handleSubmit} loading={stream.isLoading} />
+      <ChatFooterView
+        handleSubmit={handleSubmit}
+        loading={stream.isLoading || localAI.isGenerating}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -158,5 +189,10 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     paddingHorizontal: 16,
     gap: 8,
+  },
+  emptyMsg: {
+    width: "100%",
+    justifyContent: "center",
+    alignItems: "center",
   },
 });

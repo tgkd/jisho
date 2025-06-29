@@ -40,6 +40,7 @@ import { SETTINGS_KEYS } from "@/services/storage";
 
 export default function HomeScreen() {
   const db = useSQLiteContext();
+
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<DictionaryEntry[]>([]);
   const [search, setSearch] = useState("");

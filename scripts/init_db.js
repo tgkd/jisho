@@ -50,13 +50,58 @@ function createTables(db) {
         )
       `);
 
+      // Create user data tables
+      db.run(`
+        CREATE TABLE bookmarks (
+          id INTEGER PRIMARY KEY NOT NULL,
+          word_id INTEGER NOT NULL,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY (word_id) REFERENCES words (id)
+        )
+      `);
+
+      db.run(`
+        CREATE TABLE history (
+          id INTEGER PRIMARY KEY NOT NULL,
+          word_id INTEGER NOT NULL,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY (word_id) REFERENCES words (id)
+        )
+      `);
+
+      db.run(`
+        CREATE TABLE chats (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          request TEXT NOT NULL,
+          response TEXT NOT NULL,
+          created_at TEXT NOT NULL
+        )
+      `);
+
+      db.run(`
+        CREATE TABLE audio_blobs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          file_path TEXT NOT NULL,
+          word_id INTEGER NOT NULL,
+          example_id INTEGER,
+          audio_data BLOB NOT NULL,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY (word_id) REFERENCES words (id),
+          FOREIGN KEY (example_id) REFERENCES examples (id)
+        )
+      `);
+
       // Create indexes
       db.run("CREATE INDEX idx_word ON words(word)");
       db.run("CREATE INDEX idx_reading ON words(reading)");
+      db.run("CREATE INDEX idx_reading_hiragana ON words(reading_hiragana)");
       db.run("CREATE INDEX idx_position ON words(position)");
       db.run("CREATE INDEX idx_kanji ON words(kanji)");
       db.run("CREATE INDEX idx_japanese_text ON examples(japanese_text)");
       db.run("CREATE INDEX idx_example_word_id ON examples(word_id)");
+      db.run("CREATE INDEX idx_chats_created_at ON chats(created_at)");
+      db.run("CREATE INDEX idx_audio_word_id ON audio_blobs(word_id)");
+      db.run("CREATE INDEX idx_audio_example_id ON audio_blobs(example_id)");
 
       console.log("Tables and indexes created successfully");
       resolve();
@@ -374,6 +419,75 @@ async function convertToSqlite(ljsonPath, indexPath, examplesPath, outputDb) {
   }
 }
 
+function createFtsTable(db) {
+  return new Promise((resolve, reject) => {
+    console.log("Creating FTS5 table and populating...");
+    db.serialize(() => {
+      // Create FTS5 virtual table
+      db.run(`
+        CREATE VIRTUAL TABLE words_fts USING fts5(
+          word,
+          reading,
+          reading_hiragana,
+          kanji,
+          content='words',
+          content_rowid='id'
+        )
+      `, (err) => {
+        if (err) {
+          console.error("Error creating FTS table:", err);
+          reject(err);
+          return;
+        }
+
+        // Populate FTS table with existing data
+        db.run(`
+          INSERT INTO words_fts(rowid, word, reading, reading_hiragana, kanji)
+          SELECT id, word, reading, reading_hiragana, kanji FROM words
+        `, (err) => {
+          if (err) {
+            console.error("Error populating FTS table:", err);
+            reject(err);
+            return;
+          }
+
+          // Create triggers for automatic FTS updates
+          db.run(`
+            CREATE TRIGGER words_ai AFTER INSERT ON words BEGIN
+              INSERT INTO words_fts(rowid, word, reading, reading_hiragana, kanji)
+              VALUES (new.id, new.word, new.reading, new.reading_hiragana, new.kanji);
+            END
+          `);
+
+          db.run(`
+            CREATE TRIGGER words_ad AFTER DELETE ON words BEGIN
+              INSERT INTO words_fts(words_fts, rowid, word, reading, reading_hiragana, kanji)
+              VALUES('delete', old.id, old.word, old.reading, old.reading_hiragana, old.kanji);
+            END
+          `);
+
+          db.run(`
+            CREATE TRIGGER words_au AFTER UPDATE ON words BEGIN
+              INSERT INTO words_fts(words_fts, rowid, word, reading, reading_hiragana, kanji)
+              VALUES('delete', old.id, old.word, old.reading, old.reading_hiragana, old.kanji);
+              INSERT INTO words_fts(rowid, word, reading, reading_hiragana, kanji)
+              VALUES (new.id, new.word, new.reading, new.reading_hiragana, new.kanji);
+            END
+          `, (err) => {
+            if (err) {
+              console.error("Error creating FTS triggers:", err);
+              reject(err);
+            } else {
+              console.log("FTS5 table and triggers created successfully");
+              resolve();
+            }
+          });
+        });
+      });
+    });
+  });
+}
+
 function promisify(fn) {
   return (...args) => {
     return new Promise((resolve, reject) => {
@@ -394,7 +508,21 @@ function promisify(fn) {
       path.resolve(__dirname, "../assets/db/dict_2.db")
     );
 
-    console.log("Conversion completed successfully");
+    // Create FTS table after data is loaded
+    console.log("Creating FTS search index...");
+    const db = new sqlite3.Database(path.resolve(__dirname, "../assets/db/dict_2.db"));
+    await createFtsTable(db);
+    
+    // Set database version to 11 to match migration system
+    await new Promise((resolve, reject) => {
+      db.run("PRAGMA user_version = 11", (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+    
+    db.close();
+    console.log("Database initialization completed successfully with FTS!");
   } catch (err) {
     console.error("Error during conversion:", err);
   }
