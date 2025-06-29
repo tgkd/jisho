@@ -47,3 +47,7 @@ jm/
 .github/copilot-instructions.md
 .vscode/
 .aider*
+
+# SQLite temporary files
+*.db-wal
+*.db-shm

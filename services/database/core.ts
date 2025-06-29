@@ -1,9 +1,43 @@
 import { SQLiteDatabase } from "expo-sqlite";
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
-  const DATABASE_VERSION = 10;
+  const DATABASE_VERSION = 11;
 
   try {
+    // Test if database is corrupted by trying a simple query
+    try {
+      await db.getFirstAsync("SELECT COUNT(*) FROM sqlite_master");
+    } catch (corruptionError: any) {
+      console.error("Database corruption detected:", corruptionError?.message);
+      if (corruptionError?.message?.includes("database disk image is malformed") || 
+          corruptionError?.message?.includes("database is locked")) {
+        
+        // Import File System to manually delete the corrupted database
+        const FileSystem = await import("expo-file-system");
+        const dbPath = db.databasePath;
+        
+        console.log("Deleting corrupted database at:", dbPath);
+        
+        // Close the database first
+        try {
+          await db.closeAsync();
+        } catch {}
+        
+        // Delete the corrupted database file
+        try {
+          await FileSystem.deleteAsync(dbPath, { idempotent: true });
+          await FileSystem.deleteAsync(dbPath + "-wal", { idempotent: true });
+          await FileSystem.deleteAsync(dbPath + "-shm", { idempotent: true });
+        } catch (deleteError) {
+          console.error("Error deleting corrupted database:", deleteError);
+        }
+        
+        // Force app restart by throwing an error that SQLiteProvider will handle
+        throw new Error("Database corrupted and deleted - restart required for fresh copy");
+      }
+      throw corruptionError;
+    }
+
     const versionResult = await db.getFirstAsync<{ user_version: number }>(
       "PRAGMA user_version"
     );

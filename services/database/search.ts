@@ -294,6 +294,120 @@ async function searchByFTS(
   }
 }
 
+async function searchByTiers(
+  db: SQLiteDatabase,
+  processedQuery: SearchQuery,
+  limit: number
+): Promise<DBDictEntry[]> {
+  const allResults: DBDictEntry[] = [];
+  const seenIds = new Set<number>();
+
+  // Tier 1: Exact matches (fastest - uses indexes)
+  const exactResults = await searchExactMatches(db, processedQuery, Math.min(limit, 20));
+  exactResults.forEach(result => {
+    if (!seenIds.has(result.id)) {
+      allResults.push(result);
+      seenIds.add(result.id);
+    }
+  });
+
+  // Tier 2: Prefix matches (fast - can use indexes)
+  if (allResults.length < limit) {
+    const prefixResults = await searchPrefixMatches(db, processedQuery, Math.min(limit - allResults.length, 30));
+    prefixResults.forEach(result => {
+      if (!seenIds.has(result.id)) {
+        allResults.push(result);
+        seenIds.add(result.id);
+      }
+    });
+  }
+
+  // Tier 3: Contains matches (slower)
+  if (allResults.length < Math.min(limit, 10)) {
+    const containsResults = await searchContainsMatches(db, processedQuery, Math.min(limit - allResults.length, 40));
+    containsResults.forEach(result => {
+      if (!seenIds.has(result.id)) {
+        allResults.push(result);
+        seenIds.add(result.id);
+      }
+    });
+  }
+
+  return allResults.slice(0, limit);
+}
+
+async function searchExactMatches(
+  db: SQLiteDatabase,
+  query: SearchQuery,
+  limit: number
+): Promise<DBDictEntry[]> {
+  const conditions: string[] = [];
+  const params: string[] = [];
+
+  // Add exact match conditions
+  [query.original, query.hiragana, query.katakana, query.romaji].forEach(term => {
+    if (term) {
+      conditions.push('word = ? OR reading = ? OR reading_hiragana = ? OR kanji = ?');
+      params.push(term, term, term, term);
+    }
+  });
+
+  if (conditions.length === 0) return [];
+
+  return await db.getAllAsync<DBDictEntry>(
+    `SELECT DISTINCT * FROM words WHERE ${conditions.join(' OR ')} ORDER BY position LIMIT ?`,
+    [...params, limit]
+  );
+}
+
+async function searchPrefixMatches(
+  db: SQLiteDatabase,
+  query: SearchQuery,
+  limit: number
+): Promise<DBDictEntry[]> {
+  const conditions: string[] = [];
+  const params: string[] = [];
+
+  // Add prefix match conditions
+  [query.original, query.hiragana, query.katakana].forEach(term => {
+    if (term) {
+      conditions.push('word LIKE ? OR reading LIKE ? OR reading_hiragana LIKE ? OR kanji LIKE ?');
+      params.push(`${term}%`, `${term}%`, `${term}%`, `${term}%`);
+    }
+  });
+
+  if (conditions.length === 0) return [];
+
+  return await db.getAllAsync<DBDictEntry>(
+    `SELECT DISTINCT * FROM words WHERE ${conditions.join(' OR ')} ORDER BY length(word), position LIMIT ?`,
+    [...params, limit]
+  );
+}
+
+async function searchContainsMatches(
+  db: SQLiteDatabase,
+  query: SearchQuery,
+  limit: number
+): Promise<DBDictEntry[]> {
+  const conditions: string[] = [];
+  const params: string[] = [];
+
+  // Add contains match conditions  
+  [query.original, query.hiragana, query.katakana].forEach(term => {
+    if (term) {
+      conditions.push('word LIKE ? OR reading LIKE ? OR reading_hiragana LIKE ? OR kanji LIKE ?');
+      params.push(`%${term}%`, `%${term}%`, `%${term}%`, `%${term}%`);
+    }
+  });
+
+  if (conditions.length === 0) return [];
+
+  return await db.getAllAsync<DBDictEntry>(
+    `SELECT DISTINCT * FROM words WHERE ${conditions.join(' OR ')} ORDER BY length(word), position LIMIT ?`,
+    [...params, limit]
+  );
+}
+
 export async function searchDictionary(
   db: SQLiteDatabase,
   query: string,
@@ -308,23 +422,25 @@ export async function searchDictionary(
 
     const processedQuery = processSearchQuery(query.trim());
 
+    // Fast path for single kanji
     if (isSingleKanjiCharacter(query)) {
       const results = await searchBySingleKanji(db, query, { limit });
       const meanings = withMeanings ? await fetchMeanings(db, results) : new Map();
       return formatSearchResults(results, meanings);
     }
 
+    // Try FTS first if available
     const ftsResults = await searchByFTS(db, processedQuery, { limit });
-
     if (ftsResults.length > 0) {
       const meanings = withMeanings ? await fetchMeanings(db, ftsResults) : new Map();
       return formatSearchResults(ftsResults, meanings);
     }
 
-    const tokenResults = await searchByTokensDeduped(db, query, limit);
-    const meanings = withMeanings ? await fetchMeanings(db, tokenResults) : new Map();
+    // Use optimized tiered search
+    const results = await searchByTiers(db, processedQuery, limit);
+    const meanings = withMeanings ? await fetchMeanings(db, results) : new Map();
 
-    return formatSearchResults(tokenResults, meanings);
+    return formatSearchResults(results, meanings);
   } catch (error) {
     console.error("Search error:", error);
     return createEmptyResult("An error occurred while searching the dictionary");
