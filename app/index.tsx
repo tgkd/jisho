@@ -237,6 +237,7 @@ export default function HomeScreen() {
           `${showHistory ? "history" : "result"}-${item.id}`
         }
         contentContainerStyle={styles.scrollContainer}
+        contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         estimatedItemSize={80}

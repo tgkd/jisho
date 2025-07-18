@@ -1,12 +1,12 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import ReanimatedSwipeable, {
-  SwipeableMethods,
+  SwipeableMethods
 } from "react-native-gesture-handler/ReanimatedSwipeable";
 import Animated, {
   FadeIn,
   FadeOut,
   SharedValue,
-  useAnimatedStyle,
+  useAnimatedStyle
 } from "react-native-reanimated";
 
 import { Colors } from "@/constants/Colors";
@@ -14,10 +14,10 @@ import { useThemeColor } from "@/hooks/useThemeColor";
 import { HistoryEntry } from "@/services/database";
 import { formatEn, formatJp } from "@/services/parse";
 import { HapticTab } from "./HapticTab";
+import { MenuActions } from "./MenuActions";
 import { ThemedText } from "./ThemedText";
 import { ThemedView } from "./ThemedView";
 import { IconSymbol } from "./ui/IconSymbol";
-import { MenuActions } from "./MenuActions";
 
 const ACTION_WIDTH = 40;
 
@@ -74,7 +74,7 @@ export const HistoryListItem = ({
                 style={styles.meaning}
                 uiTextView={false}
               >
-                {formatEn(item.meaning, "none", { truncateAll: 30 })}
+                {formatEn(item.meaning, "none", { truncateAll: 52 })}
               </ThemedText>
             </ThemedView>
             {!isLast ? <View style={styles.separator} /> : null}
