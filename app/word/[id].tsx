@@ -1,4 +1,3 @@
-import { useQuery } from "@tanstack/react-query";
 import { useAudioPlayer } from "expo-audio";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import * as Speech from "expo-speech";
@@ -17,11 +16,11 @@ import { HapticTab } from "@/components/HapticTab";
 import { HighlightText } from "@/components/HighlightText";
 import { Loader } from "@/components/Loader";
 import { ThemedText } from "@/components/ThemedText";
-import { FuriganaText } from "@/components/FuriganaText";
 import { ThemedView } from "@/components/ThemedView";
 import { Card } from "@/components/ui/Card";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { useThemeColor } from "@/hooks/useThemeColor";
+import { useUnifiedAI } from "@/providers/UnifiedAIProvider";
 import {
   addBookmark,
   addExamplesList,
@@ -45,14 +44,7 @@ import {
   formatEn,
   formatJp,
 } from "@/services/parse";
-import {
-  aiExamplesQueryOptions,
-  aiSoundQueryOptions,
-  craeteWordPrompt,
-} from "@/services/request";
-import { useMMKVString } from "react-native-mmkv";
-import { SETTINGS_KEYS } from "@/services/storage";
-import { useLocalAI } from "@/providers/LocalAIProvider";
+import { craeteWordPrompt } from "@/services/request";
 
 export default function WordDetailScreen() {
   const tintColor = useThemeColor({}, "tint");
@@ -242,27 +234,22 @@ function ExamplesView({
   refreshExamples: () => Promise<void>;
 }) {
   const db = useSQLiteContext();
-  const localai = useLocalAI();
-  const aiexQuery = useQuery(aiExamplesQueryOptions(craeteWordPrompt(entry)));
-  const [apiAuthUsername] = useMMKVString(SETTINGS_KEYS.API_AUTH_USERNAME);
-  const aiAvailable = !!apiAuthUsername || localai.enabled;
-  const generating = aiexQuery.isLoading || localai.isGenerating;
+  const ai = useUnifiedAI();
+  const aiAvailable = ai.isAvailable;
+  const generating = ai.isGenerating;
 
   const handleFetchExamples = async () => {
-    if (localai.enabled) {
-      localai.generateExamples(entry.word.word, (resp) => {
-        addExamplesList(entry.word.id, resp, db)
-          .then(() => refreshExamples())
-          .catch((error) => console.error("Failed to save examples:", error));
-      });
+    try {
+      const prompt = craeteWordPrompt(entry);
+      if (!prompt) return;
 
-      return;
-    }
-
-    const resp = await aiexQuery.refetch();
-    if (resp.data) {
-      await addExamplesList(entry.word.id, resp.data, db);
-      await refreshExamples();
+      const examples = await ai.generateExamples(prompt);
+      if (examples.length > 0) {
+        await addExamplesList(entry.word.id, examples, db);
+        await refreshExamples();
+      }
+    } catch (error) {
+      console.error("Failed to generate examples:", error);
     }
   };
 
@@ -361,24 +348,22 @@ function ExampleRow({
   const tintColor = useThemeColor({}, "tint");
   const db = useSQLiteContext();
   const player = useAudioPlayer();
-  const soundQuery = useQuery(
-    aiSoundQueryOptions(cleanupJpReadings(e.japaneseText))
-  );
-  const [apiAuthUsername] = useMMKVString(SETTINGS_KEYS.API_AUTH_USERNAME);
-  const remoteAiEnabled = !!apiAuthUsername;
-  const loading = soundQuery.isLoading;
+  const ai = useUnifiedAI();
+  const audioAvailable = ai.getProviderCapabilities().audio;
+  const [loading, setLoading] = useState(false);
 
   const fallbackToSpeech = () => {
     Speech.speak(e.japaneseText, { language: "ja" });
   };
 
   const handlePlayText = async () => {
-    if (!remoteAiEnabled) {
+    if (!audioAvailable) {
       fallbackToSpeech();
       return;
     }
 
     try {
+      setLoading(true);
       const localAudio = await getAudioFile(db, wordId, e.id);
 
       if (localAudio) {
@@ -387,18 +372,22 @@ function ExampleRow({
         return;
       }
 
-      const res = await soundQuery.refetch();
+      const audioPath = await ai.generateAudio(
+        cleanupJpReadings(e.japaneseText)
+      );
 
-      if (res.data) {
-        player.replace(res.data);
+      if (audioPath) {
+        player.replace(audioPath);
         player.play();
-        await saveAudioFile(db, wordId, e.id, res.data);
+        await saveAudioFile(db, wordId, e.id, audioPath);
       } else {
         fallbackToSpeech();
       }
     } catch (error) {
       console.error("Failed to play text:", error);
       fallbackToSpeech();
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -417,9 +406,9 @@ function ExampleRow({
       <HapticTab
         style={styles.icon}
         onPress={handlePlayText}
-        disabled={remoteAiEnabled && loading}
+        disabled={audioAvailable && loading}
       >
-        {remoteAiEnabled && loading ? (
+        {audioAvailable && loading ? (
           <ActivityIndicator size="small" />
         ) : (
           <IconSymbol name="play.circle" size={24} color={tintColor} />

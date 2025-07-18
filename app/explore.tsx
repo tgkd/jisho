@@ -1,6 +1,6 @@
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import Markdown from "react-native-markdown-display";
 import Animated, { LinearTransition } from "react-native-reanimated";
@@ -10,16 +10,15 @@ import { ChatListItem } from "@/components/ChatItem";
 import { ThemedText } from "@/components/ThemedText";
 import { Card } from "@/components/ui/Card";
 import { Colors } from "@/constants/Colors";
-import { useTextStream } from "@/hooks/useFetch";
 import { useMdStyles } from "@/hooks/useMdStyles";
-import { useLocalAI } from "@/providers/LocalAIProvider";
+import { useUnifiedAI } from "@/providers/UnifiedAIProvider";
 import { addChat, Chat, getChats, removeChatById } from "@/services/database";
-import { ExplainRequestType, getAiExplanation } from "@/services/request";
+import { ExplainRequestType } from "@/services/request";
 
 export default function ExploreScreen() {
   const db = useSQLiteContext();
   const markdownStyles = useMdStyles();
-  const localAI = useLocalAI();
+  const ai = useUnifiedAI();
   const scrollRef = useRef<Animated.FlatList<Chat>>(null);
   const [chatsHistory, setChatsHistory] = useState<Chat[]>([]);
   const [currentResponse, setCurrentResponse] = useState<string>("");
@@ -50,18 +49,7 @@ export default function ExploreScreen() {
     }
   };
 
-  const stream = useTextStream(
-    getAiExplanation(),
-    (chunk) => {
-      setCurrentResponse((t) => t + chunk);
-      scrollRef.current?.scrollToEnd({ animated: true });
-    },
-    handleAddChatAndSeparator,
-    (error) => {
-      console.error("Error fetching data:", error);
-      setCurrentResponse("");
-    }
-  );
+  // Remove stream hook - we'll handle streaming directly in handleSubmit
 
   const handleSubmit = useCallback(
     async (query: string, type: ExplainRequestType) => {
@@ -74,35 +62,32 @@ export default function ExploreScreen() {
       try {
         setCurrentResponse("");
 
-        if (localAI.enabled && localAI.isReady) {
-          await localAI.explainText(
-            query,
-            type,
-            (full: string) => {
-              setCurrentResponse(full);
-              scrollRef.current?.scrollToEnd({ animated: true });
-            },
-            async (fullResponse: string, error?: string) => {
-              if (error) {
-                console.error("Local AI error:", error);
-                setCurrentResponse("");
-                return;
-              }
-
-              if (fullResponse) {
-                await handleAddChatAndSeparator(fullResponse, [query]);
-              }
+        await ai.explainText(query, type, {
+          onChunk: (chunk: string) => {
+            setCurrentResponse((prev) => prev + chunk);
+            scrollRef.current?.scrollToEnd({ animated: true });
+          },
+          onComplete: async (fullResponse: string, error?: string) => {
+            if (error) {
+              console.error("AI error:", error);
+              setCurrentResponse("");
+              return;
             }
-          );
-        } else {
-          // Fallback to remote AI
-          await stream.fetchData(query, type);
-        }
+
+            if (fullResponse) {
+              await handleAddChatAndSeparator(fullResponse, [query]);
+            }
+          },
+          onError: (error: string) => {
+            console.error("AI error:", error);
+            setCurrentResponse("");
+          }
+        });
       } catch (error) {
         console.error("Search failed:", error);
       }
     },
-    [stream, localAI, handleAddChatAndSeparator, scrollRef]
+    [ai, handleAddChatAndSeparator, scrollRef]
   );
 
   const renderItem = useCallback(
@@ -162,7 +147,7 @@ export default function ExploreScreen() {
 
       <ChatFooterView
         handleSubmit={handleSubmit}
-        loading={stream.isLoading || localAI.isGenerating}
+        loading={ai.isGenerating}
       />
     </KeyboardAvoidingView>
   );

@@ -1,37 +1,36 @@
 import { Stack } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
+import { useState } from "react";
 import {
   Alert,
+  ScrollView,
   StyleSheet,
   Switch,
-  View,
   TextInput,
-  TouchableWithoutFeedback,
   TouchableOpacity,
+  View,
 } from "react-native";
-import { useMMKVString, useMMKVBoolean } from "react-native-mmkv";
-import { useState } from "react";
+import { useMMKVBoolean, useMMKVString } from "react-native-mmkv";
 
 import { HapticTab } from "@/components/HapticTab";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
+import { Card } from "@/components/ui/Card";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { Colors, getHighlightColorValue } from "@/constants/Colors";
-import { SETTINGS_KEYS } from "@/services/storage";
 import { useThemeColor } from "@/hooks/useThemeColor";
-import {
-  resetDatabase,
-  clearHistory,
-  clearBookmarks,
-} from "@/services/database";
-import { FuriganaText } from "@/components/FuriganaText";
-import { Card } from "@/components/ui/Card";
 import { useLocalAI } from "@/providers/LocalAIProvider";
+import {
+  clearBookmarks,
+  clearHistory,
+  resetDatabase,
+} from "@/services/database";
+import { SETTINGS_KEYS } from "@/services/storage";
 
-const highlightColorOptions: Array<{
+const highlightColorOptions: {
   label: string;
   value: string;
-}> = [
+}[] = [
   { label: "黄色", value: "yellow" },
   { label: "青色", value: "blue" },
   { label: "緑色", value: "green" },
@@ -162,77 +161,78 @@ export default function SettingsScreen() {
   };
 
   return (
-    <ThemedView style={styles.container}>
-      <Stack.Screen
-        options={{
-          headerTitle: "設定",
-          presentation: "modal",
-        }}
-      />
+    <ScrollView>
+      <ThemedView style={styles.container}>
+        <Stack.Screen
+          options={{
+            headerTitle: "設定",
+            presentation: "modal",
+          }}
+        />
 
-      <Card>
-        <View style={styles.settingItem}>
-          <ThemedText size="sm">{"Highlight Color"}</ThemedText>
-          <View style={styles.row}>
-            {highlightColorOptions.map((o) => (
-              <HapticTab
-                key={o.value}
-                onPress={() => {
-                  setHighlightColor(o.value);
-                }}
-              >
-                <View
-                  style={[
-                    styles.colorPreview,
-                    o.value === highlightColor.value ? styles.active : null,
-                    {
-                      backgroundColor: getHighlightColorValue(o.value),
-                    },
-                  ]}
-                />
-              </HapticTab>
-            ))}
+        <Card>
+          <View style={styles.settingItem}>
+            <ThemedText size="sm">{"Highlight Color"}</ThemedText>
+            <View style={styles.row}>
+              {highlightColorOptions.map((o) => (
+                <HapticTab
+                  key={o.value}
+                  onPress={() => {
+                    setHighlightColor(o.value);
+                  }}
+                >
+                  <View
+                    style={[
+                      styles.colorPreview,
+                      o.value === highlightColor.value ? styles.active : null,
+                      {
+                        backgroundColor: getHighlightColorValue(o.value),
+                      },
+                    ]}
+                  />
+                </HapticTab>
+              ))}
+            </View>
           </View>
-        </View>
 
-        <View style={styles.settingItem}>
-          <View style={styles.row}>
-            <ThemedText size="sm">{"Auto Paste"}</ThemedText>
-            <Switch
-              value={autoPaste}
-              onValueChange={setAutoPaste}
-              style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
-            />
+          <View style={styles.settingItem}>
+            <View style={styles.row}>
+              <ThemedText size="sm">{"Auto Paste"}</ThemedText>
+              <Switch
+                value={autoPaste}
+                onValueChange={setAutoPaste}
+                style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
+              />
+            </View>
+            <ThemedText size="xs" style={styles.description}>
+              {"Automatically paste clipboard content into the search box"}
+            </ThemedText>
           </View>
-          <ThemedText size="xs" style={styles.description}>
-            {"Automatically paste clipboard content into the search box"}
-          </ThemedText>
-        </View>
 
-        <View style={styles.settingItem}>
-          <View style={styles.row}>
-            <ThemedText size="sm">{"Local AI Enabled"}</ThemedText>
-            <Switch
-              value={localAi.enabled}
-              onValueChange={handleChangeLocalAiEnabled}
-              style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
-            />
-          </View>
-          {
-            localAi.enabled && localAi.downloadProgress ? (
+          <View style={styles.settingItem}>
+            <View style={styles.row}>
+              <ThemedText size="sm">{"Local AI Enabled"}</ThemedText>
+              <Switch
+                value={localAi.enabled}
+                onValueChange={handleChangeLocalAiEnabled}
+                style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
+              />
+            </View>
+            {localAi.enabled && localAi.downloadProgress ? (
               <View style={styles.row}>
                 <ThemedText size="xs" style={styles.description}>
-                  {`Downloading model: ${localAi.downloadProgress}%`}
+                  {`Downloading model: ${Math.round(
+                    localAi.downloadProgress * 100
+                  )}%`}
                 </ThemedText>
               </View>
-            ) : null
-          }
-          <ThemedText size="xs" style={styles.description}>
-            {"Enable local AI features (requires model download)"}
-          </ThemedText>
-        </View>
+            ) : null}
+            <ThemedText size="xs" style={styles.description}>
+              {"Enable local AI features (requires model download)"}
+            </ThemedText>
+          </View>
 
-        {/* <View style={styles.settingItem}>
+          {/* <View style={styles.settingItem}>
           <View style={styles.row}>
             <ThemedText size="sm">{"Show Furigana"}</ThemedText>
             <ThemedText size="sm" style={styles.description}>
@@ -249,89 +249,90 @@ export default function SettingsScreen() {
             <FuriganaText word="振り仮名" reading="ふりがな" />
           </View>
         </View> */}
-      </Card>
-
-      <Card>
-        <HapticTab onPress={handleClearHistory} style={styles.actionButton}>
-          <IconSymbol
-            name="clock.arrow.circlepath"
-            size={20}
-            color={Colors.light.error}
-          />
-          <ThemedText
-            darkColor={Colors.dark.error}
-            lightColor={Colors.light.error}
-          >
-            {"Clear Search History"}
-          </ThemedText>
-        </HapticTab>
-
-        <HapticTab onPress={handleClearBookmarks} style={styles.actionButton}>
-          <IconSymbol
-            name="bookmark.slash"
-            size={20}
-            color={Colors.light.error}
-          />
-          <ThemedText
-            darkColor={Colors.dark.error}
-            lightColor={Colors.light.error}
-          >
-            {"Clear Bookmarks"}
-          </ThemedText>
-        </HapticTab>
-        <HapticTab onPress={handleDatabaseReset} style={styles.actionButton}>
-          <IconSymbol
-            name="arrow.clockwise"
-            size={20}
-            color={Colors.light.error}
-          />
-          <ThemedText
-            darkColor={Colors.dark.error}
-            lightColor={Colors.light.error}
-          >
-            {"Reset Database"}
-          </ThemedText>
-        </HapticTab>
-      </Card>
-
-      <TouchableOpacity
-        onPress={handleHiddenTap}
-        style={[styles.hiddenButton, { backgroundColor }]}
-        activeOpacity={1}
-      ></TouchableOpacity>
-
-      {showCredentials && (
-        <Card style={{ marginBottom: 16 }}>
-          <ThemedText size="sm" style={styles.sectionTitle}>
-            {"Credentials"}
-          </ThemedText>
-          <View style={styles.settingItem}>
-            <ThemedText size="sm">{"User"}</ThemedText>
-            <TextInput
-              style={styles.textInput}
-              value={apiAuthUsername}
-              onChangeText={setApiAuthUsername}
-              placeholder="Username"
-              autoCapitalize="none"
-            />
-          </View>
-          <View style={styles.settingItem}>
-            <ThemedText size="sm">{"Password"}</ThemedText>
-            <TextInput
-              style={styles.textInput}
-              value={apiAuthPassword}
-              onChangeText={setApiAuthPassword}
-              placeholder="Password"
-              autoCapitalize="none"
-              secureTextEntry
-            />
-          </View>
-          <ThemedText size="xs" style={styles.description}>
-            {"Provide API credentials to enable AI features"}
-          </ThemedText>
         </Card>
-      )}
-    </ThemedView>
+
+        <Card>
+          <HapticTab onPress={handleClearHistory} style={styles.actionButton}>
+            <IconSymbol
+              name="clock.arrow.circlepath"
+              size={20}
+              color={Colors.light.error}
+            />
+            <ThemedText
+              darkColor={Colors.dark.error}
+              lightColor={Colors.light.error}
+            >
+              {"Clear Search History"}
+            </ThemedText>
+          </HapticTab>
+
+          <HapticTab onPress={handleClearBookmarks} style={styles.actionButton}>
+            <IconSymbol
+              name="bookmark.slash"
+              size={20}
+              color={Colors.light.error}
+            />
+            <ThemedText
+              darkColor={Colors.dark.error}
+              lightColor={Colors.light.error}
+            >
+              {"Clear Bookmarks"}
+            </ThemedText>
+          </HapticTab>
+          <HapticTab onPress={handleDatabaseReset} style={styles.actionButton}>
+            <IconSymbol
+              name="arrow.clockwise"
+              size={20}
+              color={Colors.light.error}
+            />
+            <ThemedText
+              darkColor={Colors.dark.error}
+              lightColor={Colors.light.error}
+            >
+              {"Reset Database"}
+            </ThemedText>
+          </HapticTab>
+        </Card>
+
+        <TouchableOpacity
+          onPress={handleHiddenTap}
+          style={[styles.hiddenButton, { backgroundColor }]}
+          activeOpacity={1}
+        ></TouchableOpacity>
+
+        {showCredentials && (
+          <Card style={{ marginBottom: 16 }}>
+            <ThemedText size="sm" style={styles.sectionTitle}>
+              {"Credentials"}
+            </ThemedText>
+            <View style={styles.settingItem}>
+              <ThemedText size="sm">{"User"}</ThemedText>
+              <TextInput
+                style={styles.textInput}
+                value={apiAuthUsername}
+                onChangeText={setApiAuthUsername}
+                placeholder="Username"
+                autoCapitalize="none"
+              />
+            </View>
+            <View style={styles.settingItem}>
+              <ThemedText size="sm">{"Password"}</ThemedText>
+              <TextInput
+                style={styles.textInput}
+                value={apiAuthPassword}
+                onChangeText={setApiAuthPassword}
+                placeholder="Password"
+                autoCapitalize="none"
+                secureTextEntry
+              />
+            </View>
+            <ThemedText size="xs" style={styles.description}>
+              {"Provide API credentials to enable AI features"}
+            </ThemedText>
+          </Card>
+        )}
+      </ThemedView>
+    </ScrollView>
   );
 }
 
