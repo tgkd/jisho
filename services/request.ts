@@ -42,7 +42,7 @@ export async function getAiExamples(
   }
 
   const resp = await fetch(
-    `${process.env.EXPO_PUBLIC_BASE_URL}/ask/${provider}?prompt=${prompt}`,
+    `${process.env.EXPO_PUBLIC_BASE_URL}/ask/${provider}?prompt=${encodeURIComponent(prompt)}`,
     {
       signal,
       method: "GET",
