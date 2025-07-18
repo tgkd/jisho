@@ -1,3 +1,4 @@
+import { FlashList } from "@shopify/flash-list";
 import * as Clipboard from "expo-clipboard";
 import { router, Stack } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
@@ -6,8 +7,7 @@ import { StyleSheet, View } from "react-native";
 import { useMMKVBoolean } from "react-native-mmkv";
 import Animated, {
   FadeIn,
-  FadeOut,
-  LinearTransition,
+  FadeOut
 } from "react-native-reanimated";
 import { SearchBarCommands } from "react-native-screens";
 import * as wanakana from "wanakana";
@@ -16,6 +16,7 @@ import { HapticTab } from "@/components/HapticTab";
 import { HistoryListItem } from "@/components/HistoryList";
 import { Loader } from "@/components/Loader";
 import { MenuActions } from "@/components/MenuActions";
+import { SearchErrorBoundary } from "@/components/SearchErrorBoundary";
 import TagsList from "@/components/TagsList";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -28,13 +29,13 @@ import {
   DictionaryEntry,
   HistoryEntry,
   searchDictionary,
-  WordMeaning,
+  WordMeaning
 } from "@/services/database";
 import {
   deduplicateEn,
   formatEn,
   formatJp,
-  getJpTokens,
+  getJpTokens
 } from "@/services/parse";
 import { SETTINGS_KEYS } from "@/services/storage";
 
@@ -48,38 +49,86 @@ export default function HomeScreen() {
     new Map()
   );
   const searchBarRef = useRef<SearchBarCommands>(null);
-  const [tokens, setTokens] = useState<Array<{ id: string; label: string }>>(
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const [tokens, setTokens] = useState<{ id: string; label: string }[]>(
     []
   );
+  const isSearchingRef = useRef(false);
   const [autoPaste] = useMMKVBoolean(SETTINGS_KEYS.AUTO_PASTE);
 
   const handleSearch = useDebouncedCallback(async (query: string) => {
     const text = query.trim();
 
+    // Cancel any pending search
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
     if (text.length === 0) {
       setResults([]);
       setLoading(false);
+      isSearchingRef.current = false;
       return;
     }
+
+    // Prevent concurrent searches
+    if (isSearchingRef.current) {
+      return;
+    }
+
+    isSearchingRef.current = true;
+
+    // Create new abort controller for this search
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     const tokensRes = getJpTokens(text).map((t) => ({ id: t, label: t }));
     setTokens(tokensRes.length > 1 ? tokensRes : []);
 
     try {
-      const searchResults = await searchDictionary(db, text);
+      const searchResults = await searchDictionary(db, text, { signal: controller.signal });
 
-      setResults(searchResults.words);
-      setMeaningsMap(searchResults.meanings);
+      // Check if this search was cancelled
+      if (controller.signal.aborted) {
+        return;
+      }
+
+      // Safe state updates with guards
+      if (!controller.signal.aborted && isSearchingRef.current) {
+        // Batch state updates to prevent FlatList transition issues
+        const newResults = searchResults.words || [];
+        const newMeanings = searchResults.meanings || new Map();
+        
+        // Only update if data actually changed
+        if (JSON.stringify(newResults) !== JSON.stringify(results)) {
+          setResults(newResults);
+          setMeaningsMap(newMeanings);
+        }
+      }
     } catch (error) {
-      console.error("Search failed:", error);
-      setResults([]);
+      // Don't log abort errors
+      if (error instanceof Error && error.name !== 'AbortError') {
+        console.error("Search failed:", error);
+      }
+      if (!controller.signal.aborted && isSearchingRef.current) {
+        // Only clear results if we actually had results
+        if (results.length > 0) {
+          setResults([]);
+        }
+      }
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted && isSearchingRef.current) {
+        setLoading(false);
+      }
+      isSearchingRef.current = false;
     }
   }, 300);
 
   const handleChange = (text: string) => {
-    setLoading(true);
+    // Only set loading if we're actually going to search
+    if (text.trim().length > 0) {
+      setLoading(true);
+    }
     setSearch(text);
     handleSearch(text);
   };
@@ -114,7 +163,10 @@ export default function HomeScreen() {
   };
 
   const history = useSearchHistory();
-  const showHistory = !search.trim().length && !results.length;
+  const showHistory = !search.trim().length && !results.length && !loading;
+  
+  // Memoize data to prevent unnecessary re-renders
+  const flatListData = showHistory ? history.list : results;
 
   const handleHistoryWordPress = async (item: HistoryEntry) => {
     router.push({
@@ -124,9 +176,18 @@ export default function HomeScreen() {
   };
 
   const handleCancelButtonPress = () => {
+    // Cancel any pending searches
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    // Reset searching state
+    isSearchingRef.current = false;
+    
     setSearch("");
     setResults([]);
     setTokens([]);
+    setLoading(false);
     searchBarRef.current?.setText("");
     searchBarRef.current?.blur();
   };
@@ -156,7 +217,7 @@ export default function HomeScreen() {
     );
 
   return (
-    <>
+    <SearchErrorBoundary>
       <Stack.Screen
         options={{
           headerLargeTitle: true,
@@ -164,7 +225,7 @@ export default function HomeScreen() {
             placeholder: "Search in Japanese...",
             onChangeText: (e) => handleChange(e.nativeEvent.text),
             autoCapitalize: "none",
-            ref: searchBarRef,
+            ref: searchBarRef as React.RefObject<SearchBarCommands>,
             shouldShowHintSearchIcon: true,
             onFocus,
             onCancelButtonPress: handleCancelButtonPress,
@@ -172,26 +233,16 @@ export default function HomeScreen() {
         }}
       />
 
-      <Animated.FlatList
-        itemLayoutAnimation={LinearTransition}
-        contentInsetAdjustmentBehavior="automatic"
-        data={showHistory ? history.list : results}
+      <FlashList
+        data={flatListData}
         renderItem={renderItem}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item) => `${showHistory ? 'history' : 'result'}-${item.id}`}
         contentContainerStyle={styles.scrollContainer}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
-        removeClippedSubviews
-        initialNumToRender={10}
-        maxToRenderPerBatch={10}
-        windowSize={5}
-        refreshControl={
-          loading ? (
-            <View style={styles.loader}>
-              <Loader />
-            </View>
-          ) : undefined
-        }
+        estimatedItemSize={80}
+        drawDistance={400}
+        disableAutoLayout={true}
         ListHeaderComponent={
           <TagsList items={tokens} onSelect={handleTokenSelect} />
         }
@@ -202,8 +253,15 @@ export default function HomeScreen() {
             </View>
           )
         }
+        ListFooterComponent={
+          loading ? (
+            <View style={styles.loader}>
+              <Loader />
+            </View>
+          ) : null
+        }
       />
-    </>
+    </SearchErrorBoundary>
   );
 }
 
