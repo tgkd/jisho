@@ -5,10 +5,7 @@ import { useSQLiteContext } from "expo-sqlite";
 import { useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { useMMKVBoolean } from "react-native-mmkv";
-import Animated, {
-  FadeIn,
-  FadeOut
-} from "react-native-reanimated";
+import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { SearchBarCommands } from "react-native-screens";
 import * as wanakana from "wanakana";
 
@@ -50,9 +47,7 @@ export default function HomeScreen() {
   );
   const searchBarRef = useRef<SearchBarCommands>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
-  const [tokens, setTokens] = useState<{ id: string; label: string }[]>(
-    []
-  );
+  const [tokens, setTokens] = useState<{ id: string; label: string }[]>([]);
   const isSearchingRef = useRef(false);
   const [autoPaste] = useMMKVBoolean(SETTINGS_KEYS.AUTO_PASTE);
 
@@ -86,7 +81,9 @@ export default function HomeScreen() {
     setTokens(tokensRes.length > 1 ? tokensRes : []);
 
     try {
-      const searchResults = await searchDictionary(db, text, { signal: controller.signal });
+      const searchResults = await searchDictionary(db, text, {
+        signal: controller.signal,
+      });
 
       // Check if this search was cancelled
       if (controller.signal.aborted) {
@@ -98,7 +95,7 @@ export default function HomeScreen() {
         // Batch state updates to prevent FlatList transition issues
         const newResults = searchResults.words || [];
         const newMeanings = searchResults.meanings || new Map();
-        
+
         // Only update if data actually changed
         if (JSON.stringify(newResults) !== JSON.stringify(results)) {
           setResults(newResults);
@@ -107,7 +104,7 @@ export default function HomeScreen() {
       }
     } catch (error) {
       // Don't log abort errors
-      if (error instanceof Error && error.name !== 'AbortError') {
+      if (error instanceof Error && error.name !== "AbortError") {
         console.error("Search failed:", error);
       }
       if (!controller.signal.aborted && isSearchingRef.current) {
@@ -164,7 +161,7 @@ export default function HomeScreen() {
 
   const history = useSearchHistory();
   const showHistory = !search.trim().length && !results.length && !loading;
-  
+
   // Memoize data to prevent unnecessary re-renders
   const flatListData = showHistory ? history.list : results;
 
@@ -180,10 +177,10 @@ export default function HomeScreen() {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
-    
+
     // Reset searching state
     isSearchingRef.current = false;
-    
+
     setSearch("");
     setResults([]);
     setTokens([]);
@@ -236,7 +233,9 @@ export default function HomeScreen() {
       <FlashList
         data={flatListData}
         renderItem={renderItem}
-        keyExtractor={(item) => `${showHistory ? 'history' : 'result'}-${item.id}`}
+        keyExtractor={(item) =>
+          `${showHistory ? "history" : "result"}-${item.id}`
+        }
         contentContainerStyle={styles.scrollContainer}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
@@ -286,7 +285,7 @@ export function SearchListItem({
   const isFirst = index === 0;
   const isLast = index === total - 1;
   const details = (
-    meanings
+    meanings && meanings.length > 0
       ? deduplicateEn(meanings.map((m) => formatEn(m.meaning, "none")))
       : []
   ).join(", ");
