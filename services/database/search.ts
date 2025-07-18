@@ -2,20 +2,41 @@ import { SQLiteDatabase } from "expo-sqlite";
 import * as wanakana from "wanakana";
 import {
   DBDictEntry,
-  DBWordMeaning,
-  WordMeaning,
-  SearchQuery,
-  SearchDictionaryOptions,
-  SearchDictionaryResult,
+  DBWordMeaning, SearchDictionaryOptions,
+  SearchDictionaryResult, SearchQuery, WordMeaning
 } from "./types";
 import {
-  processSearchQuery,
-  tokenizeJp,
-  createEmptyResult,
+  buildFtsMatchExpression, createEmptyResult,
   formatSearchResults,
-  isSingleKanjiCharacter,
-  buildFtsMatchExpression,
+  isSingleKanjiCharacter, processSearchQuery,
+  tokenizeJp
 } from "./utils";
+
+// Retry helper for database operations
+async function retryDatabaseOperation<T>(
+  operation: () => Promise<T>,
+  maxRetries: number = 3,
+  delay: number = 50
+): Promise<T> {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await operation();
+    } catch (error) {
+      const isLastAttempt = i === maxRetries - 1;
+      const isDatabaseLocked = error instanceof Error && 
+        (error.message.includes('database is locked') || 
+         error.message.includes('SQLITE_BUSY'));
+      
+      if (isLastAttempt || !isDatabaseLocked) {
+        throw error;
+      }
+      
+      // Wait with exponential backoff
+      await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, i)));
+    }
+  }
+  throw new Error('Retry limit exceeded');
+}
 
 async function searchByTokensDeduped(
   db: SQLiteDatabase,
@@ -148,17 +169,24 @@ async function searchByTokensDeduped(
 
 async function fetchMeanings(
   db: SQLiteDatabase,
-  words: DBDictEntry[]
+  words: DBDictEntry[],
+  signal?: AbortSignal
 ): Promise<Map<number, WordMeaning[]>> {
   const meaningsMap = new Map<number, WordMeaning[]>();
   
   if (words.length === 0) return meaningsMap;
 
+  // Check for cancellation
+  if (signal?.aborted) {
+    throw new Error('Fetch cancelled');
+  }
+
   // Single batched query instead of N individual queries
   const wordIds = words.map(w => w.id);
   const placeholders = wordIds.map(() => '?').join(',');
   
-  const meanings = await db.getAllAsync<DBWordMeaning>(
+  const meanings = await retryDatabaseOperation(() => 
+    db.getAllAsync<DBWordMeaning>(
     `
     SELECT id, word_id, meaning, part_of_speech, field, misc, info
     FROM meanings
@@ -166,7 +194,13 @@ async function fetchMeanings(
     ORDER BY word_id
     `,
     wordIds
+    )
   );
+
+  // Check for cancellation after query
+  if (signal?.aborted) {
+    throw new Error('Fetch cancelled');
+  }
 
   // Group meanings by word_id
   meanings.forEach((m) => {
@@ -192,8 +226,9 @@ async function searchBySingleKanji(
   kanji: string,
   options: { limit: number }
 ): Promise<DBDictEntry[]> {
-  return db.getAllAsync<DBDictEntry>(`
-    WITH matched_words AS (
+  return await retryDatabaseOperation(() => 
+    db.getAllAsync<DBDictEntry>(`
+      WITH matched_words AS (
       SELECT
         w.*,
         CASE
@@ -226,7 +261,8 @@ async function searchBySingleKanji(
     `%${kanji}%`,
     kanji,
     options.limit
-  ]);
+    ])
+  );
 }
 
 async function searchByFTS(
@@ -239,9 +275,10 @@ async function searchByFTS(
     const originalQuery = query.original;
     const hiraganaQuery = query.hiragana || originalQuery;
 
-    return await db.getAllAsync<DBDictEntry>(
-    `
-    WITH matches AS (
+    return await retryDatabaseOperation(() => 
+      db.getAllAsync<DBDictEntry>(
+        `
+        WITH matches AS (
       SELECT w.*, bm25(words_fts) as rank
       FROM words_fts f
       JOIN words w ON w.id = f.rowid
@@ -307,7 +344,8 @@ async function searchByFTS(
       hiraganaQuery,
       hiraganaQuery,
       options.limit
-    ]
+      ]
+      )
     );
   } catch (error) {
     console.error("FTS search failed:", error);
@@ -387,15 +425,17 @@ async function searchByTiers(
     params.push(`%${term}%`, `%${term}%`, `%${term}%`, `%${term}%`, `%${term}%`, `%${term}%`, `%${term}%`, `%${term}%`, `${term}%`, `${term}%`, `${term}%`, `${term}%`);
   });
 
-  return await db.getAllAsync<DBDictEntry>(
-    `
-    SELECT id, word, reading, reading_hiragana, kanji, position
+  return await retryDatabaseOperation(() => 
+    db.getAllAsync<DBDictEntry>(
+      `
+      SELECT id, word, reading, reading_hiragana, kanji, position
     FROM (${queries.join(' UNION ALL ')})
     GROUP BY id
     ORDER BY MIN(match_rank), MIN(sub_rank), MIN(word_length), position
     LIMIT ?
     `,
     [...params, limit]
+    )
   );
 }
 
@@ -405,37 +445,53 @@ export async function searchDictionary(
   query: string,
   options: SearchDictionaryOptions = {}
 ): Promise<SearchDictionaryResult> {
-  const { withMeanings = true, limit = 50, minQueryLength = 1 } = options;
+  const { withMeanings = true, limit = 50, minQueryLength = 1, signal } = options;
 
   try {
     if (!query || query.trim().length < minQueryLength) {
       return createEmptyResult(`Query must be at least ${minQueryLength} character(s) long`);
     }
 
+    // Check for cancellation
+    if (signal?.aborted) {
+      throw new Error('Search cancelled');
+    }
+
     const processedQuery = processSearchQuery(query.trim());
 
     // Fast path for single kanji
     if (isSingleKanjiCharacter(query)) {
+      if (signal?.aborted) throw new Error('Search cancelled');
       const results = await searchBySingleKanji(db, query, { limit });
-      const meanings = withMeanings ? await fetchMeanings(db, results) : new Map();
+      if (signal?.aborted) throw new Error('Search cancelled');
+      const meanings = withMeanings ? await fetchMeanings(db, results, signal) : new Map();
       return formatSearchResults(results, meanings);
     }
 
     // Try FTS first if available (but skip for short queries where reading matches are important)
     if (query.trim().length > 2) {
+      if (signal?.aborted) throw new Error('Search cancelled');
       const ftsResults = await searchByFTS(db, processedQuery, { limit });
       if (ftsResults.length > 0) {
-        const meanings = withMeanings ? await fetchMeanings(db, ftsResults) : new Map();
+        if (signal?.aborted) throw new Error('Search cancelled');
+        const meanings = withMeanings ? await fetchMeanings(db, ftsResults, signal) : new Map();
         return formatSearchResults(ftsResults, meanings);
       }
     }
 
     // Use optimized tiered search
+    if (signal?.aborted) throw new Error('Search cancelled');
     const results = await searchByTiers(db, processedQuery, limit);
-    const meanings = withMeanings ? await fetchMeanings(db, results) : new Map();
+    if (signal?.aborted) throw new Error('Search cancelled');
+    const meanings = withMeanings ? await fetchMeanings(db, results, signal) : new Map();
 
     return formatSearchResults(results, meanings);
   } catch (error) {
+    if (error instanceof Error && (error.message === 'Search cancelled' || signal?.aborted)) {
+      const abortError = new Error('Search cancelled');
+      abortError.name = 'AbortError';
+      throw abortError;
+    }
     console.error("Search error:", error);
     return createEmptyResult("An error occurred while searching the dictionary");
   }

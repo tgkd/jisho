@@ -2,7 +2,7 @@ import * as FileSystem from "expo-file-system";
 import { SQLiteDatabase } from "expo-sqlite";
 import { Alert } from "react-native";
 import * as wanakana from "wanakana";
-import { SearchQuery, SearchDictionaryResult, WordMeaning, DBDictEntry, DictionaryEntry } from "./types";
+import { DBDictEntry, DictionaryEntry, SearchDictionaryResult, SearchQuery, WordMeaning } from "./types";
 
 export function processSearchQuery(query: string): SearchQuery {
   const result: SearchQuery = {
@@ -188,6 +188,5 @@ export async function resetDatabase(db: SQLiteDatabase): Promise<void> {
     return;
   } catch (error) {
     console.error("Error during database reset:", error);
-    throw error;
   }
 }

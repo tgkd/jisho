@@ -1,4 +1,3 @@
-import { AiExample } from "../request";
 
 export type DBDictEntry = {
   id: number;
@@ -119,6 +118,7 @@ export interface SearchDictionaryOptions {
   withMeanings?: boolean;
   limit?: number;
   minQueryLength?: number;
+  signal?: AbortSignal;
 }
 
 export interface SearchDictionaryResult {

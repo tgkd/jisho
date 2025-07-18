@@ -1,5 +1,5 @@
 import { FetchResponse } from "expo/build/winter/fetch/FetchResponse";
-import { useState, useCallback } from "react";
+import { useCallback, useState } from "react";
 
 type ResponseType<T> = T | Blob | string | null;
 
@@ -87,7 +87,7 @@ export const useFetch = <T>(
 };
 
 export const useTextStream = (
-  fetchFn: (...args: any[]) => Promise<any>,
+  fetchFn: (signal?: AbortSignal | null, ...args: any[]) => Promise<any>,
   onChunk: (chunk: string) => void,
   onComplete?: (fullText: string, reqParams: any[]) => void,
   onError?: (error: Error) => void,
@@ -95,12 +95,24 @@ export const useTextStream = (
   const [fullText, setFullText] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
+  const [abortController, setAbortController] = useState<AbortController | null>(null);
+
+  const abort = useCallback(() => {
+    if (abortController) {
+      abortController.abort();
+    }
+  }, [abortController]);
 
   const fetchData = async (...args: any[]) => {
+    abort();
+    
+    const controller = new AbortController();
+    setAbortController(controller);
+
     try {
       setIsLoading(true);
       setError(null);
-      const response = await fetchFn(...args);
+      const response = await fetchFn(controller.signal, ...args);
       if (!response.ok) {
         throw new Error(
           `HTTP error: ${response.status} ${response.statusText}`
@@ -142,12 +154,14 @@ export const useTextStream = (
         throw new Error(`Stream reading error: ${error}`);
       }
     } catch (error) {
-      setError(error as Error);
-      onError?.(error as Error);
+      if (error instanceof Error && error.name !== "AbortError") {
+        setError(error as Error);
+        onError?.(error as Error);
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  return { fetchData, isLoading, error, fullText };
+  return { fetchData, isLoading, error, fullText, abort };
 };

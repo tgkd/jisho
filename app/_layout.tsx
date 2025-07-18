@@ -1,10 +1,10 @@
 import {
   DarkTheme,
   DefaultTheme,
-  ThemeProvider,
+  ThemeProvider
 } from "@react-navigation/native";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { LocalAIProvider, useLocalAI } from "../providers/LocalAIProvider";
+import { setAudioModeAsync } from "expo-audio";
 import { Stack, useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { SQLiteProvider } from "expo-sqlite";
@@ -16,9 +16,10 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import "react-native-reanimated";
 import {
   configureReanimatedLogger,
-  ReanimatedLogLevel,
+  ReanimatedLogLevel
 } from "react-native-reanimated";
-import { setAudioModeAsync } from "expo-audio";
+import { LocalAIProvider } from "../providers/LocalAIProvider";
+import { UnifiedAIProvider, useUnifiedAI } from "../providers/UnifiedAIProvider";
 
 import { Loader } from "@/components/Loader";
 import { PopupMenu, PopupMenuItem } from "@/components/PopupMenu";
@@ -27,8 +28,6 @@ import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { migrateDbIfNeeded } from "@/services/database";
 import { queryClient } from "@/services/queryClient";
-import { useMMKVString } from "react-native-mmkv";
-import { SETTINGS_KEYS } from "@/services/storage";
 
 const DATABASE_PATH = "../assets/db/dict_2.db";
 
@@ -62,7 +61,8 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <LocalAIProvider>
-        <GestureHandlerRootView style={styles.container}>
+        <UnifiedAIProvider>
+          <GestureHandlerRootView style={styles.container}>
           <Suspense fallback={<Loader />}>
             <SQLiteProvider
               databaseName="jisho_2.db"
@@ -114,16 +114,15 @@ export default function RootLayout() {
               </ThemeProvider>
             </SQLiteProvider>
           </Suspense>
-        </GestureHandlerRootView>
+          </GestureHandlerRootView>
+        </UnifiedAIProvider>
       </LocalAIProvider>
     </QueryClientProvider>
   );
 }
 
 function BookmarksButton() {
-  const [apiAuthUsername] = useMMKVString(SETTINGS_KEYS.API_AUTH_USERNAME);
-  const localAi = useLocalAI();
-  const aiEnabled = !!apiAuthUsername || localAi.enabled;
+  const ai = useUnifiedAI();
   const router = useRouter();
 
   const navigateToBookmarks = () => {
@@ -142,7 +141,7 @@ function BookmarksButton() {
     router.push("/explore");
   };
 
-  const aiItem: PopupMenuItem[] = aiEnabled
+  const aiItem: PopupMenuItem[] = ai.isAvailable
     ? [
         {
           label: "質問",

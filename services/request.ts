@@ -1,6 +1,6 @@
-import { fetch, FetchRequestInit } from "expo/fetch";
 import { queryOptions } from "@tanstack/react-query";
 import * as FileSystem from "expo-file-system";
+import { fetch, FetchRequestInit } from "expo/fetch";
 
 import { DictionaryEntry, ExampleSentence, WordMeaning } from "./database";
 import { settingsStorage, SETTINGS_KEYS } from "./storage";
@@ -16,7 +16,7 @@ export type AiExample = {
   jp_reading: string;
 };
 
-export function craeteWordPrompt(
+export function createWordPrompt(
   e: {
     word: DictionaryEntry;
     meanings: WordMeaning[];
@@ -32,9 +32,61 @@ export function craeteWordPrompt(
     .join(";")}`;
 }
 
-// function getAiExamples(prompt: string, provider: "cf" | "open" = "open") {
-//   return ;
-// }
+export async function getAiExamples(
+  prompt: string,
+  provider: "cf" | "open" = "open",
+  signal?: AbortSignal
+): Promise<AiExample[]> {
+  if (!prompt) {
+    throw new Error("No prompt provided");
+  }
+
+  const resp = await fetch(
+    `${process.env.EXPO_PUBLIC_BASE_URL}/ask/${provider}?prompt=${encodeURIComponent(prompt)}`,
+    {
+      signal,
+      method: "GET",
+      ...getDefaultOptions(),
+    }
+  );
+
+  if (!resp.ok) {
+    throw new Error("Network response was not ok");
+  }
+
+  return resp.json() as Promise<AiExample[]>;
+}
+
+export async function getAiSound(
+  prompt: string,
+  provider: "cf" | "open" = "open"
+): Promise<string> {
+  if (!prompt) {
+    throw new Error("No prompt provided");
+  }
+
+  const tempFilePath = `${FileSystem.cacheDirectory}audio_${Date.now()}.mp3`;
+  const defaultOptions = getDefaultOptions();
+  const headers: Record<string, string> = {
+    Accept: "audio/mpeg",
+  };
+  
+  if (defaultOptions.headers) {
+    Object.assign(headers, defaultOptions.headers);
+  }
+
+  const downloadResult = await FileSystem.downloadAsync(
+    `${process.env.EXPO_PUBLIC_BASE_URL}/sound/${provider}?prompt=${encodeURIComponent(prompt)}`,
+    tempFilePath,
+    { headers }
+  );
+
+  if (downloadResult.status !== 200) {
+    throw new Error(`Failed to download audio: HTTP ${downloadResult.status}`);
+  }
+
+  return tempFilePath;
+}
 
 function getDefaultOptions(): FetchRequestInit {
   const username = settingsStorage.getString(
