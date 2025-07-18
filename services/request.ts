@@ -16,7 +16,7 @@ export type AiExample = {
   jp_reading: string;
 };
 
-export function craeteWordPrompt(
+export function createWordPrompt(
   e: {
     word: DictionaryEntry;
     meanings: WordMeaning[];

@@ -33,7 +33,8 @@ export interface UnifiedAIContextValue {
   explainText: (
     text: string,
     type: ExplainRequestType,
-    streaming: StreamingResponse
+    streaming: StreamingResponse,
+    signal?: AbortSignal
   ) => Promise<void>;
   generateAudio: (text: string) => Promise<string | null>;
 
@@ -140,7 +141,8 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
     async (
       text: string,
       type: ExplainRequestType,
-      streaming: StreamingResponse
+      streaming: StreamingResponse,
+      signal?: AbortSignal
     ): Promise<void> => {
       if (currentProvider === "none") {
         streaming.onError("No AI provider available");
@@ -163,7 +165,7 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
           );
         } else {
           // Remote provider with streaming
-          const fetchFn = getAiExplanation();
+          const fetchFn = getAiExplanation(signal);
           const response = await fetchFn(text, type);
 
           if (!response.ok) {
@@ -207,7 +209,7 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
         if (currentProvider === "local" && remoteAvailable) {
           console.warn("Local AI failed, falling back to remote");
           try {
-            const fetchFn = getAiExplanation();
+            const fetchFn = getAiExplanation(signal);
             const response = await fetchFn(text, type);
             // Handle remote streaming fallback...
             const fullText = await response.text();

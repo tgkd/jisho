@@ -8,7 +8,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  View,
+  View
 } from "react-native";
 
 import { Collapsible } from "@/components/Collapsible";
@@ -35,16 +35,15 @@ import {
   KanjiEntry,
   removeBookmark,
   saveAudioFile,
-  WordMeaning,
+  WordMeaning
 } from "@/services/database";
 import {
   cleanupJpReadings,
   deduplicateEn,
   findKanji,
   formatEn,
-  formatJp,
+  formatJp
 } from "@/services/parse";
-import { craeteWordPrompt } from "@/services/request";
 
 export default function WordDetailScreen() {
   const tintColor = useThemeColor({}, "tint");
@@ -240,7 +239,7 @@ function ExamplesView({
 
   const handleFetchExamples = async () => {
     try {
-      const prompt = craeteWordPrompt(entry);
+      const prompt = createWordPrompt(entry);
       if (!prompt) return;
 
       const examples = await ai.generateExamples(prompt);
