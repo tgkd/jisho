@@ -27,6 +27,7 @@ import { IconSymbol } from "@/components/ui/IconSymbol";
 import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { migrateDbIfNeeded } from "@/services/database";
+import { newDb } from "@/services/database/new-schema";
 import { queryClient } from "@/services/queryClient";
 
 const DATABASE_PATH = "../assets/db/dict_2.db";
@@ -55,6 +56,8 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
 
   useEffect(() => {
+    // Initialize new database service
+    newDb.init().catch(console.error);
     SplashScreen.hideAsync().then(setupAudio);
   }, []);
 
