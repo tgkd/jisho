@@ -353,6 +353,66 @@ async function searchByFTS(
   }
 }
 
+async function searchByEnglish(
+  db: SQLiteDatabase,
+  query: string,
+  limit: number
+): Promise<DBDictEntry[]> {
+  const normalizedQuery = query.toLowerCase().trim();
+  
+  if (normalizedQuery.length === 0) return [];
+
+  return await retryDatabaseOperation(() => 
+    db.getAllAsync<DBDictEntry>(
+    `
+    WITH english_matches AS (
+      SELECT DISTINCT
+        w.*,
+        CASE
+          WHEN LOWER(m.meaning) = ? THEN 1
+          WHEN LOWER(m.meaning) LIKE ? THEN 2
+          WHEN LOWER(m.meaning) LIKE ? THEN 3
+          ELSE 4
+        END as match_rank,
+        length(w.word) as word_length
+      FROM words w
+      JOIN meanings m ON w.id = m.word_id
+      WHERE LOWER(m.meaning) LIKE ?
+    ),
+    deduped AS (
+      SELECT
+        w.*,
+        m.match_rank,
+        m.word_length,
+        ROW_NUMBER() OVER (
+          PARTITION BY w.word, w.reading
+          ORDER BY
+            m.match_rank,
+            m.word_length,
+            w.position
+        ) as row_num
+      FROM words w
+      JOIN english_matches m ON w.id = m.id
+    )
+    SELECT * FROM deduped
+    WHERE row_num = 1
+    ORDER BY
+      match_rank,
+      word_length,
+      position
+    LIMIT ?
+    `,
+    [
+      normalizedQuery,           // Exact match
+      `${normalizedQuery}%`,     // Starts with
+      `%${normalizedQuery}%`,    // Contains
+      `%${normalizedQuery}%`,    // General filter
+      limit
+    ]
+    )
+  );
+}
+
 async function searchByTiers(
   db: SQLiteDatabase,
   processedQuery: SearchQuery,
@@ -457,19 +517,33 @@ export async function searchDictionary(
       throw new Error('Search cancelled');
     }
 
-    const processedQuery = processSearchQuery(query.trim());
+    const trimmedQuery = query.trim();
+    const processedQuery = processSearchQuery(trimmedQuery);
+
+    // Determine if this is an English query (no Japanese characters)
+    const isEnglishQuery = !wanakana.isJapanese(trimmedQuery) && 
+                          /^[a-zA-Z\s\-'.,!?]+$/.test(trimmedQuery);
+
+    // For English queries, search by meaning first (JP -> EN order)
+    if (isEnglishQuery) {
+      if (signal?.aborted) throw new Error('Search cancelled');
+      const englishResults = await searchByEnglish(db, trimmedQuery, limit);
+      if (signal?.aborted) throw new Error('Search cancelled');
+      const meanings = withMeanings ? await fetchMeanings(db, englishResults, signal) : new Map();
+      return formatSearchResults(englishResults, meanings);
+    }
 
     // Fast path for single kanji
-    if (isSingleKanjiCharacter(query)) {
+    if (isSingleKanjiCharacter(trimmedQuery)) {
       if (signal?.aborted) throw new Error('Search cancelled');
-      const results = await searchBySingleKanji(db, query, { limit });
+      const results = await searchBySingleKanji(db, trimmedQuery, { limit });
       if (signal?.aborted) throw new Error('Search cancelled');
       const meanings = withMeanings ? await fetchMeanings(db, results, signal) : new Map();
       return formatSearchResults(results, meanings);
     }
 
     // Try FTS first if available (but skip for short queries where reading matches are important)
-    if (query.trim().length > 2) {
+    if (trimmedQuery.length > 2) {
       if (signal?.aborted) throw new Error('Search cancelled');
       const ftsResults = await searchByFTS(db, processedQuery, { limit });
       if (ftsResults.length > 0) {
