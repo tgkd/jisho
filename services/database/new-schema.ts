@@ -21,16 +21,80 @@ export class NewDatabaseService {
       const dbInfo = await FileSystem.getInfoAsync(dbPath);
 
       if (!dbInfo.exists) {
-        // Copy from assets to app directory
-        const { bundleDirectory } = FileSystem;
-        const assetDb = `${bundleDirectory}assets/db/dictionary_new.db`;
-        await FileSystem.copyAsync({
-          from: assetDb,
-          to: dbPath
-        });
+        // Ensure SQLite directory exists
+        const sqliteDir = `${FileSystem.documentDirectory}SQLite/`;
+        const dirInfo = await FileSystem.getInfoAsync(sqliteDir);
+        if (!dirInfo.exists) {
+          await FileSystem.makeDirectoryAsync(sqliteDir, { intermediates: true });
+        }
+
+        // Debug: Log all available paths
+        console.log("=== Database Path Debug ===");
+        console.log(`bundleDirectory: ${FileSystem.bundleDirectory}`);
+        console.log(`documentDirectory: ${FileSystem.documentDirectory}`);
+        console.log(`cacheDirectory: ${FileSystem.cacheDirectory}`);
+        
+        // Try multiple potential database sources
+        const possibleSources = [
+          `${FileSystem.bundleDirectory}assets/db/dictionary_new.db`, // Production
+          `${FileSystem.documentDirectory}../../../assets/db/dictionary_new.db`, // Development fallback 1
+          `${FileSystem.documentDirectory}../../../database_new.db`, // Development fallback 2
+          `${FileSystem.documentDirectory}../../../../assets/db/dictionary_new.db`, // Development fallback 3
+          `${FileSystem.documentDirectory}../../../../database_new.db`, // Development fallback 4
+        ];
+
+        let copied = false;
+        for (const source of possibleSources) {
+          try {
+            console.log(`Checking source: ${source}`);
+            const sourceInfo = await FileSystem.getInfoAsync(source);
+            console.log(`Source exists: ${sourceInfo.exists}, isDirectory: ${sourceInfo.isDirectory}`);
+            if (sourceInfo.exists && !sourceInfo.isDirectory) {
+              console.log(`Copying database from: ${source}`);
+              await FileSystem.copyAsync({
+                from: source,
+                to: dbPath
+              });
+              copied = true;
+              break;
+            }
+          } catch (error) {
+            console.log(`Error accessing source ${source}:`, error instanceof Error ? error.message : String(error));
+            continue;
+          }
+        }
+
+        if (!copied) {
+          // Final fallback: In development, create a temporary database
+          // This is a temporary solution for development - the database should be bundled properly
+          console.log("No database found, creating temporary empty database");
+          
+          // Create a minimal database structure for development
+          this.db = await SQLite.openDatabaseAsync(this.dbName);
+          
+          // Create basic tables to prevent crashes
+          await this.db.execAsync(`
+            CREATE TABLE IF NOT EXISTS words (id INTEGER PRIMARY KEY);
+            CREATE TABLE IF NOT EXISTS word_kanji (word_id INTEGER, kanji TEXT);
+            CREATE TABLE IF NOT EXISTS word_readings (word_id INTEGER, reading TEXT, romaji TEXT);
+            CREATE TABLE IF NOT EXISTS word_senses (id INTEGER PRIMARY KEY, word_id INTEGER, parts_of_speech TEXT);
+            CREATE TABLE IF NOT EXISTS word_glosses (sense_id INTEGER, gloss TEXT);
+            CREATE TABLE IF NOT EXISTS kanji (character TEXT PRIMARY KEY, meanings TEXT, on_readings TEXT, kun_readings TEXT, grade INTEGER, stroke_count INTEGER, frequency INTEGER);
+            CREATE TABLE IF NOT EXISTS examples (japanese_text TEXT, english_text TEXT, furigana_text TEXT);
+          `);
+          
+          console.log("Created temporary development database");
+          return; // Skip the normal database opening since we already opened it
+        }
       }
 
       this.db = await SQLite.openDatabaseAsync(this.dbName);
+      
+      // Log database info for debugging
+      const version = await this.db.getFirstAsync("PRAGMA user_version");
+      const tables = await this.db.getAllAsync("SELECT name FROM sqlite_master WHERE type='table'");
+      console.log(`DB: ${JSON.stringify(version)} TARGET: ${JSON.stringify(version)}`);
+      console.log(`Database initialized successfully with ${tables.length} tables`);
     } catch (error) {
       console.error("Failed to initialize new database:", error);
       throw error;
