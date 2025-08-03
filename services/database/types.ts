@@ -1,4 +1,54 @@
 
+// New normalized schema types
+export type DBWord = {
+  id: number;
+  entry_id: number;
+  sequence: number;
+  created_at: string;
+  updated_at: string;
+  frequency_score: number;
+  frequency_source: string | null;
+};
+
+export type DBWordKanji = {
+  id: number;
+  word_id: number;
+  kanji: string;
+  info_tags: string | null;
+  priorities: string | null;
+};
+
+export type DBWordReading = {
+  id: number;
+  word_id: number;
+  reading: string;
+  romaji: string;
+  info_tags: string | null;
+  priorities: string | null;
+  restrict_kanji: string | null;
+};
+
+export type DBWordSense = {
+  id: number;
+  word_id: number;
+  sense_order: number;
+  parts_of_speech: string; // JSON array
+  field_tags: string; // JSON array
+  misc_tags: string; // JSON array
+  dialect_tags: string | null;
+  info: string | null;
+};
+
+export type DBWordGloss = {
+  id: number;
+  sense_id: number;
+  gloss: string;
+  gloss_type: string | null;
+  gender: string | null;
+  gloss_order: number;
+};
+
+// Legacy type for compatibility - represents a flattened word entry
 export type DBDictEntry = {
   id: number;
   word: string;
@@ -29,6 +79,7 @@ export type ExampleSentence = Omit<
   exampleId: string | null;
 };
 
+// Legacy meaning type - now mapped from senses + glosses
 export type DBWordMeaning = {
   id: number;
   word_id: number;
@@ -114,11 +165,19 @@ export interface SearchQuery {
   romaji?: string;
 }
 
+export interface SearchRankingConfig {
+  frequencyWeight: number;        // 0.0 - 1.0, default 0.3
+  lengthWeight: number;          // 0.0 - 1.0, default 0.2
+  exactMatchBoost: number;       // Multiplier, default 10.0
+  enableFrequencyRanking: boolean; // Feature flag, default true
+}
+
 export interface SearchDictionaryOptions {
   withMeanings?: boolean;
   limit?: number;
   minQueryLength?: number;
   signal?: AbortSignal;
+  rankingConfig?: SearchRankingConfig;
 }
 
 export interface SearchDictionaryResult {

@@ -374,7 +374,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    flexWrap: "wrap",
   },
   separator: {
     height: StyleSheet.hairlineWidth,

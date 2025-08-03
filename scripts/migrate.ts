@@ -278,7 +278,7 @@ Data files should be placed in the ./data directory:
   - JmdictFurigana.json (furigana data)
   - Kanji Radicals Reference - *.csv (radical data)
 
-Your existing database (assets/db/dict_2.db) will NOT be affected.
+Your existing database (assets/db/d_3.db) will NOT be affected.
 `);
   }
 }

@@ -57,11 +57,31 @@ hooks/           # Custom hooks
 - **Navigation**: expo-router with typed routes
 
 ### Database Schema
-- `words` - Dictionary entries with readings and kanji
-- `meanings` - Word definitions and parts of speech
-- `examples` - Example sentences with translations
-- `kanji` - Kanji character data
-- `bookmarks`, `history`, `chats` - User data
+
+#### Core Dictionary Tables
+- **`words`** - Dictionary entries with readings and kanji
+  - `id` (INTEGER PRIMARY KEY), `word`, `reading`, `reading_hiragana`, `kanji`, `position`
+- **`meanings`** - Word definitions and parts of speech  
+  - `id` (INTEGER PRIMARY KEY), `word_id`, `meaning`, `part_of_speech`, `field`, `misc`, `info`
+- **`examples`** - Example sentences with translations
+  - `id` (INTEGER PRIMARY KEY), `japanese_text`, `english_text`, `tokens`, `example_id`, `word_id`
+- **`kanji`** - Kanji character data
+  - `id` (INTEGER PRIMARY KEY), `character` (NOT NULL), `jis_code`, `unicode`, `on_readings`, `kun_readings`, `meanings`, `created_at`
+
+#### User Data Tables
+- **`bookmarks`** - User bookmarked words
+  - `id` (INTEGER PRIMARY KEY), `word_id` (NOT NULL), `created_at` (NOT NULL)
+- **`history`** - Search history  
+  - `id` (INTEGER PRIMARY KEY), `word_id` (NOT NULL), `created_at` (NOT NULL)
+- **`chats`** - AI chat conversations
+  - `id` (INTEGER PRIMARY KEY), `request` (NOT NULL), `response` (NOT NULL), `created_at` (NOT NULL)
+- **`audio_blobs`** - Audio pronunciation data
+  - `id` (INTEGER PRIMARY KEY), `file_path` (NOT NULL), `word_id` (NOT NULL), `example_id`, `audio_data` (BLOB NOT NULL), `created_at` (NOT NULL)
+
+#### Full-Text Search
+- **`words_fts`** - FTS5 virtual table for fast text search
+  - Indexes: `word`, `reading`, `reading_hiragana`, `kanji`
+  - Supporting tables: `words_fts_data`, `words_fts_idx`, `words_fts_docsize`, `words_fts_config`
 
 ### AI Integration
 The app supports both local and cloud AI:

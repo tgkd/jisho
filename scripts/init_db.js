@@ -505,12 +505,12 @@ function promisify(fn) {
       path.resolve(__dirname, "../data/words.ljson"),
       path.resolve(__dirname, "../data/words.idx"),
       path.resolve(__dirname, "../data/examples.utf"),
-      path.resolve(__dirname, "../assets/db/dict_2.db")
+      path.resolve(__dirname, "../assets/db/d_3.db")
     );
 
     // Create FTS table after data is loaded
     console.log("Creating FTS search index...");
-    const db = new sqlite3.Database(path.resolve(__dirname, "../assets/db/dict_2.db"));
+    const db = new sqlite3.Database(path.resolve(__dirname, "../assets/db/d_3.db"));
     await createFtsTable(db);
     
     // Set database version to 11 to match migration system

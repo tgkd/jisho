@@ -272,7 +272,7 @@ async function processKanjiData(inputFile, dbPath) {
   try {
     await processKanjiData(
       path.resolve(__dirname, "../data/kanjidic_comb_utf8"),
-      path.resolve(__dirname, "../assets/db/dict_2.db")
+      path.resolve(__dirname, "../assets/db/d_3.db")
     );
 
     console.log("Conversion completed successfully");

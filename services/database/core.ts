@@ -1,12 +1,44 @@
 import { SQLiteDatabase } from "expo-sqlite";
 
+async function ensureAppTables(db: SQLiteDatabase, tables: any[]) {
+  // Check if required app tables exist
+  const hasHistory = tables.find((t: any) => t.name === 'history');
+  const hasAudioBlobs = tables.find((t: any) => t.name === 'audio_blobs');
+  
+  if (!hasHistory || !hasAudioBlobs) {
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        word_id INTEGER NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (word_id) REFERENCES words (id)
+      );
+      
+      CREATE TABLE IF NOT EXISTS audio_blobs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        file_path TEXT NOT NULL,
+        word_id INTEGER NOT NULL,
+        example_id INTEGER,
+        audio_data BLOB NOT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (word_id) REFERENCES words (id),
+        FOREIGN KEY (example_id) REFERENCES examples (id)
+      );
+      
+      CREATE INDEX IF NOT EXISTS idx_audio_word_id ON audio_blobs(word_id);
+      CREATE INDEX IF NOT EXISTS idx_audio_example_id ON audio_blobs(example_id);
+    `);
+  }
+}
+
+
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
-  const DATABASE_VERSION = 11;
+  const DATABASE_VERSION = 13;
 
   try {
     // Test if database is corrupted by trying a simple query
     try {
-      await db.getFirstAsync("SELECT COUNT(*) FROM sqlite_master");
+      await db.getFirstAsync("SELECT COUNT(*) as count FROM sqlite_master");
     } catch (corruptionError: any) {
       console.error("Database corruption detected:", corruptionError?.message);
       if (
@@ -43,14 +75,30 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
       throw corruptionError;
     }
 
+    // Check what tables exist
+    const tables = await db.getAllAsync("SELECT name FROM sqlite_master WHERE type='table'");
+    
     const versionResult = await db.getFirstAsync<{ user_version: number }>(
       "PRAGMA user_version"
     );
     let currentDbVersion = versionResult?.user_version ?? 0;
-
-    console.log("DB: ", currentDbVersion, "TARGET: ", DATABASE_VERSION);
+    
+    // If we have tables but version is 0, this might be a pre-versioned database
+    if (currentDbVersion === 0 && tables.length > 0) {
+      const wordsTable = tables.find((t: any) => t.name === 'words');
+      if (wordsTable) {
+        // Check schema to determine likely version
+        const columns = await db.getAllAsync("PRAGMA table_info(words)");
+        const hasFrequencyScore = columns.some((col: any) => col.name === 'frequency_score');
+        if (hasFrequencyScore) {
+          currentDbVersion = 10;
+        }
+      }
+    }
 
     if (currentDbVersion >= DATABASE_VERSION) {
+      // Even if version is current, check for missing app tables
+      await ensureAppTables(db, tables);
       return;
     }
 
@@ -251,9 +299,70 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
       currentDbVersion = 11;
     }
 
-    console.log(
-      `Database migrations completed. Current version: ${currentDbVersion}`
-    );
+    if (currentDbVersion < 12) {
+      // Check if frequency columns already exist
+      const columns = await db.getAllAsync("PRAGMA table_info(words)") as {name: string}[];
+      const hasFrequencyScore = columns.some(col => col.name === 'frequency_score');
+      
+      if (!hasFrequencyScore) {
+        await db.execAsync(`
+          ALTER TABLE words ADD COLUMN frequency_score INTEGER DEFAULT 0;
+          ALTER TABLE words ADD COLUMN frequency_source TEXT DEFAULT NULL;
+        `);
+      }
+      
+      // Create missing tables that the app expects
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS history (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          word_id INTEGER NOT NULL,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY (word_id) REFERENCES words (id)
+        );
+        
+        CREATE TABLE IF NOT EXISTS audio_blobs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          file_path TEXT NOT NULL,
+          word_id INTEGER NOT NULL,
+          example_id INTEGER,
+          audio_data BLOB NOT NULL,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY (word_id) REFERENCES words (id),
+          FOREIGN KEY (example_id) REFERENCES examples (id)
+        );
+        
+        CREATE INDEX IF NOT EXISTS idx_words_frequency ON words(frequency_score DESC);
+        CREATE INDEX IF NOT EXISTS idx_audio_word_id ON audio_blobs(word_id);
+        CREATE INDEX IF NOT EXISTS idx_audio_example_id ON audio_blobs(example_id);
+      `);
+      
+      await db.execAsync(`PRAGMA user_version = 12`);
+      currentDbVersion = 12;
+    }
+
+    if (currentDbVersion < 13) {
+      // Migration 13: Ensure history table is compatible with new schema
+      // Check if we have the new schema tables (word_glosses, word_kanji, etc.)
+      const hasNewSchema = tables.find((t: any) => t.name === 'word_glosses');
+      
+      if (hasNewSchema) {
+        // If we have new schema, ensure history table exists and is compatible
+        await db.execAsync(`
+          CREATE TABLE IF NOT EXISTS history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            word_id INTEGER NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (word_id) REFERENCES words (id)
+          );
+          
+          CREATE INDEX IF NOT EXISTS idx_history_word_id ON history(word_id);
+          CREATE INDEX IF NOT EXISTS idx_history_created_at ON history(created_at);
+        `);
+      }
+      
+      await db.execAsync(`PRAGMA user_version = 13`);
+      currentDbVersion = 13;
+    }
   } catch (error) {
     console.error("Migration error:", error);
     throw error;
