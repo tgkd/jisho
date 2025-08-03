@@ -36,7 +36,7 @@ yarn db:verify
 
 ### 3. Create Database
 ```bash
-# Creates database_new.db (keeps your existing dict_2.db safe)
+# Creates database_new.db (keeps your existing d_3.db safe)
 yarn db:create
 
 # Or create with custom name
@@ -61,7 +61,7 @@ yarn db:stats
 ## 📍 **Database Location & Safety**
 
 - **New database**: `database_new.db` (project root)
-- **Your existing database**: `assets/db/dict_2.db` (untouched)
+- **Your existing database**: `assets/db/d_3.db` (untouched)
 - **Custom location**: Use `DB_NAME=filename.db` before commands
 
 ## 📊 Database Schema Overview

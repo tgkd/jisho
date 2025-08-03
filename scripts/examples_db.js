@@ -67,7 +67,7 @@ function parseLine(line) {
   };
 }
 
-const DB_OUT = path.resolve(__dirname, "../assets/db/dict_2.db");
+const DB_OUT = path.resolve(__dirname, "../assets/db/d_3.db");
 const DATA_IN = path.resolve(__dirname, "../data/jpn_transcriptions.tsv");
 
 async function main() {

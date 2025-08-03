@@ -28,7 +28,7 @@ import { useColorScheme } from "@/hooks/useColorScheme";
 import { migrateDbIfNeeded } from "@/services/database";
 import { queryClient } from "@/services/queryClient";
 
-const DATABASE_PATH = "../assets/db/dict_2.db";
+const DATABASE_PATH = "../assets/db/d_3.db";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -64,7 +64,7 @@ export default function RootLayout() {
           <GestureHandlerRootView style={styles.container}>
           <Suspense fallback={<Loader />}>
             <SQLiteProvider
-              databaseName="dict_2.db"
+              databaseName="d_3.db"
               assetSource={{
                 assetId: require(DATABASE_PATH),
               }}

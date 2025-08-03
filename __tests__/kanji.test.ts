@@ -1,5 +1,5 @@
-import sqlite3 from 'sqlite3';
 import path from 'path';
+import sqlite3 from 'sqlite3';
 
 // Types matching our database structure
 interface DBKanjiEntry {
@@ -149,7 +149,7 @@ async function testGetKanjiList(db: TestDatabase): Promise<ParsedKanjiEntry[]> {
 
 describe('Kanji Database Operations', () => {
   let db: TestDatabase;
-  const dbPath = path.join(__dirname, '../assets/db/dict_2.db');
+  const dbPath = path.join(__dirname, '../assets/db/d_3.db');
 
   beforeAll(async () => {
     db = new TestDatabase(dbPath);

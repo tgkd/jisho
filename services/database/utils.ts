@@ -57,14 +57,11 @@ export function createEmptyResult(error?: string): SearchDictionaryResult {
 }
 
 export function formatSearchResults(
-  entries: DBDictEntry[],
+  entries: DictionaryEntry[],
   meanings: Map<number, WordMeaning[]>
 ): SearchDictionaryResult {
   return {
-    words: entries.map((word) => ({
-      ...word,
-      readingHiragana: word.reading_hiragana,
-    })),
+    words: entries,
     meanings,
   };
 }
