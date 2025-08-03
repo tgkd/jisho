@@ -13,7 +13,6 @@ import { Suspense, useEffect } from "react";
 import { StyleSheet } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
-import "react-native-reanimated";
 import {
   configureReanimatedLogger,
   ReanimatedLogLevel
@@ -65,7 +64,7 @@ export default function RootLayout() {
           <GestureHandlerRootView style={styles.container}>
           <Suspense fallback={<Loader />}>
             <SQLiteProvider
-              databaseName="jisho_2.db"
+              databaseName="dict_2.db"
               assetSource={{
                 assetId: require(DATABASE_PATH),
               }}

@@ -8,6 +8,12 @@
     "initdb": "node ./scripts/init_db.js",
     "initex": "node ./scripts/examples_db.js",
     "initkanji": "node ./scripts/kanji_db.js",
+    "db:create": "tsx scripts/migrate.ts --create",
+    "db:import": "tsx scripts/migrate.ts --import",
+    "db:import:words": "tsx scripts/migrate.ts --import-words",
+    "db:reset": "tsx scripts/migrate.ts --reset",
+    "db:stats": "tsx scripts/migrate.ts --stats",
+    "db:verify": "tsx scripts/migrate.ts --verify",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
@@ -34,7 +40,7 @@
     "@react-navigation/native": "^7.1.6",
     "@shopify/flash-list": "1.7.6",
     "@tanstack/react-query": "5.83.0",
-    "expo": "53.0.19",
+    "expo": "53.0.20",
     "expo-audio": "~0.4.8",
     "expo-blur": "~14.1.5",
     "expo-clipboard": "~7.1.5",
@@ -70,8 +76,10 @@
   "devDependencies": {
     "@babel/core": "^7.27.7",
     "@tanstack/eslint-plugin-query": "^5.81.2",
+    "@types/better-sqlite3": "7.6.13",
     "@types/jest": "^30.0.0",
     "@types/react": "~19.0.10",
+    "better-sqlite3": "12.2.0",
     "csv-parser": "^3.2.0",
     "eslint": "^9.0.0",
     "eslint-config-expo": "~9.2.0",
@@ -81,7 +89,9 @@
     "react-test-renderer": "19.1.0",
     "sqlite3": "^5.1.7",
     "ts-jest": "^29.4.0",
-    "typescript": "^5.8.3"
+    "ts-node": "10.9.2",
+    "tsx": "^4.20.3",
+    "typescript": "~5.8.3"
   },
   "private": true,
   "packageManager": "yarn@4.9.2"
