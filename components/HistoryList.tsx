@@ -74,7 +74,7 @@ export const HistoryListItem = ({
                 style={styles.meaning}
                 uiTextView={false}
               >
-                {formatEn(item.meaning, "none", { truncateAll: 52 })}
+                {formatEn(item.meaning, "none", { truncateAll: 45 }).replace(/[,;]\s*$/, "")}
               </ThemedText>
             </ThemedView>
             {!isLast ? <View style={styles.separator} /> : null}

@@ -520,17 +520,22 @@ export async function searchDictionary(
     const trimmedQuery = query.trim();
     const processedQuery = processSearchQuery(trimmedQuery);
 
-    // Determine if this is an English query (no Japanese characters)
-    const isEnglishQuery = !wanakana.isJapanese(trimmedQuery) && 
-                          /^[a-zA-Z\s\-'.,!?]+$/.test(trimmedQuery);
+    // For Latin text (no Japanese characters), try English search first, then Japanese as fallback
+    const isLatinText = !wanakana.isJapanese(trimmedQuery) && 
+                       /^[a-zA-Z\s\-'.,!?]+$/.test(trimmedQuery);
 
-    // For English queries, search by meaning first (JP -> EN order)
-    if (isEnglishQuery) {
+    if (isLatinText) {
       if (signal?.aborted) throw new Error('Search cancelled');
       const englishResults = await searchByEnglish(db, trimmedQuery, limit);
-      if (signal?.aborted) throw new Error('Search cancelled');
-      const meanings = withMeanings ? await fetchMeanings(db, englishResults, signal) : new Map();
-      return formatSearchResults(englishResults, meanings);
+      
+      // If English search found results, return them
+      if (englishResults.length > 0) {
+        if (signal?.aborted) throw new Error('Search cancelled');
+        const meanings = withMeanings ? await fetchMeanings(db, englishResults, signal) : new Map();
+        return formatSearchResults(englishResults, meanings);
+      }
+      
+      // If no English results, continue to Japanese search (treat as potential romaji)
     }
 
     // Fast path for single kanji

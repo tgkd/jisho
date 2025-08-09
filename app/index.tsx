@@ -240,9 +240,7 @@ export default function HomeScreen() {
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
-        estimatedItemSize={80}
         drawDistance={400}
-        disableAutoLayout={true}
         ListHeaderComponent={
           <TagsList items={tokens} onSelect={handleTokenSelect} />
         }
@@ -287,9 +285,14 @@ export function SearchListItem({
   const isLast = index === total - 1;
   const details = (
     meanings && meanings.length > 0
-      ? deduplicateEn(meanings.map((m) => formatEn(m.meaning, "none")))
+      ? deduplicateEn(meanings.map((m) => formatEn(m.meaning, "none"))).filter(Boolean)
       : []
-  ).join(", ");
+  ).join(", ").replace(/[,;]\s*$/, "");
+  
+  // Truncate to ~45 characters to fit one line
+  const truncatedDetails = details.length > 45 
+    ? details.substring(0, 42) + "..." 
+    : details;
 
   const handleWordPress = (item: DictionaryEntry) => {
     router.push({
@@ -324,7 +327,7 @@ export function SearchListItem({
                 </ThemedText>
               </View>
               <ThemedText numberOfLines={1} type="secondary">
-                {details}
+                {truncatedDetails}
               </ThemedText>
             </View>
             <IconSymbol color={iconColor} name="chevron.right" size={16} />
@@ -358,10 +361,10 @@ const styles = StyleSheet.create({
     paddingTop: 32,
   },
   col: {
+    flex: 1,
     flexDirection: "column",
     alignItems: "flex-start",
     justifyContent: "center",
-    maxWidth: "90%",
   },
   item: {
     flexDirection: "row",
@@ -374,7 +377,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    flexWrap: "wrap",
   },
   separator: {
     height: StyleSheet.hairlineWidth,
