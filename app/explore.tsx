@@ -1,9 +1,9 @@
+import { FlashList, FlashListRef } from "@shopify/flash-list";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import Markdown from "react-native-markdown-display";
-import Animated, { LinearTransition } from "react-native-reanimated";
 
 import { ChatFooterView } from "@/components/ChatFooter";
 import { ChatListItem } from "@/components/ChatItem";
@@ -19,7 +19,7 @@ export default function ExploreScreen() {
   const db = useSQLiteContext();
   const markdownStyles = useMdStyles();
   const ai = useUnifiedAI();
-  const scrollRef = useRef<Animated.FlatList<Chat>>(null);
+  const scrollRef = useRef<FlashListRef<Chat>>(null);
   const [chatsHistory, setChatsHistory] = useState<Chat[]>([]);
   const [currentResponse, setCurrentResponse] = useState<string>("");
 
@@ -132,13 +132,11 @@ export default function ExploreScreen() {
       keyboardVerticalOffset={96}
       style={styles.container}
     >
-      <Animated.FlatList
-        itemLayoutAnimation={LinearTransition}
+      <FlashList
         ref={scrollRef}
         style={styles.list}
         contentContainerStyle={styles.scrollContainer}
         keyboardDismissMode="on-drag"
-        removeClippedSubviews={true}
         renderItem={renderItem}
         data={chatsHistory}
         ListFooterComponent={renderFooter}

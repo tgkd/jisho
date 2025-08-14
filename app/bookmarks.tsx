@@ -1,18 +1,16 @@
-import { Stack, useFocusEffect } from "expo-router";
+import { router, Stack, useFocusEffect } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useState } from "react";
-import { FlatList, StyleSheet, Text } from "react-native";
 import * as wanakana from "wanakana";
 
-import { router } from "expo-router";
-import { View } from "react-native";
+import { FlashList } from "@shopify/flash-list";
+import { StyleSheet, View } from "react-native";
 import ReanimatedSwipeable, {
-  SwipeableMethods,
+  SwipeableMethods
 } from "react-native-gesture-handler/ReanimatedSwipeable";
 import Animated, {
-  LinearTransition,
   SharedValue,
-  useAnimatedStyle,
+  useAnimatedStyle
 } from "react-native-reanimated";
 
 import { HapticTab } from "@/components/HapticTab";
@@ -25,7 +23,7 @@ import { useThemeColor } from "@/hooks/useThemeColor";
 import {
   DictionaryEntry,
   getBookmarks,
-  removeBookmark,
+  removeBookmark
 } from "@/services/database";
 import { formatEn, formatJp } from "@/services/parse";
 
@@ -133,8 +131,7 @@ export default function BookmarksScreen() {
           },
         }}
       />
-      <Animated.FlatList
-        itemLayoutAnimation={LinearTransition}
+      <FlashList
         contentInsetAdjustmentBehavior="automatic"
         data={filteredBookmarks}
         renderItem={({ index, item }) => (
@@ -150,10 +147,6 @@ export default function BookmarksScreen() {
         ListHeaderComponent={renderListHeader}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
-        removeClippedSubviews={true}
-        initialNumToRender={10}
-        maxToRenderPerBatch={10}
-        windowSize={5}
       />
     </>
   );

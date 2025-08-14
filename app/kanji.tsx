@@ -1,19 +1,18 @@
+import { FlashList } from "@shopify/flash-list";
 import { Stack, useFocusEffect, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useState } from "react";
-import { StyleSheet } from "react-native";
-import Animated, { LinearTransition } from "react-native-reanimated";
 
-import { Pressable, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 
+import { Loader } from "@/components/Loader";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
+import { IconSymbol } from "@/components/ui/IconSymbol";
 import { Colors } from "@/constants/Colors";
 import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
-import { KanjiEntry, searchKanji, getKanjiList } from "@/services/database";
-import { Loader } from "@/components/Loader";
-import { IconSymbol } from "@/components/ui/IconSymbol";
 import { useThemeColor } from "@/hooks/useThemeColor";
+import { getKanjiList, KanjiEntry, searchKanji } from "@/services/database";
 
 export default function KanjiScreen() {
   const [search, setSearch] = useState("");
@@ -72,8 +71,7 @@ export default function KanjiScreen() {
           },
         }}
       />
-      <Animated.FlatList
-        itemLayoutAnimation={LinearTransition}
+      <FlashList
         contentInsetAdjustmentBehavior="automatic"
         data={kanjiList}
         renderItem={({ item, index }) => (
@@ -83,10 +81,6 @@ export default function KanjiScreen() {
         contentContainerStyle={styles.scrollContainer}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
-        removeClippedSubviews={true}
-        initialNumToRender={10}
-        maxToRenderPerBatch={10}
-        windowSize={5}
         refreshControl={
           loading ? (
             <View style={styles.loader}>

@@ -321,12 +321,12 @@ export function SearchListItem({
           >
             <View style={styles.col}>
               <View style={styles.titleRow}>
-                <ThemedText type="defaultSemiBold">{item.word}</ThemedText>
-                <ThemedText type="secondary">
+                <ThemedText type="defaultSemiBold" uiTextView={false}>{item.word}</ThemedText>
+                <ThemedText type="secondary" uiTextView={false}>
                   {formatJp(item.reading)}
                 </ThemedText>
               </View>
-              <ThemedText numberOfLines={1} type="secondary">
+              <ThemedText numberOfLines={1} type="secondary" uiTextView={false}>
                 {truncatedDetails}
               </ThemedText>
             </View>

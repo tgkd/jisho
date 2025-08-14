@@ -1,5 +1,6 @@
+import { FlashList } from "@shopify/flash-list";
 import React from "react";
-import { FlatList, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import { Pill } from "./ui/Pill";
 
@@ -22,12 +23,11 @@ export default function TagsList({ items, onSelect }: TagsListProps) {
 
   return (
     <View style={styles.container}>
-      <FlatList
+      <FlashList
         data={items}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         horizontal
-        maxToRenderPerBatch={5}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
         ItemSeparatorComponent={() => <View style={{ width: 8 }} />}
