@@ -1062,7 +1062,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/runtime@npm:^7.20.0, @babel/runtime@npm:^7.25.0":
+"@babel/runtime@npm:^7.20.0, @babel/runtime@npm:^7.25.0, @babel/runtime@npm:^7.28.4":
   version: 7.28.4
   resolution: "@babel/runtime@npm:7.28.4"
   checksum: 10c0/792ce7af9750fb9b93879cc9d1db175701c4689da890e6ced242ea0207c9da411ccf16dc04e689cc01158b28d7898c40d75598f4559109f761c12ce01e959bf7
@@ -1900,6 +1900,26 @@ __metadata:
     expo:
       optional: true
   checksum: 10c0/67eef4da95b84cb44bc8fc32e73fa96a050e05e2923cfcd96eae00c2397375f6f7de1f0b93282f40f5c4eb57c1670e86da9957a0da2254b6133d3f887953fcc8
+  languageName: node
+  linkType: hard
+
+"@expo/metro-runtime@npm:^6.1.2":
+  version: 6.1.2
+  resolution: "@expo/metro-runtime@npm:6.1.2"
+  dependencies:
+    anser: "npm:^1.4.9"
+    pretty-format: "npm:^29.7.0"
+    stacktrace-parser: "npm:^0.1.10"
+    whatwg-fetch: "npm:^3.0.0"
+  peerDependencies:
+    expo: "*"
+    react: "*"
+    react-dom: "*"
+    react-native: "*"
+  peerDependenciesMeta:
+    react-dom:
+      optional: true
+  checksum: 10c0/8cc8fa526f5718449dfd256331db222cd48f5d18cbd5a4156205d84111dc40519b700392ee2c9ee99efedc14fa793d17e51d0d9c33b0cc60869d016c00acc7d1
   languageName: node
   linkType: hard
 
@@ -8920,6 +8940,8 @@ __metadata:
   resolution: "jisho@workspace:."
   dependencies:
     "@babel/core": "npm:^7.28.0"
+    "@babel/runtime": "npm:^7.28.4"
+    "@expo/metro-runtime": "npm:^6.1.2"
     "@expo/vector-icons": "npm:^15.0.2"
     "@react-navigation/bottom-tabs": "npm:^7.3.10"
     "@react-navigation/elements": "npm:^2.4.1"
@@ -8957,7 +8979,7 @@ __metadata:
     react-dom: "npm:19.1.0"
     react-native: "npm:0.81.4"
     react-native-context-menu-view: "npm:^1.19.0"
-    react-native-executorch: "npm:^0.5.4"
+    react-native-executorch: "npm:0.5.3"
     react-native-gesture-handler: "npm:~2.28.0"
     react-native-keyboard-aware-scroll-view: "npm:^0.9.5"
     react-native-keyboard-controller: "npm:1.18.5"
@@ -11121,9 +11143,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-executorch@npm:^0.5.4":
-  version: 0.5.4
-  resolution: "react-native-executorch@npm:0.5.4"
+"react-native-executorch@npm:0.5.3":
+  version: 0.5.3
+  resolution: "react-native-executorch@npm:0.5.3"
   dependencies:
     "@huggingface/jinja": "npm:^0.5.0"
     expo: "npm:^53.0.7"
@@ -11135,7 +11157,7 @@ __metadata:
   peerDependencies:
     react: "*"
     react-native: "*"
-  checksum: 10c0/31e3b0600d9323dac3bc3542244633e82cd03b1535600eef5bbf8bc244b561bf209b9553c3cfec494f623abc593112373bc422e211829becd14393fc3ed0c807
+  checksum: 10c0/b16bcb433185e0ea519bb2f96df0b464e7c5ef34c2fc03802c9098b2f8d4e580d55589d7340220fa7c20720950f7a138f9debc1a857898ae422942ad0ed82bf0
   languageName: node
   linkType: hard
 

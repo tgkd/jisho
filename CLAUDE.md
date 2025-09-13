@@ -51,7 +51,6 @@ hooks/           # Custom hooks
 ### Key Technologies
 - **Database**: SQLite with FTS5 for full-text search
 - **Storage**: MMKV for settings and preferences
-- **AI**: Local Qwen3-0.6B model via react-native-executorch
 - **Japanese Processing**: wanakana library for text conversion
 - **State Management**: @tanstack/react-query
 - **Navigation**: expo-router with typed routes

@@ -1368,7 +1368,7 @@ PODS:
     - ReactNativeDependencies
   - react-native-context-menu-view (1.19.0):
     - React
-  - react-native-executorch (0.5.4):
+  - react-native-executorch (0.5.3):
     - hermes-engine
     - opencv-rne (~> 4.11.0)
     - RCTRequired
@@ -2475,7 +2475,7 @@ SPEC CHECKSUMS:
   React-Mapbuffer: fbe1da882a187e5898bdf125e1cc6e603d27ecae
   React-microtasksnativemodule: 76905804171d8ccbe69329fc84c57eb7934add7f
   react-native-context-menu-view: 3a8fb510448efa9d477f645dafa889ef1c78daaa
-  react-native-executorch: c21c3aa0c365c122c828544be95adcbcfd56f885
+  react-native-executorch: 5b4401f7984adc9dc0c81fedbed4b0aa2de2366e
   react-native-keyboard-controller: 1ad78688f744e0ebdf3b04007b91089a254b80f9
   react-native-mmkv: 6ee361e2515d9eada636fc21c85612f27f20e0ef
   react-native-safe-area-context: 42a1b4f8774b577d03b53de7326e3d5757fe9513
