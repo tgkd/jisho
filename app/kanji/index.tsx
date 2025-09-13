@@ -68,6 +68,7 @@ export default function KanjiScreen() {
             placeholder: "Search kanji",
             onChangeText: (e) => handleChange(e.nativeEvent.text),
             autoCapitalize: "none",
+            hideWhenScrolling: false
           },
         }}
       />

@@ -1,6 +1,8 @@
+import { Button as ButtonPrimitive, Host } from "@expo/ui/swift-ui";
 import { BottomTabBarButtonProps } from "@react-navigation/bottom-tabs";
 import { PlatformPressable } from "@react-navigation/elements";
 import * as Haptics from "expo-haptics";
+import { StyleProp, ViewStyle } from "react-native";
 
 export function HapticTab(props: BottomTabBarButtonProps) {
   return (
@@ -14,6 +16,19 @@ export function HapticTab(props: BottomTabBarButtonProps) {
         props.onPressIn?.(ev);
       }}
     />
+  );
+}
+
+export function HapticButton(
+  props: React.ComponentProps<typeof ButtonPrimitive> & {
+    style?: StyleProp<ViewStyle>;
+  }
+) {
+  const { style, ...restProps } = props;
+  return (
+    <Host matchContents style={style}>
+      <ButtonPrimitive {...restProps}>{props.children}</ButtonPrimitive>
+    </Host>
   );
 }
 

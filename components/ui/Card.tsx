@@ -1,7 +1,7 @@
-import { StyleSheet, View, ViewProps } from "react-native";
-import { ThemedView, ThemedViewProps } from "../ThemedView";
 import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
+import { StyleSheet } from "react-native";
+import { ThemedView, ThemedViewProps } from "../ThemedView";
 
 export type CardProps = ThemedViewProps & {
   variant?: "grouped" | "plain";
@@ -19,10 +19,13 @@ export function Card({
   const backgroundColor =
     variant === "grouped"
       ? Colors[colorScheme].groupedBackground
-      : Colors[colorScheme].secondaryBackground; // Changed to use secondaryBackground (white in light mode)
+      : Colors[colorScheme].secondaryBackground;
 
   return (
-    <ThemedView style={[styles.card, { backgroundColor, gap }, style]} {...props}>
+    <ThemedView
+      style={[styles.card, { backgroundColor, gap }, style]}
+      {...props}
+    >
       {children}
     </ThemedView>
   );

@@ -43,7 +43,6 @@ export default function KanjiDetailScreen() {
       <ThemedView style={styles.container}>
         <Stack.Screen
           options={{
-            headerBackTitle: "Kanji",
             title: params.title || "Details",
           }}
         />
@@ -59,7 +58,6 @@ export default function KanjiDetailScreen() {
       <ThemedView style={styles.container}>
         <Stack.Screen
           options={{
-            headerBackTitle: "Back",
             title: params.title || "Details",
           }}
         />
@@ -74,7 +72,6 @@ export default function KanjiDetailScreen() {
     <ThemedView style={styles.container}>
       <Stack.Screen
         options={{
-          headerBackTitle: "Kanji",
           title: params.title || entry.character || "Details",
         }}
       />

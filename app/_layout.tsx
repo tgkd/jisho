@@ -1,11 +1,11 @@
 import {
   DarkTheme,
   DefaultTheme,
-  ThemeProvider
+  ThemeProvider,
 } from "@react-navigation/native";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { setAudioModeAsync } from "expo-audio";
-import { Stack, useRouter } from "expo-router";
+import { NativeTabs, Icon, Label } from "expo-router/unstable-native-tabs";
 import * as SplashScreen from "expo-splash-screen";
 import { SQLiteProvider } from "expo-sqlite";
 import { StatusBar } from "expo-status-bar";
@@ -15,15 +15,14 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import {
   configureReanimatedLogger,
-  ReanimatedLogLevel
+  ReanimatedLogLevel,
 } from "react-native-reanimated";
-import { LocalAIProvider } from "../providers/LocalAIProvider";
-import { UnifiedAIProvider, useUnifiedAI } from "../providers/UnifiedAIProvider";
+import { AppleAIProvider } from "../providers/AppleAIProvider";
+import { UnifiedAIProvider } from "../providers/UnifiedAIProvider";
+// Legacy support - will be removed after migration complete
+// import { LocalAIProvider } from "../providers/LocalAIProvider";
 
 import { Loader } from "@/components/Loader";
-import { PopupMenu, PopupMenuItem } from "@/components/PopupMenu";
-import { IconSymbol } from "@/components/ui/IconSymbol";
-import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { migrateDbIfNeeded } from "@/services/database";
 import { queryClient } from "@/services/queryClient";
@@ -59,143 +58,59 @@ export default function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <LocalAIProvider>
+      <AppleAIProvider>
         <UnifiedAIProvider>
           <GestureHandlerRootView style={styles.container}>
-          <Suspense fallback={<Loader />}>
-            <SQLiteProvider
-              databaseName="dict_2.db"
-              assetSource={{
-                assetId: require(DATABASE_PATH),
-              }}
-              onInit={migrateDbIfNeeded}
-              useSuspense
-            >
-              <ThemeProvider
-                value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
+            <Suspense fallback={<Loader />}>
+              <SQLiteProvider
+                databaseName="dict_2.db"
+                assetSource={{
+                  assetId: require(DATABASE_PATH),
+                }}
+                onInit={migrateDbIfNeeded}
+                useSuspense
               >
-                <KeyboardProvider>
-                  <Stack>
-                    <Stack.Screen
-                      name="index"
-                      options={() => ({
-                        headerTitle: "Search",
-                        headerTitleStyle: styles.headerTitle,
-                        headerBackTitleStyle: styles.headerBackTitle,
-                        headerRight: () => <BookmarksButton />,
-                      })}
-                    />
-                    <Stack.Screen name="word/[id]" />
-                    <Stack.Screen
-                      name="bookmarks"
-                      options={{ headerTitle: "しおり" }}
-                    />
-                    <Stack.Screen
-                      name="explore"
-                      options={{ headerTitle: "質問" }}
-                    />
-                    <Stack.Screen
-                      name="kanji"
-                      options={{ headerTitle: "漢字" }}
-                    />
-                    <Stack.Screen name="kanji/[id]" />
-                    <Stack.Screen
-                      name="settings"
-                      options={{
-                        headerTitle: "設定",
-                        presentation: "modal",
-                      }}
-                    />
-                  </Stack>
-                </KeyboardProvider>
+                <ThemeProvider
+                  value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
+                >
+                  <KeyboardProvider>
+                    <NativeTabs>
+                      <NativeTabs.Trigger name="word">
+                        <Icon
+                          sf="magnifyingglass"
+                          drawable="custom_android_drawable"
+                        />
+                        <Label>Search</Label>
+                      </NativeTabs.Trigger>
 
-                <StatusBar style="auto" />
-              </ThemeProvider>
-            </SQLiteProvider>
-          </Suspense>
+                      <NativeTabs.Trigger name="kanji">
+                        <Icon
+                          sf="textformat.abc"
+                          drawable="custom_android_drawable"
+                        />
+                        <Label>Kanji</Label>
+                      </NativeTabs.Trigger>
+                      <NativeTabs.Trigger hidden name="word/[id]" />
+                      <NativeTabs.Trigger hidden name="kanji/[id]" />
+                      <NativeTabs.Trigger hidden name="bookmarks" />
+                      <NativeTabs.Trigger hidden name="explore" />
+                      <NativeTabs.Trigger hidden name="settings" />
+                    </NativeTabs>
+                  </KeyboardProvider>
+
+                  <StatusBar style="auto" />
+                </ThemeProvider>
+              </SQLiteProvider>
+            </Suspense>
           </GestureHandlerRootView>
         </UnifiedAIProvider>
-      </LocalAIProvider>
+      </AppleAIProvider>
     </QueryClientProvider>
-  );
-}
-
-function BookmarksButton() {
-  const ai = useUnifiedAI();
-  const router = useRouter();
-
-  const navigateToBookmarks = () => {
-    router.push("/bookmarks");
-  };
-
-  const navigateToKanji = () => {
-    router.push("/kanji");
-  };
-
-  const navigateToSettings = () => {
-    router.push("/settings");
-  };
-
-  const navigateToExplore = () => {
-    router.push("/explore");
-  };
-
-  const aiItem: PopupMenuItem[] = ai.isAvailable
-    ? [
-        {
-          label: "質問",
-          onPress: navigateToExplore,
-          icon: "sparkles",
-        },
-      ]
-    : [];
-
-  const items: PopupMenuItem[] = [
-    {
-      label: "しおり",
-      onPress: navigateToBookmarks,
-      icon: "bookmark",
-    },
-    {
-      label: "漢字",
-      onPress: navigateToKanji,
-      icon: "book.closed",
-    },
-    {
-      label: "設定",
-      onPress: navigateToSettings,
-      icon: "gearshape",
-    },
-    ...aiItem,
-  ];
-
-  return (
-    <PopupMenu
-      buttonView={
-        <IconSymbol
-          color={Colors.light.tint}
-          name="ellipsis.circle"
-          size={32}
-        />
-      }
-      items={items}
-    />
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  header: {
-    borderBottomWidth: 0,
-    shadowColor: "transparent",
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: "600",
-  },
-  headerBackTitle: {
-    fontSize: 17,
   },
 });

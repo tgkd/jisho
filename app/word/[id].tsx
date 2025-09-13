@@ -8,11 +8,11 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  View
+  View,
 } from "react-native";
 
 import { Collapsible } from "@/components/Collapsible";
-import { HapticTab } from "@/components/HapticTab";
+import { HapticButton, HapticTab } from "@/components/HapticTab";
 import { HighlightText } from "@/components/HighlightText";
 import { Loader } from "@/components/Loader";
 import { ThemedText } from "@/components/ThemedText";
@@ -35,18 +35,18 @@ import {
   KanjiEntry,
   removeBookmark,
   saveAudioFile,
-  WordMeaning
+  WordMeaning,
 } from "@/services/database";
 import {
   cleanupJpReadings,
   deduplicateEn,
   findKanji,
   formatEn,
-  formatJp
+  formatJp,
 } from "@/services/parse";
+import { createWordPrompt } from "@/services/request";
 
 export default function WordDetailScreen() {
-  const tintColor = useThemeColor({}, "tint");
   const markColor = useThemeColor({}, "text");
   const params = useLocalSearchParams();
   const title = typeof params.title === "string" ? params.title : "Details";
@@ -122,12 +122,7 @@ export default function WordDetailScreen() {
   if (isLoading) {
     return (
       <ThemedView style={styles.container}>
-        <Stack.Screen
-          options={{
-            headerBackTitle: "Search",
-            title,
-          }}
-        />
+        <Stack.Screen options={{ title }} />
         <View style={styles.loadingContainer}>
           <Loader />
         </View>
@@ -138,12 +133,7 @@ export default function WordDetailScreen() {
   if (!entry) {
     return (
       <ThemedView style={styles.container}>
-        <Stack.Screen
-          options={{
-            headerBackTitle: "Back",
-            title,
-          }}
-        />
+        <Stack.Screen options={{ title }} />
         <View style={styles.errorContainer}>
           <ThemedText>{"Word not found"}</ThemedText>
         </View>
@@ -155,16 +145,15 @@ export default function WordDetailScreen() {
     <ThemedView style={styles.container}>
       <Stack.Screen
         options={{
-          headerBackTitle: "Search",
           title,
           headerRight: () => (
-            <HapticTab onPress={handleToggleBookmark}>
-              <IconSymbol
-                name={bookmarked ? "bookmark.circle.fill" : "bookmark.circle"}
-                size={32}
-                color={tintColor}
-              />
-            </HapticTab>
+            <HapticButton
+              variant="glass"
+              systemImage={
+                bookmarked ? "bookmark.circle.fill" : "bookmark.circle"
+              }
+              onPress={handleToggleBookmark}
+            />
           ),
         }}
       />

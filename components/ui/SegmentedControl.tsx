@@ -10,7 +10,7 @@ import { ThemedText } from "../ThemedText";
 import { Colors } from "../../constants/Colors";
 
 interface SegmentedControlProps<T = string> {
-  options: Array<{ label: string; value: T }>;
+  options: { label: string; value: T }[];
   value: T;
   onChange: (value: T) => void;
   style?: object;

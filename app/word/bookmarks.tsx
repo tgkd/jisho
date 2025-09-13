@@ -6,11 +6,11 @@ import * as wanakana from "wanakana";
 import { FlashList } from "@shopify/flash-list";
 import { StyleSheet, View } from "react-native";
 import ReanimatedSwipeable, {
-  SwipeableMethods
+  SwipeableMethods,
 } from "react-native-gesture-handler/ReanimatedSwipeable";
 import Animated, {
   SharedValue,
-  useAnimatedStyle
+  useAnimatedStyle,
 } from "react-native-reanimated";
 
 import { HapticTab } from "@/components/HapticTab";
@@ -23,7 +23,7 @@ import { useThemeColor } from "@/hooks/useThemeColor";
 import {
   DictionaryEntry,
   getBookmarks,
-  removeBookmark
+  removeBookmark,
 } from "@/services/database";
 import { formatEn, formatJp } from "@/services/parse";
 
@@ -128,6 +128,7 @@ export default function BookmarksScreen() {
             placeholder: "Search in bookmarks",
             onChangeText: (e) => handleChange(e.nativeEvent.text),
             autoCapitalize: "none",
+            hideWhenScrolling: false,
           },
         }}
       />

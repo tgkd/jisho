@@ -16,7 +16,9 @@ import {
   getAiSound
 } from "@/services/request";
 import { SETTINGS_KEYS } from "@/services/storage";
-import { useLocalAI } from "./LocalAIProvider";
+import { useAppleAI } from "./AppleAIProvider";
+// Legacy support - will be removed after migration complete
+// import { useLocalAI } from "./LocalAIProvider";
 
 export type AIProviderType = "local" | "remote" | "none";
 export type AIProviderPreference = "local" | "remote" | "auto";
@@ -62,7 +64,7 @@ const UnifiedAIContext = createContext<UnifiedAIContextValue | undefined>(
 );
 
 export function UnifiedAIProvider({ children }: { children: ReactNode }) {
-  const localAI = useLocalAI();
+  const localAI = useAppleAI();
   const [apiAuthUsername] = useMMKVString(SETTINGS_KEYS.API_AUTH_USERNAME);
   const [preferredProvider, setPreferredProvider] =
     useState<AIProviderPreference>("auto");
@@ -102,6 +104,9 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
       if (currentProvider === "none") {
         throw new Error("No AI provider available");
       }
+
+      console.log(`Generating examples using ${currentProvider} provider`);
+
 
       try {
         if (currentProvider === "local") {

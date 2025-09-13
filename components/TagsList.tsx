@@ -5,7 +5,7 @@ import { StyleSheet, View } from "react-native";
 import { Pill } from "./ui/Pill";
 
 type TagsListProps = {
-  items: Array<{ label: string; id: string }>;
+  items: { label: string; id: string }[];
   onSelect: (id: string) => void;
 };
 

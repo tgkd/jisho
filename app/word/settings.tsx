@@ -1,4 +1,3 @@
-import { Stack } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useState } from "react";
 import {
@@ -8,7 +7,7 @@ import {
   Switch,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import { useMMKVBoolean, useMMKVString } from "react-native-mmkv";
 
@@ -19,11 +18,11 @@ import { Card } from "@/components/ui/Card";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { Colors, getHighlightColorValue } from "@/constants/Colors";
 import { useThemeColor } from "@/hooks/useThemeColor";
-import { useLocalAI } from "@/providers/LocalAIProvider";
+import { useAppleAI } from "@/providers/AppleAIProvider";
 import {
   clearBookmarks,
   clearHistory,
-  resetDatabase,
+  resetDatabase
 } from "@/services/database";
 import { SETTINGS_KEYS } from "@/services/storage";
 
@@ -56,7 +55,7 @@ export default function SettingsScreen() {
   const [apiAuthUsername, setApiAuthUsername] = useMMKVString(
     SETTINGS_KEYS.API_AUTH_USERNAME
   );
-  const localAi = useLocalAI();
+  const localAi = useAppleAI();
   const [apiAuthPassword, setApiAuthPassword] = useMMKVString(
     SETTINGS_KEYS.API_AUTH_PASSWORD
   );
@@ -163,13 +162,6 @@ export default function SettingsScreen() {
   return (
     <ScrollView>
       <ThemedView style={styles.container}>
-        <Stack.Screen
-          options={{
-            headerTitle: "設定",
-            presentation: "modal",
-          }}
-        />
-
         <Card>
           <View style={styles.settingItem}>
             <ThemedText size="sm">{"Highlight Color"}</ThemedText>
@@ -218,37 +210,10 @@ export default function SettingsScreen() {
                 style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
               />
             </View>
-            {localAi.enabled && localAi.downloadProgress ? (
-              <View style={styles.row}>
-                <ThemedText size="xs" style={styles.description}>
-                  {`Downloading model: ${Math.round(
-                    localAi.downloadProgress * 100
-                  )}%`}
-                </ThemedText>
-              </View>
-            ) : null}
             <ThemedText size="xs" style={styles.description}>
-              {"Enable local AI features (requires model download)"}
+              {"Enable local AI features (Apple Intelligence required)"}
             </ThemedText>
           </View>
-
-          {/* <View style={styles.settingItem}>
-          <View style={styles.row}>
-            <ThemedText size="sm">{"Show Furigana"}</ThemedText>
-            <ThemedText size="sm" style={styles.description}>
-              {"not available yet"}
-            </ThemedText>
-            <Switch
-              value={showFurigana}
-              disabled
-              onValueChange={setShowFurigana}
-              style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
-            />
-          </View>
-          <View style={styles.center}>
-            <FuriganaText word="振り仮名" reading="ふりがな" />
-          </View>
-        </View> */}
         </Card>
 
         <Card>

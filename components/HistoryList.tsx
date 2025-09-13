@@ -125,8 +125,7 @@ const styles = StyleSheet.create({
   resultItem: {
     flexDirection: "column",
     flexWrap: "wrap",
-    paddingVertical: 12,
-    paddingHorizontal: 8,
+    padding: 12,
     gap: 4,
   },
   separator: {
@@ -135,12 +134,12 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
   },
   firstRowStyle: {
-    borderTopLeftRadius: 10,
-    borderTopRightRadius: 10,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
   },
   lastRowStyle: {
-    borderBottomLeftRadius: 10,
-    borderBottomRightRadius: 10,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
 
   rightAction: {
