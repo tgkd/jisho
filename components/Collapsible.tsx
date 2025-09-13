@@ -1,4 +1,4 @@
-import { PropsWithChildren, useState } from "react";
+import { PropsWithChildren } from "react";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 import Animated, {
   useAnimatedStyle,
@@ -44,8 +44,8 @@ export function Collapsible({
 
   const contentStyle = useAnimatedStyle(() => {
     return {
-      height: opened.value ? "auto" : 0,
       opacity: opened.value,
+      overflow: 'hidden' as const,
     };
   });
 

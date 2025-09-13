@@ -321,12 +321,14 @@ export function SearchListItem({
           >
             <View style={styles.col}>
               <View style={styles.titleRow}>
-                <ThemedText type="defaultSemiBold" uiTextView={false}>{item.word}</ThemedText>
-                <ThemedText type="secondary" uiTextView={false}>
+                <ThemedText type="defaultSemiBold" uiTextView={false} numberOfLines={1} style={styles.wordText}>
+                  {item.word}
+                </ThemedText>
+                <ThemedText type="secondary" uiTextView={false} numberOfLines={1} style={styles.readingText}>
                   {formatJp(item.reading)}
                 </ThemedText>
               </View>
-              <ThemedText numberOfLines={1} type="secondary" uiTextView={false}>
+              <ThemedText numberOfLines={1} type="secondary" uiTextView={false} style={styles.detailsText}>
                 {truncatedDetails}
               </ThemedText>
             </View>
@@ -365,6 +367,7 @@ const styles = StyleSheet.create({
     flexDirection: "column",
     alignItems: "flex-start",
     justifyContent: "center",
+    minWidth: 0,
   },
   item: {
     flexDirection: "row",
@@ -377,6 +380,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+    width: "100%",
+    minWidth: 0,
+  },
+  wordText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  readingText: {
+    flexShrink: 1,
+    minWidth: 0,
+  },
+  detailsText: {
+    width: "100%",
   },
   separator: {
     height: StyleSheet.hairlineWidth,
