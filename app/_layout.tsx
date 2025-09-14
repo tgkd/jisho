@@ -74,7 +74,7 @@ export default function RootLayout() {
                   value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
                 >
                   <KeyboardProvider>
-                    <NativeTabs>
+                    <NativeTabs minimizeBehavior="onScrollDown" >
                       <NativeTabs.Trigger name="word">
                         <Icon
                           sf="magnifyingglass"

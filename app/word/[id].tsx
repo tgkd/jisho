@@ -45,6 +45,7 @@ import {
   formatJp,
 } from "@/services/parse";
 import { createWordPrompt } from "@/services/request";
+import { NavHeader } from "@/components/NavHeader";
 
 export default function WordDetailScreen() {
   const markColor = useThemeColor({}, "text");
@@ -145,10 +146,9 @@ export default function WordDetailScreen() {
     <ThemedView style={styles.container}>
       <Stack.Screen
         options={{
-          title,
+          headerTitle: () => <NavHeader title={title} />,
           headerRight: () => (
             <HapticButton
-              variant="glass"
               systemImage={
                 bookmarked ? "bookmark.circle.fill" : "bookmark.circle"
               }

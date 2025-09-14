@@ -23,17 +23,18 @@ export default function WordLayout() {
       <Stack.Screen
         name="[id]"
         options={{
-          title: "Details",
           headerTintColor: theme === "dark" ? "white" : "black",
           headerTransparent: true,
           headerStyle: {
             backgroundColor: "transparent",
           },
+          headerBackTitle: '',
         }}
       />
       <Stack.Screen
         name="settings"
         options={{
+          presentation: "modal",
           title: "Settings",
           headerTintColor: theme === "dark" ? "white" : "black",
           headerTransparent: true,

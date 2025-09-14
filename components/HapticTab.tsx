@@ -25,8 +25,9 @@ export function HapticButton(
   }
 ) {
   const { style, ...restProps } = props;
+
   return (
-    <Host matchContents style={style}>
+    <Host matchContents>
       <ButtonPrimitive {...restProps}>{props.children}</ButtonPrimitive>
     </Host>
   );
