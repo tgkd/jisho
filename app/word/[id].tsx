@@ -8,7 +8,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  View
+  View,
 } from "react-native";
 
 import { Collapsible } from "@/components/Collapsible";
@@ -36,19 +36,21 @@ import {
   KanjiEntry,
   removeBookmark,
   saveAudioFile,
-  WordMeaning
+  WordMeaning,
 } from "@/services/database";
 import {
   cleanupJpReadings,
   deduplicateEn,
   findKanji,
   formatEn,
-  formatJp
+  formatJp,
 } from "@/services/parse";
 import { createWordPrompt } from "@/services/request";
+import { useHeaderHeight } from "@react-navigation/elements";
 
 export default function WordDetailScreen() {
   const markColor = useThemeColor({}, "text");
+  const headerHeight = useHeaderHeight();
   const params = useLocalSearchParams();
   const title = typeof params.title === "string" ? params.title : "Details";
   const [entry, setEntry] = useState<{
@@ -156,7 +158,10 @@ export default function WordDetailScreen() {
         }}
       />
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        contentInsetAdjustmentBehavior="automatic"
+      >
         <ThemedView style={styles.headerSection}>
           <HapticTab onPress={handleSpeech}>
             <ThemedText type="title" style={styles.word}>
@@ -289,7 +294,10 @@ function KanjiDetails({ character }: { character: string }) {
       return;
     }
 
-    router.push(`/kanji/${details.id}`);
+    router.push({
+      pathname: "/word/kanji/[id]",
+      params: { id: details.id.toString(), title: details.character },
+    });
   };
 
   if (!details) {

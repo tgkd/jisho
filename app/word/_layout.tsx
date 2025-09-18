@@ -20,11 +20,14 @@ export default function WordLayout() {
       <Stack.Screen
         name="[id]"
         options={{
-          headerTintColor: theme === "dark" ? "white" : "black",
           headerTransparent: true,
-          headerStyle: {
-            backgroundColor: "transparent",
-          },
+          headerBackTitle: "",
+        }}
+      />
+      <Stack.Screen
+        name="kanji/[id]"
+        options={{
+          headerTransparent: true,
           headerBackTitle: "",
         }}
       />

@@ -12,9 +12,11 @@ import { Card } from "@/components/ui/Card";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { useThemeColor } from "@/hooks/useThemeColor";
 import { getKanjiById, KanjiEntry } from "@/services/database";
+import { useHeaderHeight } from "@react-navigation/elements";
 
 export default function KanjiDetailScreen() {
   const markColor = useThemeColor({}, "text");
+  const headerHeight = useHeaderHeight();
   const params = useLocalSearchParams<{ id: string; title?: string }>();
   const [entry, setEntry] = useState<KanjiEntry | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -76,7 +78,10 @@ export default function KanjiDetailScreen() {
         }}
       />
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        contentInsetAdjustmentBehavior="automatic"
+      >
         <ThemedView style={styles.headerSection}>
           <ThemedText type="title" style={styles.character}>
             {entry.character}
