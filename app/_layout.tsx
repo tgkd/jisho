@@ -107,8 +107,6 @@ export default function RootLayout() {
                         <Label>Settings</Label>
                       </NativeTabs.Trigger>
 
-                      <NativeTabs.Trigger hidden name="word/[id]" />
-                      <NativeTabs.Trigger hidden name="kanji/[id]" />
                     </NativeTabs>
                   </KeyboardProvider>
 

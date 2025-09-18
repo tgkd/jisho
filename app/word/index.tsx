@@ -29,13 +29,13 @@ import {
   KanjiEntry,
   searchDictionary,
   searchKanji,
-  WordMeaning,
+  WordMeaning
 } from "@/services/database";
 import {
   deduplicateEn,
   formatEn,
   formatJp,
-  getJpTokens,
+  getJpTokens
 } from "@/services/parse";
 import { SETTINGS_KEYS } from "@/services/storage";
 
@@ -466,7 +466,7 @@ export function KanjiListItem({
 
   const handlePress = () => {
     router.navigate({
-      pathname: "/kanji/[id]",
+      pathname: "/word/kanji/[id]",
       params: { id: item.id.toString(), title: item.character },
     });
   };
