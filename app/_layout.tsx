@@ -1,11 +1,11 @@
 import {
   DarkTheme,
   DefaultTheme,
-  ThemeProvider,
+  ThemeProvider
 } from "@react-navigation/native";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { setAudioModeAsync } from "expo-audio";
-import { NativeTabs, Icon, Label } from "expo-router/unstable-native-tabs";
+import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
 import * as SplashScreen from "expo-splash-screen";
 import { SQLiteProvider } from "expo-sqlite";
 import { StatusBar } from "expo-status-bar";
@@ -15,7 +15,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import {
   configureReanimatedLogger,
-  ReanimatedLogLevel,
+  ReanimatedLogLevel
 } from "react-native-reanimated";
 import { AppleAIProvider } from "../providers/AppleAIProvider";
 import { UnifiedAIProvider } from "../providers/UnifiedAIProvider";
@@ -74,8 +74,8 @@ export default function RootLayout() {
                   value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
                 >
                   <KeyboardProvider>
-                    <NativeTabs minimizeBehavior="onScrollDown" >
-                      <NativeTabs.Trigger name="word">
+                    <NativeTabs minimizeBehavior="onScrollDown">
+                      <NativeTabs.Trigger name="word" role="search">
                         <Icon
                           sf="magnifyingglass"
                           drawable="custom_android_drawable"
@@ -83,18 +83,32 @@ export default function RootLayout() {
                         <Label>Search</Label>
                       </NativeTabs.Trigger>
 
-                      <NativeTabs.Trigger name="kanji">
+                      <NativeTabs.Trigger name="bookmarks">
                         <Icon
-                          sf="textformat.abc"
+                          sf="bookmark"
                           drawable="custom_android_drawable"
                         />
-                        <Label>Kanji</Label>
+                        <Label>Bookmarks</Label>
                       </NativeTabs.Trigger>
+
+                      <NativeTabs.Trigger name="explore">
+                        <Icon
+                          sf="bubble.left.and.bubble.right"
+                          drawable="custom_android_drawable"
+                        />
+                        <Label>AI Chat</Label>
+                      </NativeTabs.Trigger>
+
+                      <NativeTabs.Trigger name="settings">
+                        <Icon
+                          sf="gear"
+                          drawable="custom_android_drawable"
+                        />
+                        <Label>Settings</Label>
+                      </NativeTabs.Trigger>
+
                       <NativeTabs.Trigger hidden name="word/[id]" />
                       <NativeTabs.Trigger hidden name="kanji/[id]" />
-                      <NativeTabs.Trigger hidden name="bookmarks" />
-                      <NativeTabs.Trigger hidden name="explore" />
-                      <NativeTabs.Trigger hidden name="settings" />
                     </NativeTabs>
                   </KeyboardProvider>
 

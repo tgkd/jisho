@@ -1,5 +1,5 @@
 PODS:
-  - AppleLLM (0.1.0):
+  - AppleLLM (0.9.0):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -21,9 +21,9 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - EXConstants (18.0.8):
+  - EXConstants (18.0.9):
     - ExpoModulesCore
-  - Expo (54.0.7):
+  - Expo (54.0.8):
     - ExpoModulesCore
     - hermes-engine
     - RCTRequired
@@ -50,7 +50,7 @@ PODS:
     - Yoga
   - ExpoAsset (12.0.8):
     - ExpoModulesCore
-  - ExpoAudio (1.0.11):
+  - ExpoAudio (1.0.12):
     - ExpoModulesCore
   - ExpoBlur (15.0.7):
     - ExpoModulesCore
@@ -62,14 +62,14 @@ PODS:
     - ExpoModulesCore
   - ExpoHaptics (15.0.7):
     - ExpoModulesCore
-  - ExpoHead (6.0.4):
+  - ExpoHead (6.0.6):
     - ExpoModulesCore
     - RNScreens
   - ExpoKeepAwake (15.0.7):
     - ExpoModulesCore
   - ExpoLinking (8.0.8):
     - ExpoModulesCore
-  - ExpoModulesCore (3.0.15):
+  - ExpoModulesCore (3.0.16):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2408,20 +2408,20 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon/yoga"
 
 SPEC CHECKSUMS:
-  AppleLLM: 98252c7f58ef5b5acafea08ee4e290f6da5dfe6b
-  EXConstants: 7e4654405af367ff908c863fe77a8a22d60bd37d
-  Expo: 170291b86adbf5fe95d36bc7a90288203cec739e
+  AppleLLM: 5bdfc92651e01b5c5fe692f64d1dfff525c1b7af
+  EXConstants: a95804601ee4a6aa7800645f9b070d753b1142b3
+  Expo: 4875e1cc72ae1398e33bcd6632943a4e93926ecd
   ExpoAsset: 84810d6fed8179f04d4a7a4a6b37028bbd726e26
-  ExpoAudio: c3d8eb9f5e27d86a26d2c2b83aeda02c461d01fc
+  ExpoAudio: b04c4ae65e0174a8f4b097b2aa4040441c49fbd5
   ExpoBlur: 2dd8f64aa31f5d405652c21d3deb2d2588b1852f
   ExpoClipboard: af650d14765f19c60ce2a1eaf9dfe6445eff7365
   ExpoFileSystem: 4fb06865906e781329eb67166bd64fc4749c3019
   ExpoFont: 86ceec09ffed1c99cfee36ceb79ba149074901b5
   ExpoHaptics: 807476b0c39e9d82b7270349d6487928ce32df84
-  ExpoHead: 2aad68c730f967d2533599dabb64d1d2cd9f765a
+  ExpoHead: 78f14a8573ae5b882123b272c0af20a80bfa58f6
   ExpoKeepAwake: 1a2e820692e933c94a565ec3fbbe38ac31658ffe
   ExpoLinking: f051f28e50ea9269ff539317c166adec81d9342d
-  ExpoModulesCore: 9281d8f1cda9d0c37dbce34c26014212b22eb8c0
+  ExpoModulesCore: a28d1b4a5a9fbdacc41ca8d0c777a2d73496b022
   ExpoNetwork: b87392dcc24d49a595f186ca25cdcf7293d30275
   ExpoSpeech: 18a7f92a932028e16d3df1891377a8b626ab5cc0
   ExpoSplashScreen: cbb839de72110dea1851dd3e85080b7923af2540

@@ -1,8 +1,9 @@
-import { Button as ButtonPrimitive, Host } from "@expo/ui/swift-ui";
+import { Button, Button as ButtonPrimitive, Host } from "@expo/ui/swift-ui";
 import { BottomTabBarButtonProps } from "@react-navigation/bottom-tabs";
 import { PlatformPressable } from "@react-navigation/elements";
 import * as Haptics from "expo-haptics";
-import { StyleProp, ViewStyle } from "react-native";
+import { useMemo } from "react";
+import { StyleProp, View, ViewStyle } from "react-native";
 
 export function HapticTab(props: BottomTabBarButtonProps) {
   return (
@@ -22,13 +23,35 @@ export function HapticTab(props: BottomTabBarButtonProps) {
 export function HapticButton(
   props: React.ComponentProps<typeof ButtonPrimitive> & {
     style?: StyleProp<ViewStyle>;
+    size?: "xs" | "sm" | "md" | "lg" | "xl";
   }
 ) {
-  const { style, ...restProps } = props;
+  const { style, size, ...restProps } = props;
+
+  const { inner, outer } = useMemo(() => {
+    switch (size) {
+      case "xs":
+        return { inner: 25, outer: 35 };
+      case "sm":
+        return { inner: 30, outer: 40 };
+      case "md":
+        return { inner: 35, outer: 50 };
+      case "lg":
+        return { inner: 40, outer: 60 };
+      case "xl":
+        return { inner: 45, outer: 70 };
+      default:
+        return { inner: 35, outer: 50 };
+    }
+  }, [size]);
 
   return (
-    <Host matchContents>
-      <ButtonPrimitive {...restProps}>{props.children}</ButtonPrimitive>
+    <Host style={{ width: outer, height: outer }}>
+      <View>
+        <Host style={{ width: inner, height: inner }}>
+          <Button {...restProps} />
+        </Host>
+      </View>
     </Host>
   );
 }

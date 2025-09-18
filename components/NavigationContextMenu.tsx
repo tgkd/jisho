@@ -1,3 +1,4 @@
+import { settingsStorage, SETTINGS_KEYS } from "@/services/storage";
 import {
   Button,
   ContextMenu,
@@ -13,6 +14,11 @@ interface NavigationContextMenuProps {
 export function NavigationContextMenu({ children }: NavigationContextMenuProps) {
   const handleNavigation = (route: string) => {
     router.push(route as any);
+  };
+
+  const handleKanjiNavigation = () => {
+    settingsStorage.set(SETTINGS_KEYS.SEARCH_MODE, 'kanji');
+    router.push("/word");
   };
 
   return (
@@ -38,7 +44,7 @@ export function NavigationContextMenu({ children }: NavigationContextMenuProps) 
         </Button>
         <Button
           systemImage="character.book.closed"
-          onPress={() => handleNavigation("/kanji")}
+          onPress={handleKanjiNavigation}
         >
           漢字
         </Button>

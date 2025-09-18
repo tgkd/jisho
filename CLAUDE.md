@@ -12,7 +12,8 @@ Jisho is a cross-platform Japanese dictionary mobile app built with Expo and Rea
 - `yarn ios` - Run on iOS simulator
 - `yarn android` - Run on Android emulator
 - `yarn lint` - Run ESLint
-- `yarn test` - Run Jest tests
+- `yarn test` - Run Jest tests (with watch mode)
+- `yarn test:ci` - Run tests without watch mode
 - `yarn build` - Build iOS app via EAS
 - `yarn build:preview` - Build preview iOS version
 
@@ -20,12 +21,27 @@ Jisho is a cross-platform Japanese dictionary mobile app built with Expo and Rea
 - `yarn initdb` - Initialize main dictionary database
 - `yarn initex` - Initialize example sentences database
 - `yarn initkanji` - Initialize kanji database
+- `yarn db:create` - Create new database schema
+- `yarn db:import` - Import dictionary data
+- `yarn db:reset` - Reset database to clean state
+- `yarn db:stats` - Show database statistics
+- `yarn db:verify` - Verify database integrity
+
+### Testing Commands
+- `yarn test:search` - Test search functionality
+- `yarn test:dictionary` - Test dictionary operations
+- `yarn test:bookmarks` - Test bookmark features
+- `yarn test:history` - Test history functionality
+- `yarn test:kanji` - Test kanji operations
+- `yarn test:utils` - Test database utilities
+- `yarn test:db` - Run all database tests
 
 ### Build System
-- Uses **Yarn 4.9.1** as package manager
-- **Expo (v53)** with file-based routing via `expo-router`
+- Uses **Yarn 4.9.4** as package manager
+- **Expo (v54)** with file-based routing via `expo-router`
 - **EAS Build** for production builds
 - **TypeScript** for type safety
+- **Jest** with expo preset for testing (see `jest.config.node.js` for Node.js tests)
 
 ## Architecture
 
@@ -51,9 +67,11 @@ hooks/           # Custom hooks
 ### Key Technologies
 - **Database**: SQLite with FTS5 for full-text search
 - **Storage**: MMKV for settings and preferences
-- **Japanese Processing**: wanakana library for text conversion
+- **Japanese Processing**: wanakana library for text conversion, tiny-segmenter for text analysis
 - **State Management**: @tanstack/react-query
 - **Navigation**: expo-router with typed routes
+- **UI**: @shopify/flash-list for performance, react-native-reanimated for animations
+- **AI Integration**: Local AI (@react-native-ai/apple) and cloud AI with streaming support
 
 ### Database Schema
 - `words` - Dictionary entries with readings and kanji
@@ -89,8 +107,10 @@ The app supports both local and cloud AI:
 - Text normalization in `normal-jp-main/` directory
 
 ## Testing
-- Jest with expo preset
-- Run tests with `yarn test --watchAll`
+- Jest with expo preset for React Native components
+- Node.js specific tests use `jest.config.node.js` configuration
+- Test specific features with individual test commands (see Testing Commands above)
+- Run all tests with `yarn test:ci` for CI/CD
 - Test renderer: react-test-renderer
 
 ## Build Configuration
@@ -104,3 +124,4 @@ The app supports both local and cloud AI:
 - Supports both iOS and Android
 - Offline-first architecture with local dictionary data
 - Comprehensive Japanese language data from JMdict and Kanjidic
+- expo apis and libs docs here: https://docs.expo.dev/llms-full.txt

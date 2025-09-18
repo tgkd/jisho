@@ -8,13 +8,14 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  View,
+  View
 } from "react-native";
 
 import { Collapsible } from "@/components/Collapsible";
 import { HapticButton, HapticTab } from "@/components/HapticTab";
 import { HighlightText } from "@/components/HighlightText";
 import { Loader } from "@/components/Loader";
+import { NavHeader } from "@/components/NavHeader";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { Card } from "@/components/ui/Card";
@@ -35,17 +36,16 @@ import {
   KanjiEntry,
   removeBookmark,
   saveAudioFile,
-  WordMeaning,
+  WordMeaning
 } from "@/services/database";
 import {
   cleanupJpReadings,
   deduplicateEn,
   findKanji,
   formatEn,
-  formatJp,
+  formatJp
 } from "@/services/parse";
 import { createWordPrompt } from "@/services/request";
-import { NavHeader } from "@/components/NavHeader";
 
 export default function WordDetailScreen() {
   const markColor = useThemeColor({}, "text");
@@ -149,9 +149,7 @@ export default function WordDetailScreen() {
           headerTitle: () => <NavHeader title={title} />,
           headerRight: () => (
             <HapticButton
-              systemImage={
-                bookmarked ? "bookmark.circle.fill" : "bookmark.circle"
-              }
+              systemImage={bookmarked ? "bookmark.fill" : "bookmark"}
               onPress={handleToggleBookmark}
             />
           ),

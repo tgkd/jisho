@@ -1,7 +1,6 @@
-import { Button, ContextMenu, Host, Image } from "@expo/ui/swift-ui";
-import { Stack, useRouter } from "expo-router";
+import { Stack } from "expo-router";
 import * as React from "react";
-import { useColorScheme, View } from "react-native";
+import { useColorScheme } from "react-native";
 
 export default function WordLayout() {
   const theme = useColorScheme();
@@ -10,14 +9,12 @@ export default function WordLayout() {
       <Stack.Screen
         name="index"
         options={{
-          title: "Search",
           headerLargeTitle: true,
           headerTransparent: true,
           headerTintColor: theme === "dark" ? "white" : "black",
           headerLargeStyle: {
             backgroundColor: "transparent",
           },
-          headerLeft: () => <PageContextMenu />,
         }}
       />
       <Stack.Screen
@@ -28,68 +25,10 @@ export default function WordLayout() {
           headerStyle: {
             backgroundColor: "transparent",
           },
-          headerBackTitle: '',
-        }}
-      />
-      <Stack.Screen
-        name="settings"
-        options={{
-          presentation: "modal",
-          title: "Settings",
-          headerTintColor: theme === "dark" ? "white" : "black",
-          headerTransparent: true,
-          headerStyle: {
-            backgroundColor: "transparent",
-          },
-        }}
-      />
-      <Stack.Screen
-        name="bookmarks"
-        options={{
-          title: "Bookmarks",
-          headerTintColor: theme === "dark" ? "white" : "black",
-          headerTransparent: true,
-          headerStyle: {
-            backgroundColor: "transparent",
-          },
+          headerBackTitle: "",
         }}
       />
     </Stack>
   );
 }
 
-function PageContextMenu() {
-  const router = useRouter();
-
-  return (
-    <Host style={{ width: 150, height: 50 }}>
-      <ContextMenu>
-        <ContextMenu.Items>
-          <Button
-            systemImage={"gear"}
-            onPress={() => {
-              router.push("/word/settings");
-            }}
-          >
-            Settings
-          </Button>
-          <Button
-            systemImage={"bookmark"}
-            onPress={() => {
-              router.push("/word/bookmarks");
-            }}
-          >
-            Bookmarks
-          </Button>
-        </ContextMenu.Items>
-        <ContextMenu.Trigger>
-          <View>
-            <Host style={{ width: 35, height: 35 }}>
-              <Image systemName="ellipsis" />
-            </Host>
-          </View>
-        </ContextMenu.Trigger>
-      </ContextMenu>
-    </Host>
-  );
-}

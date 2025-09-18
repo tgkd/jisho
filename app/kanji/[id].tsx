@@ -15,14 +15,14 @@ import { getKanjiById, KanjiEntry } from "@/services/database";
 
 export default function KanjiDetailScreen() {
   const markColor = useThemeColor({}, "text");
-  const params = useLocalSearchParams<{ id: string; title?: string }>();
+  const params = useLocalSearchParams<{ kanjiId: string; title?: string }>();
   const [entry, setEntry] = useState<KanjiEntry | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const db = useSQLiteContext();
 
   const loadKanjiDetails = async () => {
     try {
-      const result = await getKanjiById(db, Number(params.id));
+      const result = await getKanjiById(db, Number(params.kanjiId));
 
       if (result) {
         setEntry(result);
