@@ -46,11 +46,9 @@ import {
   formatJp,
 } from "@/services/parse";
 import { createWordPrompt } from "@/services/request";
-import { useHeaderHeight } from "@react-navigation/elements";
 
 export default function WordDetailScreen() {
   const markColor = useThemeColor({}, "text");
-  const headerHeight = useHeaderHeight();
   const params = useLocalSearchParams();
   const title = typeof params.title === "string" ? params.title : "Details";
   const [entry, setEntry] = useState<{
