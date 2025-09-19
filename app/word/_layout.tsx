@@ -20,6 +20,7 @@ export default function WordLayout() {
       <Stack.Screen
         name="[id]"
         options={{
+          title: "Details",
           headerTransparent: true,
           headerBackTitle: "",
         }}
@@ -27,11 +28,12 @@ export default function WordLayout() {
       <Stack.Screen
         name="kanji/[id]"
         options={{
+          title: "Kanji",
+          presentation: "modal",
           headerTransparent: true,
-          headerBackTitle: "",
+          headerLargeTitle: true,
         }}
       />
     </Stack>
   );
 }
-

@@ -33,7 +33,9 @@ export function Card({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 10,
+    display: "flex",
+    flexDirection: "column",
+    borderRadius: 24,
     padding: 16,
     gap: 8,
   },

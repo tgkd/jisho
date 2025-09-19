@@ -1,9 +1,9 @@
-import { PropsWithChildren } from "react";
-import { StyleSheet, TouchableOpacity, View } from "react-native";
+import { PropsWithChildren, useState } from "react";
+import { LayoutChangeEvent, StyleSheet, TouchableOpacity, View } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
-  withTiming,
+  withTiming
 } from "react-native-reanimated";
 
 import { ThemedText, ThemedTextProps } from "@/components/ThemedText";
@@ -35,6 +35,8 @@ export function Collapsible({
   },
 }: PropsWithChildren<Props>) {
   const opened = useSharedValue(initOpened ? 1 : 0);
+  const contentHeight = useSharedValue(0);
+  const [measured, setMeasured] = useState(false);
   const theme = useColorScheme() ?? "light";
   const bg = useThemeColor({}, "secondaryBackground");
 
@@ -42,8 +44,16 @@ export function Collapsible({
     opened.value = withTiming(opened.value === 0 ? 1 : 0);
   };
 
+  const onLayout = (event: LayoutChangeEvent) => {
+    if (!measured) {
+      contentHeight.value = event.nativeEvent.layout.height;
+      setMeasured(true);
+    }
+  };
+
   const contentStyle = useAnimatedStyle(() => {
     return {
+      height: opened.value * contentHeight.value,
       opacity: opened.value,
       overflow: 'hidden' as const,
     };
@@ -85,7 +95,10 @@ export function Collapsible({
         {rightButton}
       </TouchableOpacity>
       <Animated.View style={contentStyle}>
-        <ThemedView style={[styles.content, { backgroundColor: bg }]}>
+        <ThemedView
+          style={[styles.content, { backgroundColor: bg }]}
+          onLayout={onLayout}
+        >
           {children}
         </ThemedView>
       </Animated.View>

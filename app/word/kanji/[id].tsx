@@ -41,11 +41,6 @@ export default function KanjiDetailScreen() {
   if (isLoading) {
     return (
       <ThemedView style={styles.container}>
-        <Stack.Screen
-          options={{
-            title: params.title || "Details",
-          }}
-        />
         <View style={styles.loadingContainer}>
           <Loader />
         </View>
@@ -56,11 +51,6 @@ export default function KanjiDetailScreen() {
   if (!entry) {
     return (
       <ThemedView style={styles.container}>
-        <Stack.Screen
-          options={{
-            title: params.title || "Details",
-          }}
-        />
         <View style={styles.errorContainer}>
           <ThemedText>{"Kanji not found"}</ThemedText>
         </View>
@@ -69,23 +59,16 @@ export default function KanjiDetailScreen() {
   }
 
   return (
-    <ThemedView style={styles.container}>
+    <>
       <Stack.Screen
         options={{
-          title: params.title || entry.character || "Details",
+          title: params.title || entry.character,
         }}
       />
-
       <ScrollView
         contentContainerStyle={styles.content}
         contentInsetAdjustmentBehavior="automatic"
       >
-        <ThemedView style={styles.headerSection}>
-          <ThemedText type="title" style={styles.character}>
-            {entry.character}
-          </ThemedText>
-        </ThemedView>
-
         {entry.meanings?.length ? (
           <>
             <ThemedText type="title" style={styles.sectionTitle}>
@@ -104,7 +87,7 @@ export default function KanjiDetailScreen() {
 
         <ReadingsSection entry={entry} />
       </ScrollView>
-    </ThemedView>
+    </>
   );
 }
 
@@ -112,7 +95,7 @@ function ReadingsSection({ entry }: { entry: KanjiEntry }) {
   const tintColor = useThemeColor({}, "tint");
 
   const handleSpeech = (reading: string) => {
-    Speech.speak(reading, { language: "ja" });
+    Speech.speak(reading, { language: "ja", rate: 0.75 });
   };
 
   return (
@@ -170,18 +153,6 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 16,
     paddingBottom: 24,
-  },
-  headerSection: {
-    alignItems: "center",
-    paddingVertical: 24,
-    gap: 16,
-    flexDirection: "row",
-    justifyContent: "center",
-  },
-  character: {
-    fontSize: 34,
-    fontWeight: "700",
-    letterSpacing: 0.41,
   },
   row: {
     flexDirection: "row",

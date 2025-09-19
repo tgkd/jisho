@@ -7,7 +7,7 @@ import {
   Switch,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 import { useMMKVBoolean, useMMKVString } from "react-native-mmkv";
 
@@ -22,7 +22,7 @@ import { useAppleAI } from "@/providers/AppleAIProvider";
 import {
   clearBookmarks,
   clearHistory,
-  resetDatabase
+  resetDatabase,
 } from "@/services/database";
 import { SETTINGS_KEYS } from "@/services/storage";
 
@@ -51,7 +51,6 @@ export default function SettingsScreen() {
     : highlightColorOptions[0];
   const backgroundColor = useThemeColor({}, "background");
 
-  const [autoPaste, setAutoPaste] = useMMKVBoolean(SETTINGS_KEYS.AUTO_PASTE);
   const [apiAuthUsername, setApiAuthUsername] = useMMKVString(
     SETTINGS_KEYS.API_AUTH_USERNAME
   );
@@ -160,8 +159,11 @@ export default function SettingsScreen() {
   };
 
   return (
-    <ScrollView>
-      <ThemedView style={styles.container}>
+    <ThemedView style={styles.container}>
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={{ gap: 16 }}
+      >
         <Card>
           <View style={styles.settingItem}>
             <ThemedText size="sm">{"Highlight Color"}</ThemedText>
@@ -185,20 +187,6 @@ export default function SettingsScreen() {
                 </HapticTab>
               ))}
             </View>
-          </View>
-
-          <View style={styles.settingItem}>
-            <View style={styles.row}>
-              <ThemedText size="sm">{"Auto Paste"}</ThemedText>
-              <Switch
-                value={autoPaste}
-                onValueChange={setAutoPaste}
-                style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
-              />
-            </View>
-            <ThemedText size="xs" style={styles.description}>
-              {"Automatically paste clipboard content into the search box"}
-            </ThemedText>
           </View>
 
           <View style={styles.settingItem}>
@@ -296,8 +284,8 @@ export default function SettingsScreen() {
             </ThemedText>
           </Card>
         )}
-      </ThemedView>
-    </ScrollView>
+      </ScrollView>
+    </ThemedView>
   );
 }
 
@@ -306,7 +294,6 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 16,
     paddingVertical: 24,
-    gap: 16,
   },
   settingItem: {
     flexDirection: "column",

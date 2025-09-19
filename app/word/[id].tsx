@@ -1,5 +1,5 @@
 import { useAudioPlayer } from "expo-audio";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { Stack, useLocalSearchParams } from "expo-router";
 import * as Speech from "expo-speech";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useMemo, useState } from "react";
@@ -11,7 +11,6 @@ import {
   View,
 } from "react-native";
 
-import { Collapsible } from "@/components/Collapsible";
 import { HapticButton, HapticTab } from "@/components/HapticTab";
 import { HighlightText } from "@/components/HighlightText";
 import { Loader } from "@/components/Loader";
@@ -30,10 +29,8 @@ import {
   ExampleSentence,
   getAudioFile,
   getDictionaryEntry,
-  getKanji,
   getWordExamples,
   isBookmarked,
-  KanjiEntry,
   removeBookmark,
   saveAudioFile,
   WordMeaning,
@@ -46,6 +43,7 @@ import {
   formatJp,
 } from "@/services/parse";
 import { createWordPrompt } from "@/services/request";
+import { KanjiDetails, KanjiListView } from "@/components/KanjiList";
 
 export default function WordDetailScreen() {
   const markColor = useThemeColor({}, "text");
@@ -123,7 +121,6 @@ export default function WordDetailScreen() {
   if (isLoading) {
     return (
       <ThemedView style={styles.container}>
-        <Stack.Screen options={{ title }} />
         <View style={styles.loadingContainer}>
           <Loader />
         </View>
@@ -134,7 +131,6 @@ export default function WordDetailScreen() {
   if (!entry) {
     return (
       <ThemedView style={styles.container}>
-        <Stack.Screen options={{ title }} />
         <View style={styles.errorContainer}>
           <ThemedText>{"Word not found"}</ThemedText>
         </View>
@@ -149,6 +145,7 @@ export default function WordDetailScreen() {
           headerTitle: () => <NavHeader title={title} />,
           headerRight: () => (
             <HapticButton
+              color="black"
               systemImage={bookmarked ? "bookmark.fill" : "bookmark"}
               onPress={handleToggleBookmark}
             />
@@ -201,11 +198,9 @@ function WordKanjiSection({ word }: { word: string }) {
         {"Kanji"}
       </ThemedText>
       <Card variant="grouped">
-        <View style={styles.kanjiList}>
-          {kanjiChars.map((char, idx) => (
-            <KanjiDetails key={idx} character={char} />
-          ))}
-        </View>
+        {kanjiChars.map((char, idx) => (
+          <KanjiDetails key={idx} character={char} />
+        ))}
       </Card>
     </>
   );
@@ -226,6 +221,7 @@ function ExamplesView({
   const ai = useUnifiedAI();
   const aiAvailable = ai.isAvailable;
   const generating = ai.isGenerating;
+  const [selectedExample, setSelectedExample] = useState<string[] | null>(null);
 
   const handleFetchExamples = async () => {
     try {
@@ -247,7 +243,7 @@ function ExamplesView({
       <ThemedText type="title" style={styles.sectionTitle}>
         {"Examples"}
       </ThemedText>
-      <Card variant="grouped">
+      <Card variant="grouped" gap={4}>
         {entry.examples.map((e, idx) => (
           <ExampleRow
             key={idx}
@@ -255,6 +251,7 @@ function ExamplesView({
             idx={idx}
             word={entry.word.word}
             wordId={entry.word.id}
+            onKanjiPress={setSelectedExample}
           />
         ))}
         {entry.examples.length === 0 ? (
@@ -270,59 +267,11 @@ function ExamplesView({
           <ThemedText>{generating ? "Loading..." : "✨🤖✨"}</ThemedText>
         </Pressable>
       )}
+      <KanjiListView
+        kanjiChars={selectedExample}
+        handleClose={() => setSelectedExample(null)}
+      />
     </>
-  );
-}
-
-function KanjiDetails({ character }: { character: string }) {
-  const router = useRouter();
-  const db = useSQLiteContext();
-  const [details, setDetails] = useState<KanjiEntry | null>(null);
-
-  useEffect(() => {
-    const loadKanjiDetails = async () => {
-      const result = await getKanji(db, character);
-      setDetails(result);
-    };
-    loadKanjiDetails();
-  }, [character]);
-
-  const goToKanji = () => {
-    if (!details) {
-      return;
-    }
-
-    router.push({
-      pathname: "/word/kanji/[id]",
-      params: { id: details.id.toString(), title: details.character },
-    });
-  };
-
-  if (!details) {
-    return null;
-  }
-
-  return (
-    <View style={styles.kanjiDetails}>
-      <View style={styles.row}>
-        <HapticTab onPress={goToKanji} hitSlop={12}>
-          <ThemedText type="subtitle">{details.character}</ThemedText>
-        </HapticTab>
-        <ThemedText size="sm" style={styles.kanjiDesc}>
-          {details.meanings?.join(", ")}
-        </ThemedText>
-      </View>
-      {details.onReadings && (
-        <ThemedText type="secondary" size="sm">
-          {"On: " + details.onReadings.join(", ")}
-        </ThemedText>
-      )}
-      {details.kunReadings && (
-        <ThemedText type="secondary" size="sm">
-          {"Kun: " + details.kunReadings.join(", ")}
-        </ThemedText>
-      )}
-    </View>
   );
 }
 
@@ -331,11 +280,13 @@ function ExampleRow({
   idx,
   word,
   wordId,
+  onKanjiPress,
 }: {
   e: ExampleSentence;
   idx: number;
   word: string;
   wordId: number;
+  onKanjiPress?: (kanjiChars: string[]) => void;
 }) {
   const tintColor = useThemeColor({}, "tint");
   const db = useSQLiteContext();
@@ -407,14 +358,15 @@ function ExampleRow({
         )}
       </HapticTab>
 
-      {hasKanji && (
-        <Collapsible title="Kanji Details" p={0} withIcon={false}>
-          <View style={styles.kanjiList}>
-            {kanjiChars.map((char, idx) => (
-              <KanjiDetails key={idx} character={char} />
-            ))}
-          </View>
-        </Collapsible>
+      {hasKanji && onKanjiPress && (
+        <HapticTab
+          style={styles.kanjiButton}
+          onPress={() => onKanjiPress(kanjiChars)}
+        >
+          <ThemedText size="sm" type="secondary">
+            Kanji Details
+          </ThemedText>
+        </HapticTab>
       )}
     </View>
   );
@@ -430,7 +382,7 @@ const styles = StyleSheet.create({
   },
   headerSection: {
     alignItems: "center",
-    paddingVertical: 24,
+    paddingVertical: 16,
     gap: 8,
   },
   word: {
@@ -455,7 +407,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   sectionTitle: {
-    marginTop: 24,
+    marginTop: 16,
     marginBottom: 8,
     fontSize: 20,
     fontWeight: "600",
@@ -473,14 +425,8 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 0,
   },
-  kanjiDetails: {
-    paddingVertical: 4,
-    gap: 2,
-  },
-  kanjiList: {
-    gap: 8,
-  },
-  kanjiDesc: {
-    maxWidth: "90%",
+  kanjiButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
   },
 });

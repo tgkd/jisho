@@ -1,7 +1,7 @@
 import {
   DarkTheme,
   DefaultTheme,
-  ThemeProvider
+  ThemeProvider,
 } from "@react-navigation/native";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { setAudioModeAsync } from "expo-audio";
@@ -15,7 +15,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import {
   configureReanimatedLogger,
-  ReanimatedLogLevel
+  ReanimatedLogLevel,
 } from "react-native-reanimated";
 import { AppleAIProvider } from "../providers/AppleAIProvider";
 import { UnifiedAIProvider } from "../providers/UnifiedAIProvider";
@@ -91,7 +91,7 @@ export default function RootLayout() {
                         <Label>Bookmarks</Label>
                       </NativeTabs.Trigger>
 
-                      <NativeTabs.Trigger name="explore">
+                      <NativeTabs.Trigger hidden name="explore">
                         <Icon
                           sf="bubble.left.and.bubble.right"
                           drawable="custom_android_drawable"
@@ -100,13 +100,9 @@ export default function RootLayout() {
                       </NativeTabs.Trigger>
 
                       <NativeTabs.Trigger name="settings">
-                        <Icon
-                          sf="gear"
-                          drawable="custom_android_drawable"
-                        />
+                        <Icon sf="gear" drawable="custom_android_drawable" />
                         <Label>Settings</Label>
                       </NativeTabs.Trigger>
-
                     </NativeTabs>
                   </KeyboardProvider>
 
