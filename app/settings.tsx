@@ -1,15 +1,13 @@
 import { useSQLiteContext } from "expo-sqlite";
-import { useState } from "react";
 import {
   Alert,
   ScrollView,
   StyleSheet,
   Switch,
   TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
-import { useMMKVString } from "react-native-mmkv";
+import { useMMKVBoolean, useMMKVString } from "react-native-mmkv";
 
 import { HapticTab } from "@/components/HapticTab";
 import { ThemedText } from "@/components/ThemedText";
@@ -17,8 +15,6 @@ import { ThemedView } from "@/components/ThemedView";
 import { Card } from "@/components/ui/Card";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { Colors, getHighlightColorValue } from "@/constants/Colors";
-import { useThemeColor } from "@/hooks/useThemeColor";
-import { useAppleAI } from "@/providers/AppleAIProvider";
 import {
   clearBookmarks,
   clearHistory,
@@ -38,8 +34,9 @@ const highlightColorOptions: {
 
 export default function SettingsScreen() {
   const db = useSQLiteContext();
-  const [hiddenTapCount, setHiddenTapCount] = useState(0);
-  const [showCredentials, setShowCredentials] = useState(false);
+  const [useApiCredentials, setUseApiCredentials] = useMMKVBoolean(
+    SETTINGS_KEYS.USE_API_CREDENTIALS
+  );
 
   const [highlightColorState, setHighlightColor] = useMMKVString(
     SETTINGS_KEYS.HIGHLIGHT_COLOR
@@ -49,12 +46,9 @@ export default function SettingsScreen() {
         (option) => option.value === highlightColorState
       ) ?? highlightColorOptions[0]
     : highlightColorOptions[0];
-  const backgroundColor = useThemeColor({}, "background");
-
   const [apiAuthUsername, setApiAuthUsername] = useMMKVString(
     SETTINGS_KEYS.API_AUTH_USERNAME
   );
-  const localAi = useAppleAI();
   const [apiAuthPassword, setApiAuthPassword] = useMMKVString(
     SETTINGS_KEYS.API_AUTH_PASSWORD
   );
@@ -145,17 +139,8 @@ export default function SettingsScreen() {
     );
   };
 
-  const handleHiddenTap = () => {
-    setHiddenTapCount((p) => p + 1);
-
-    if (hiddenTapCount >= 7) {
-      setShowCredentials(true);
-      setHiddenTapCount(0);
-    }
-  };
-
-  const handleChangeLocalAiEnabled = (value: boolean) => {
-    localAi.toggleState();
+  const handleToggleApiCredentials = (value: boolean) => {
+    setUseApiCredentials(value);
   };
 
   return (
@@ -191,16 +176,42 @@ export default function SettingsScreen() {
 
           <View style={styles.settingItem}>
             <View style={styles.row}>
-              <ThemedText size="sm">{"Local AI Enabled"}</ThemedText>
+              <ThemedText size="sm">{"Use AI API"}</ThemedText>
               <Switch
-                value={localAi.enabled}
-                onValueChange={handleChangeLocalAiEnabled}
+                value={useApiCredentials ?? false}
+                onValueChange={handleToggleApiCredentials}
                 style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
               />
             </View>
             <ThemedText size="xs">
-              {"Enable local AI features (Apple Intelligence required)"}
+              {
+                "Enable external API for AI features (local AI works automatically)"
+              }
             </ThemedText>
+
+            {useApiCredentials ? (
+              <View>
+                <View style={styles.settingItem}>
+                  <TextInput
+                    style={styles.textInput}
+                    value={apiAuthUsername}
+                    onChangeText={setApiAuthUsername}
+                    placeholder="Username"
+                    autoCapitalize="none"
+                  />
+                </View>
+                <View style={styles.settingItem}>
+                  <TextInput
+                    style={styles.textInput}
+                    value={apiAuthPassword}
+                    onChangeText={setApiAuthPassword}
+                    placeholder="Password"
+                    autoCapitalize="none"
+                    secureTextEntry
+                  />
+                </View>
+              </View>
+            ) : null}
           </View>
         </Card>
 
@@ -211,7 +222,7 @@ export default function SettingsScreen() {
               size={20}
               color={Colors.light.error}
             />
-            <ThemedText>{"Clear Search History"}</ThemedText>
+            <ThemedText style={styles.warn}>{"Clear Search History"}</ThemedText>
           </HapticTab>
 
           <HapticTab onPress={handleClearBookmarks} style={styles.actionButton}>
@@ -220,7 +231,7 @@ export default function SettingsScreen() {
               size={20}
               color={Colors.light.error}
             />
-            <ThemedText>{"Clear Bookmarks"}</ThemedText>
+            <ThemedText style={styles.warn}>{"Clear Bookmarks"}</ThemedText>
           </HapticTab>
           <HapticTab onPress={handleDatabaseReset} style={styles.actionButton}>
             <IconSymbol
@@ -228,47 +239,9 @@ export default function SettingsScreen() {
               size={20}
               color={Colors.light.error}
             />
-            <ThemedText>{"Reset Database"}</ThemedText>
+            <ThemedText style={styles.warn}>{"Reset Database"}</ThemedText>
           </HapticTab>
         </Card>
-
-        <TouchableOpacity
-          onPress={handleHiddenTap}
-          style={[styles.hiddenButton, { backgroundColor }]}
-          activeOpacity={1}
-        ></TouchableOpacity>
-
-        {showCredentials && (
-          <Card style={{ marginBottom: 16 }}>
-            <ThemedText size="sm" style={styles.sectionTitle}>
-              {"Credentials"}
-            </ThemedText>
-            <View style={styles.settingItem}>
-              <ThemedText size="sm">{"User"}</ThemedText>
-              <TextInput
-                style={styles.textInput}
-                value={apiAuthUsername}
-                onChangeText={setApiAuthUsername}
-                placeholder="Username"
-                autoCapitalize="none"
-              />
-            </View>
-            <View style={styles.settingItem}>
-              <ThemedText size="sm">{"Password"}</ThemedText>
-              <TextInput
-                style={styles.textInput}
-                value={apiAuthPassword}
-                onChangeText={setApiAuthPassword}
-                placeholder="Password"
-                autoCapitalize="none"
-                secureTextEntry
-              />
-            </View>
-            <ThemedText size="xs" style={styles.description}>
-              {"Provide API credentials to enable AI features"}
-            </ThemedText>
-          </Card>
-        )}
       </ScrollView>
     </ThemedView>
   );
@@ -328,11 +301,9 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: Colors.light.separator,
     borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+    padding: 12,
   },
-  hiddenButton: {
-    height: 48,
-    width: 48,
+  warn: {
+    color: Colors.light.error,
   },
 });

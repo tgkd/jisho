@@ -10,28 +10,26 @@ import {
 } from "./types";
 import { dbWordToDictEntry } from "./utils";
 
-async function addExample(
-  wId: number,
-  jt: string,
-  et: string,
-  db: SQLiteDatabase
-) {
-  try {
-    await db.runAsync(
-      "INSERT INTO examples (japanese_text, english_text, word_id) VALUES (?, ?, ?)",
-      [jt, et, wId]
-    );
-  } catch (error) {
-    console.error("Failed to add example:", error);
-  }
-}
-
 export async function addExamplesList(
   wId: number,
   examples: AiExample[],
   db: SQLiteDatabase
 ) {
-  await Promise.all(examples.map((e) => addExample(wId, e.jp, e.en, db)));
+  console.log(`Adding ${examples.length} examples for word_id: ${wId}`);
+  try {
+    await db.withTransactionAsync(async () => {
+      for (const example of examples) {
+        await db.runAsync(
+          "INSERT INTO examples (japanese_text, english_text, word_id) VALUES (?, ?, ?)",
+          [example.jp, example.en, wId]
+        );
+      }
+    });
+    console.log(`Successfully replaced with ${examples.length} new examples`);
+  } catch (error) {
+    console.error("Failed to add examples:", error);
+    throw error;
+  }
 }
 
 export async function getDictionaryEntry(
@@ -120,25 +118,19 @@ export async function getWordExamples(
       `
       SELECT id, japanese_text, english_text, tokens, example_id
       FROM examples
-      WHERE 
-        (tokens IS NOT NULL AND tokens != '' AND 
-         (json_valid(tokens) AND 
+      WHERE
+        (tokens IS NOT NULL AND tokens != '' AND
+         (json_valid(tokens) AND
           EXISTS(SELECT 1 FROM json_each(tokens) WHERE value = ?)))
         OR
         (japanese_text LIKE ? AND
-         (japanese_text LIKE ? || '%' OR 
+         (japanese_text LIKE ? || '%' OR
           japanese_text LIKE '%' || ? OR
           japanese_text LIKE '%' || ? || '%'))
       ORDER BY length(japanese_text)
       LIMIT 5
       `,
-      [
-        word.word,
-        `%${word.word}%`,
-        word.word,
-        word.word,
-        word.word
-      ]
+      [word.word, `%${word.word}%`, word.word, word.word, word.word]
     );
 
     return examplesByText.map((e) => ({

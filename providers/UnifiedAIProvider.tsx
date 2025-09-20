@@ -4,16 +4,16 @@ import React, {
   useCallback,
   useContext,
   useEffect,
-  useState
+  useState,
 } from "react";
-import { useMMKVString } from "react-native-mmkv";
+import { useMMKVBoolean, useMMKVString } from "react-native-mmkv";
 
 import {
   AiExample,
   ExplainRequestType,
   getAiExamples,
   getAiExplanation,
-  getAiSound
+  getAiSound,
 } from "@/services/request";
 import { SETTINGS_KEYS } from "@/services/storage";
 import { useAppleAI } from "./AppleAIProvider";
@@ -64,18 +64,16 @@ const UnifiedAIContext = createContext<UnifiedAIContextValue | undefined>(
 export function UnifiedAIProvider({ children }: { children: ReactNode }) {
   const localAI = useAppleAI();
   const [apiAuthUsername] = useMMKVString(SETTINGS_KEYS.API_AUTH_USERNAME);
+  const [useApiCredentials] = useMMKVBoolean(SETTINGS_KEYS.USE_API_CREDENTIALS);
   const [preferredProvider, setPreferredProvider] =
     useState<AIProviderPreference>("auto");
   const [currentProvider, setCurrentProvider] =
     useState<AIProviderType>("none");
   const [isGenerating, setIsGenerating] = useState(false);
-
-  // Determine available providers
-  const localAvailable = localAI.enabled && localAI.isReady;
-  const remoteAvailable = !!apiAuthUsername;
+  const localAvailable = localAI.isReady;
+  const remoteAvailable = (useApiCredentials ?? false) && !!apiAuthUsername;
   const isAvailable = localAvailable || remoteAvailable;
 
-  // Determine current provider based on preference and availability
   useEffect(() => {
     if (preferredProvider === "auto") {
       if (localAvailable) {
@@ -100,11 +98,10 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
   const generateExamples = useCallback(
     async (prompt: string): Promise<AiExample[]> => {
       if (currentProvider === "none") {
-        throw new Error("No AI provider available. Please enable Local AI or configure API credentials in Settings.");
+        throw new Error(
+          "No AI provider available. Please configure API credentials in Settings or ensure Apple Intelligence is available."
+        );
       }
-
-      console.log(`Generating examples using ${currentProvider} provider`);
-
 
       try {
         if (currentProvider === "local") {
@@ -114,7 +111,6 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
             });
           });
         } else {
-          // Remote provider - use request.ts function
           setIsGenerating(true);
           try {
             return await getAiExamples(prompt, "open");
@@ -137,7 +133,7 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
         throw error;
       }
     },
-[currentProvider, localAI, remoteAvailable]
+    [currentProvider, localAI, remoteAvailable]
   );
 
   const explainText = useCallback(
@@ -148,7 +144,9 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
       signal?: AbortSignal
     ): Promise<void> => {
       if (currentProvider === "none") {
-        streaming.onError("No AI provider available. Please enable Local AI or configure API credentials in Settings.");
+        streaming.onError(
+          "No AI provider available. Please configure API credentials in Settings or ensure Apple Intelligence is available."
+        );
         return;
       }
 
@@ -228,7 +226,7 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
         }
       }
     },
-[currentProvider, localAI, remoteAvailable]
+    [currentProvider, localAI, remoteAvailable]
   );
 
   const generateAudio = useCallback(

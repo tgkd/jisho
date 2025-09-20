@@ -235,7 +235,8 @@ function ExamplesView({
         await refreshExamples();
       }
     } catch (error) {
-      console.error("Failed to generate examples:", error);
+      console.error("Failed to generate or save examples:", error);
+      // TODO: Show user-friendly error message
     }
   };
 

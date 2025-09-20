@@ -6,9 +6,9 @@ export const SETTINGS_KEYS = {
   SHOW_FURIGANA: "settings.showFurigana",
   API_AUTH_USERNAME: "settings.apiAuthUsername",
   API_AUTH_PASSWORD: "settings.apiAuthPassword",
-  LOCAL_AI_ENABLED: "settings.localAIEnabled",
-  LOCAL_AI_MODEL: "settings.localAIModel",
   AI_TYPE: "settings.aiType", // "local" | "remote"
+  USE_API_CREDENTIALS: "settings.useApiCredentials",
+  SEARCH_MODE: "settings.searchMode",
 };
 
 export const settingsStorage = new MMKV();
