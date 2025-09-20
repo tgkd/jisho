@@ -1,3 +1,4 @@
+import { useThemeColor } from "@/hooks/useThemeColor";
 import { Button, Button as ButtonPrimitive, Host } from "@expo/ui/swift-ui";
 import { BottomTabBarButtonProps } from "@react-navigation/bottom-tabs";
 import { PlatformPressable } from "@react-navigation/elements";
@@ -26,7 +27,8 @@ export function HapticButton(
     size?: "xs" | "sm" | "md" | "lg" | "xl";
   }
 ) {
-  const { style, size, ...restProps } = props;
+  const { style, size, color, ...restProps } = props;
+  const defaultColor = useThemeColor({}, "text");
 
   const { inner, outer } = useMemo(() => {
     switch (size) {
@@ -49,7 +51,7 @@ export function HapticButton(
     <Host style={{ width: outer, height: outer }}>
       <View>
         <Host style={{ width: inner, height: inner }}>
-          <Button {...restProps} />
+          <Button color={color || defaultColor} {...restProps} />
         </Host>
       </View>
     </Host>

@@ -9,7 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useMMKVBoolean, useMMKVString } from "react-native-mmkv";
+import { useMMKVString } from "react-native-mmkv";
 
 import { HapticTab } from "@/components/HapticTab";
 import { ThemedText } from "@/components/ThemedText";
@@ -198,7 +198,7 @@ export default function SettingsScreen() {
                 style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
               />
             </View>
-            <ThemedText size="xs" style={styles.description}>
+            <ThemedText size="xs">
               {"Enable local AI features (Apple Intelligence required)"}
             </ThemedText>
           </View>
@@ -211,12 +211,7 @@ export default function SettingsScreen() {
               size={20}
               color={Colors.light.error}
             />
-            <ThemedText
-              darkColor={Colors.dark.error}
-              lightColor={Colors.light.error}
-            >
-              {"Clear Search History"}
-            </ThemedText>
+            <ThemedText>{"Clear Search History"}</ThemedText>
           </HapticTab>
 
           <HapticTab onPress={handleClearBookmarks} style={styles.actionButton}>
@@ -225,12 +220,7 @@ export default function SettingsScreen() {
               size={20}
               color={Colors.light.error}
             />
-            <ThemedText
-              darkColor={Colors.dark.error}
-              lightColor={Colors.light.error}
-            >
-              {"Clear Bookmarks"}
-            </ThemedText>
+            <ThemedText>{"Clear Bookmarks"}</ThemedText>
           </HapticTab>
           <HapticTab onPress={handleDatabaseReset} style={styles.actionButton}>
             <IconSymbol
@@ -238,12 +228,7 @@ export default function SettingsScreen() {
               size={20}
               color={Colors.light.error}
             />
-            <ThemedText
-              darkColor={Colors.dark.error}
-              lightColor={Colors.light.error}
-            >
-              {"Reset Database"}
-            </ThemedText>
+            <ThemedText>{"Reset Database"}</ThemedText>
           </HapticTab>
         </Card>
 

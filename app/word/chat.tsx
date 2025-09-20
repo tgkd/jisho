@@ -9,6 +9,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { Card } from "@/components/ui/Card";
 import { Colors } from "@/constants/Colors";
 import { useMdStyles } from "@/hooks/useMdStyles";
+import { useThemeColor } from "@/hooks/useThemeColor";
 import { useUnifiedAI } from "@/providers/UnifiedAIProvider";
 import { ExplainRequestType } from "@/services/request";
 
@@ -20,6 +21,7 @@ interface TemporaryChat {
 
 export default function ExploreScreen() {
   const markdownStyles = useMdStyles();
+  const backgroundColor = useThemeColor({}, "background");
   const ai = useUnifiedAI();
   const scrollRef = useRef<FlashListRef<TemporaryChat>>(null);
   const [chatsHistory, setChatsHistory] = useState<TemporaryChat[]>([]);
@@ -39,10 +41,8 @@ export default function ExploreScreen() {
     setCurrentQuery("");
   }, [nextId]);
 
-  // Remove stream hook - we'll handle streaming directly in handleSubmit
-
   const handleSubmit = useCallback(
-    async (query: string, type: ExplainRequestType) => {
+    async (query: string) => {
       const text = query.trim();
 
       if (text.length === 0) {
@@ -53,10 +53,10 @@ export default function ExploreScreen() {
         setCurrentResponse("");
         setCurrentQuery(query);
 
-        await ai.explainText(query, type, {
+        await ai.explainText(query, ExplainRequestType.V, {
           onChunk: (chunk: string) => {
             setCurrentResponse((prev) => prev + chunk);
-            scrollRef.current?.scrollToEnd({ animated: true });
+
           },
           onComplete: (fullResponse: string, error?: string) => {
             if (error) {
@@ -67,6 +67,7 @@ export default function ExploreScreen() {
             }
 
             if (fullResponse) {
+              scrollRef.current?.scrollToEnd({ animated: true });
               handleAddChat(query, fullResponse);
             }
           },
@@ -127,7 +128,7 @@ export default function ExploreScreen() {
       !chatsHistory.length && !currentResponse.length ? (
         <View style={styles.emptyMsg}>
           <ThemedText textAlign="center" type="secondary">
-            {"Ask me anything"}
+            {"No messages yet. Start by asking a question!"}
           </ThemedText>
         </View>
       ) : null,
@@ -137,8 +138,8 @@ export default function ExploreScreen() {
   return (
     <KeyboardAvoidingView
       behavior="translate-with-padding"
-      keyboardVerticalOffset={96}
-      style={styles.container}
+      keyboardVerticalOffset={32}
+      style={[styles.container, { backgroundColor }]}
     >
       <FlashList
         ref={scrollRef}
@@ -149,6 +150,7 @@ export default function ExploreScreen() {
         data={chatsHistory}
         ListFooterComponent={renderFooter}
         ListEmptyComponent={renderEmpty}
+        ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
       />
 
       <ChatFooterView

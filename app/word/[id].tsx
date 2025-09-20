@@ -8,11 +8,12 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  View,
+  View
 } from "react-native";
 
 import { HapticButton, HapticTab } from "@/components/HapticTab";
 import { HighlightText } from "@/components/HighlightText";
+import { KanjiDetails, KanjiListView } from "@/components/KanjiList";
 import { Loader } from "@/components/Loader";
 import { NavHeader } from "@/components/NavHeader";
 import { ThemedText } from "@/components/ThemedText";
@@ -33,20 +34,20 @@ import {
   isBookmarked,
   removeBookmark,
   saveAudioFile,
-  WordMeaning,
+  WordMeaning
 } from "@/services/database";
 import {
   cleanupJpReadings,
   deduplicateEn,
   findKanji,
   formatEn,
-  formatJp,
+  formatJp
 } from "@/services/parse";
 import { createWordPrompt } from "@/services/request";
-import { KanjiDetails, KanjiListView } from "@/components/KanjiList";
 
 export default function WordDetailScreen() {
   const markColor = useThemeColor({}, "text");
+  const headerColor = useThemeColor({}, "text");
   const params = useLocalSearchParams();
   const title = typeof params.title === "string" ? params.title : "Details";
   const [entry, setEntry] = useState<{
@@ -145,7 +146,7 @@ export default function WordDetailScreen() {
           headerTitle: () => <NavHeader title={title} />,
           headerRight: () => (
             <HapticButton
-              color="black"
+              color={headerColor}
               systemImage={bookmarked ? "bookmark.fill" : "bookmark"}
               onPress={handleToggleBookmark}
             />

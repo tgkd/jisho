@@ -57,21 +57,19 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <AppleAIProvider>
-        <UnifiedAIProvider>
-          <GestureHandlerRootView style={styles.container}>
-            <Suspense fallback={<Loader />}>
-              <SQLiteProvider
-                databaseName="dict_2.db"
-                assetSource={{
-                  assetId: require(DATABASE_PATH),
-                }}
-                onInit={migrateDbIfNeeded}
-                useSuspense
-              >
-                <ThemeProvider
-                  value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
+    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+      <QueryClientProvider client={queryClient}>
+        <AppleAIProvider>
+          <UnifiedAIProvider>
+            <GestureHandlerRootView style={styles.container}>
+              <Suspense fallback={<Loader />}>
+                <SQLiteProvider
+                  databaseName="dict_2.db"
+                  assetSource={{
+                    assetId: require(DATABASE_PATH),
+                  }}
+                  onInit={migrateDbIfNeeded}
+                  useSuspense
                 >
                   <KeyboardProvider>
                     <NativeTabs minimizeBehavior="automatic">
@@ -99,13 +97,13 @@ export default function RootLayout() {
                   </KeyboardProvider>
 
                   <StatusBar style="auto" />
-                </ThemeProvider>
-              </SQLiteProvider>
-            </Suspense>
-          </GestureHandlerRootView>
-        </UnifiedAIProvider>
-      </AppleAIProvider>
-    </QueryClientProvider>
+                </SQLiteProvider>
+              </Suspense>
+            </GestureHandlerRootView>
+          </UnifiedAIProvider>
+        </AppleAIProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 }
 

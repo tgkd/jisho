@@ -20,7 +20,6 @@ export default function WordLayout() {
           },
           headerLeft: () => (
             <HapticButton
-              color="black"
               systemImage={"message"}
               onPress={() => router.push({ pathname: "/word/chat" })}
             />
