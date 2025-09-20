@@ -1,7 +1,9 @@
-import { HapticButton } from "@/components/HapticTab";
+import { apple } from "@react-native-ai/apple";
 import { Stack, useRouter } from "expo-router";
 import * as React from "react";
 import { useColorScheme } from "react-native";
+
+import { HapticButton } from "@/components/HapticTab";
 
 export default function WordLayout() {
   const theme = useColorScheme();
@@ -18,12 +20,13 @@ export default function WordLayout() {
           headerLargeStyle: {
             backgroundColor: "transparent",
           },
-          headerLeft: () => (
+          headerLeft: () => apple.isAvailable()
+          ? (
             <HapticButton
               systemImage={"message"}
               onPress={() => router.push({ pathname: "/word/chat" })}
             />
-          ),
+          ) : undefined,
         }}
       />
       <Stack.Screen
