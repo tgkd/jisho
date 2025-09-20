@@ -1,21 +1,25 @@
 import { router } from "expo-router";
 import { StyleSheet, View } from "react-native";
 import ReanimatedSwipeable, {
-  SwipeableMethods
+  SwipeableMethods,
 } from "react-native-gesture-handler/ReanimatedSwipeable";
 import Animated, {
   FadeIn,
   FadeOut,
   SharedValue,
-  useAnimatedStyle
+  useAnimatedStyle,
 } from "react-native-reanimated";
 
 import { Colors } from "@/constants/Colors";
 import { useThemeColor } from "@/hooks/useThemeColor";
-import { DictionaryEntry, HistoryEntry, KanjiEntry, WordMeaning } from "@/services/database";
+import {
+  DictionaryEntry,
+  HistoryEntry,
+  KanjiEntry,
+  WordMeaning,
+} from "@/services/database";
 import { deduplicateEn, formatEn, formatJp } from "@/services/parse";
 import { HapticTab } from "./HapticTab";
-import { MenuActions } from "./MenuActions";
 import { ThemedText } from "./ThemedText";
 import { ThemedView } from "./ThemedView";
 import { IconSymbol } from "./ui/IconSymbol";
@@ -51,51 +55,85 @@ type BookmarkVariantProps = BaseListItemProps & {
   onRemove: (item: DictionaryEntry & { meaning?: string }) => void;
 };
 
-type ListItemProps = HistoryVariantProps | SearchVariantProps | KanjiVariantProps | BookmarkVariantProps;
+type ListItemProps =
+  | HistoryVariantProps
+  | SearchVariantProps
+  | KanjiVariantProps
+  | BookmarkVariantProps;
 
 export const ListItem = (props: ListItemProps) => {
   const { variant, index, total, onPress } = props;
   const isFirst = index === 0;
   const isLast = index === total - 1;
 
-  const handlePress = onPress || (() => {
-    if (variant === "history") {
-      const item = props.item as HistoryEntry;
-      router.push({
-        pathname: "/word/[id]",
-        params: { id: item.wordId.toString(), title: item.word },
-      });
-    } else if (variant === "search") {
-      const item = props.item as DictionaryEntry;
-      router.push({
-        pathname: "/word/[id]",
-        params: { id: item.id.toString(), title: item.word },
-      });
-    } else if (variant === "bookmark") {
-      const item = props.item as DictionaryEntry;
-      router.push({
-        pathname: "/word/[id]",
-        params: { id: item.id.toString(), title: item.word },
-      });
-    } else if (variant === "kanji") {
-      const item = props.item as KanjiEntry;
-      router.navigate({
-        pathname: "/word/kanji/[id]",
-        params: { id: item.id.toString(), title: item.character },
-      });
-    }
-  });
+  const handlePress =
+    onPress ||
+    (() => {
+      if (variant === "history") {
+        const item = props.item as HistoryEntry;
+        router.push({
+          pathname: "/word/[id]",
+          params: { id: item.wordId.toString(), title: item.word },
+        });
+      } else if (variant === "search") {
+        const item = props.item as DictionaryEntry;
+        router.push({
+          pathname: "/word/[id]",
+          params: { id: item.id.toString(), title: item.word },
+        });
+      } else if (variant === "bookmark") {
+        const item = props.item as DictionaryEntry;
+        router.push({
+          pathname: "/word/[id]",
+          params: { id: item.id.toString(), title: item.word },
+        });
+      } else if (variant === "kanji") {
+        const item = props.item as KanjiEntry;
+        router.navigate({
+          pathname: "/word/kanji/[id]",
+          params: { id: item.id.toString(), title: item.character },
+        });
+      }
+    });
 
   const renderContent = () => {
     switch (variant) {
       case "history":
-        return <HistoryContent {...(props as HistoryVariantProps)} isFirst={isFirst} isLast={isLast} onPress={handlePress} />;
+        return (
+          <HistoryContent
+            {...(props as HistoryVariantProps)}
+            isFirst={isFirst}
+            isLast={isLast}
+            onPress={handlePress}
+          />
+        );
       case "search":
-        return <SearchContent {...(props as SearchVariantProps)} isFirst={isFirst} isLast={isLast} onPress={handlePress} />;
+        return (
+          <SearchContent
+            {...(props as SearchVariantProps)}
+            isFirst={isFirst}
+            isLast={isLast}
+            onPress={handlePress}
+          />
+        );
       case "bookmark":
-        return <BookmarkContent {...(props as BookmarkVariantProps)} isFirst={isFirst} isLast={isLast} onPress={handlePress} />;
+        return (
+          <BookmarkContent
+            {...(props as BookmarkVariantProps)}
+            isFirst={isFirst}
+            isLast={isLast}
+            onPress={handlePress}
+          />
+        );
       case "kanji":
-        return <KanjiContent {...(props as KanjiVariantProps)} isFirst={isFirst} isLast={isLast} onPress={handlePress} />;
+        return (
+          <KanjiContent
+            {...(props as KanjiVariantProps)}
+            isFirst={isFirst}
+            isLast={isLast}
+            onPress={handlePress}
+          />
+        );
     }
   };
 
@@ -107,7 +145,11 @@ export const ListItem = (props: ListItemProps) => {
         rightThreshold={ACTION_WIDTH}
         enableTrackpadTwoFingerGesture
         renderRightActions={(_, drag, swipe) => (
-          <RightAction drag={drag} swipe={swipe} onPress={() => historyProps.onRemove(historyProps.item)} />
+          <RightAction
+            drag={drag}
+            swipe={swipe}
+            onPress={() => historyProps.onRemove(historyProps.item)}
+          />
         )}
       >
         <Animated.View
@@ -128,7 +170,11 @@ export const ListItem = (props: ListItemProps) => {
         rightThreshold={ACTION_WIDTH}
         enableTrackpadTwoFingerGesture
         renderRightActions={(_, drag, swipe) => (
-          <RightAction drag={drag} swipe={swipe} onPress={() => bookmarkProps.onRemove(bookmarkProps.item)} />
+          <RightAction
+            drag={drag}
+            swipe={swipe}
+            onPress={() => bookmarkProps.onRemove(bookmarkProps.item)}
+          />
         )}
       >
         <Animated.View
@@ -155,7 +201,7 @@ function HistoryContent({
   item,
   isFirst,
   isLast,
-  onPress
+  onPress,
 }: {
   item: HistoryEntry;
   isFirst: boolean;
@@ -163,38 +209,33 @@ function HistoryContent({
   onPress: () => void;
 }) {
   return (
-    <>
-      <MenuActions text={item.word + " " + item.reading + " " + item.meaning}>
-        <HapticTab onPress={onPress}>
-          <ThemedView
-            style={[
-              styles.resultItem,
-              isFirst && styles.firstRowStyle,
-              isLast && styles.lastRowStyle,
-            ]}
-            lightColor={Colors.light.groupedBackground}
-            darkColor={Colors.dark.groupedBackground}
-          >
-            <ThemedText uiTextView={false}>
-              <ThemedText type="defaultSemiBold" uiTextView={false}>
-                {item.word + " "}
-              </ThemedText>
-              <ThemedText size="sm" uiTextView={false}>
-                {formatJp(item.reading, false)}
-              </ThemedText>
-            </ThemedText>
-            <ThemedText
-              type="secondary"
-              style={styles.meaning}
-              uiTextView={false}
-            >
-              {formatEn(item.meaning, "none", { truncateAll: 45 }).replace(/[,;]\s*$/, "")}
-            </ThemedText>
-          </ThemedView>
-          {!isLast ? <View style={styles.separator} /> : null}
-        </HapticTab>
-      </MenuActions>
-    </>
+    <HapticTab onPress={onPress}>
+      <ThemedView
+        style={[
+          styles.resultItem,
+          isFirst && styles.firstRowStyle,
+          isLast && styles.lastRowStyle,
+        ]}
+        lightColor={Colors.light.groupedBackground}
+        darkColor={Colors.dark.groupedBackground}
+      >
+        <ThemedText uiTextView={false}>
+          <ThemedText type="defaultSemiBold" uiTextView={false}>
+            {item.word + " "}
+          </ThemedText>
+          <ThemedText size="sm" uiTextView={false}>
+            {formatJp(item.reading, false)}
+          </ThemedText>
+        </ThemedText>
+        <ThemedText type="secondary" style={styles.meaning} uiTextView={false}>
+          {formatEn(item.meaning, "none", { truncateAll: 45 }).replace(
+            /[,;]\s*$/,
+            ""
+          )}
+        </ThemedText>
+      </ThemedView>
+      {!isLast ? <View style={styles.separator} /> : null}
+    </HapticTab>
   );
 }
 
@@ -202,7 +243,7 @@ function BookmarkContent({
   item,
   isFirst,
   isLast,
-  onPress
+  onPress,
 }: {
   item: DictionaryEntry & { meaning?: string };
   isFirst: boolean;
@@ -250,7 +291,7 @@ function SearchContent({
   meanings,
   isFirst,
   isLast,
-  onPress
+  onPress,
 }: {
   item: DictionaryEntry;
   meanings?: WordMeaning[];
@@ -290,7 +331,6 @@ function SearchContent({
                 type="defaultSemiBold"
                 uiTextView={false}
                 numberOfLines={1}
-                style={styles.wordText}
               >
                 {item.word}
               </ThemedText>
@@ -304,7 +344,6 @@ function SearchContent({
               </ThemedText>
             </View>
             <ThemedText
-              numberOfLines={1}
               type="secondary"
               uiTextView={false}
               style={styles.detailsText}
@@ -324,7 +363,7 @@ function KanjiContent({
   item,
   isFirst,
   isLast,
-  onPress
+  onPress,
 }: {
   item: KanjiEntry;
   isFirst: boolean;
@@ -363,7 +402,7 @@ function KanjiContent({
                 )}
               </View>
             </View>
-            <ThemedText type="secondary">
+            <ThemedText style={styles.detailsText} type="secondary">
               {item.meanings ? item.meanings.join(", ") : ""}
             </ThemedText>
           </View>
@@ -451,20 +490,19 @@ const styles = StyleSheet.create({
   titleRow: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "flex-start",
     gap: 8,
     width: "100%",
-    minWidth: 0,
-  },
-  wordText: {
-    flex: 1,
-    minWidth: 0,
+    overflow: "hidden",
   },
   readingText: {
-    flexShrink: 1,
-    minWidth: 0,
+    maxWidth: "50%",
+    textOverflow: "ellipsis",
   },
   detailsText: {
+    marginTop: 4,
     width: "100%",
+    textOverflow: "ellipsis",
   },
   firstRadius: {
     borderTopLeftRadius: 24,
