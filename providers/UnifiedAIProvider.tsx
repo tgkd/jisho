@@ -17,8 +17,6 @@ import {
 } from "@/services/request";
 import { SETTINGS_KEYS } from "@/services/storage";
 import { useAppleAI } from "./AppleAIProvider";
-// Legacy support - will be removed after migration complete
-// import { useLocalAI } from "./LocalAIProvider";
 
 export type AIProviderType = "local" | "remote" | "none";
 export type AIProviderPreference = "local" | "remote" | "auto";
@@ -102,7 +100,7 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
   const generateExamples = useCallback(
     async (prompt: string): Promise<AiExample[]> => {
       if (currentProvider === "none") {
-        throw new Error("No AI provider available");
+        throw new Error("No AI provider available. Please enable Local AI or configure API credentials in Settings.");
       }
 
       console.log(`Generating examples using ${currentProvider} provider`);
@@ -150,7 +148,7 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
       signal?: AbortSignal
     ): Promise<void> => {
       if (currentProvider === "none") {
-        streaming.onError("No AI provider available");
+        streaming.onError("No AI provider available. Please enable Local AI or configure API credentials in Settings.");
         return;
       }
 

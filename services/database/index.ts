@@ -1,21 +1,15 @@
+export { getAudioFile, saveAudioFile } from "./audio";
+export { addBookmark, clearBookmarks, getBookmarks, isBookmarked, removeBookmark } from "./bookmarks";
 export { migrateDbIfNeeded } from "./core";
+export { addExamplesList, getDictionaryEntry, getWordExamples } from "./dictionary";
+export { addToHistory, clearHistory, getHistory, removeHistoryById } from "./history";
+export { getKanji, getKanjiById, getKanjiByUnicode, getKanjiList, searchKanji } from "./kanji";
 export { searchDictionary } from "./search";
-export { getDictionaryEntry, getWordExamples, addExamplesList } from "./dictionary";
-export { getBookmarks, isBookmarked, addBookmark, removeBookmark, clearBookmarks } from "./bookmarks";
-export { addToHistory, getHistory, clearHistory, removeHistoryById } from "./history";
-export { getChats, addChat, removeChatById, clearChats } from "./chats";
-export { getKanji, searchKanji, getKanjiByUnicode, getKanjiById, getKanjiList } from "./kanji";
-export { saveAudioFile, getAudioFile } from "./audio";
+export type {
+  AudioFile, DictionaryEntry,
+  ExampleSentence, HistoryEntry, KanjiEntry,
+  SearchDictionaryOptions,
+  SearchDictionaryResult, WordMeaning
+} from "./types";
 export { resetDatabase } from "./utils";
 
-export type {
-  DictionaryEntry,
-  ExampleSentence,
-  WordMeaning,
-  HistoryEntry,
-  Chat,
-  AudioFile,
-  KanjiEntry,
-  SearchDictionaryOptions,
-  SearchDictionaryResult,
-} from "./types";

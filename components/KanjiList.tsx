@@ -2,22 +2,17 @@ import { useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useState } from "react";
 import {
-  LayoutChangeEvent,
   ScrollView,
   StyleSheet,
   useWindowDimensions,
-  View,
+  View
 } from "react-native";
 
 import { HapticTab } from "@/components/HapticTab";
 import { ThemedText } from "@/components/ThemedText";
 import { getKanji, KanjiEntry } from "@/services/database";
 import { BottomSheet, Host } from "@expo/ui/swift-ui";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from "react-native-reanimated";
+import Animated from "react-native-reanimated";
 
 export function KanjiListView({
   kanjiChars,

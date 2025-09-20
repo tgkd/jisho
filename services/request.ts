@@ -1,6 +1,7 @@
 import { queryOptions } from "@tanstack/react-query";
-import * as FileSystem from "expo-file-system";
+import { Paths, File, Directory } from "expo-file-system";
 import { fetch, FetchRequestInit } from "expo/fetch";
+import { z } from "zod";
 
 import { DictionaryEntry, ExampleSentence, WordMeaning } from "./database";
 import { settingsStorage, SETTINGS_KEYS } from "./storage";
@@ -10,11 +11,15 @@ export enum ExplainRequestType {
   G = "grammar",
 }
 
-export type AiExample = {
-  jp: string;
-  en: string;
-  jp_reading: string;
-};
+export const aiExampleSchema = z.object({
+  jp: z.string(),
+  en: z.string(),
+  jp_reading: z.string(),
+});
+
+export const aiExampleSchemaArray = z.array(aiExampleSchema);
+
+export type AiExample = z.infer<typeof aiExampleSchema>;
 
 export function createWordPrompt(
   e: {
@@ -42,7 +47,9 @@ export async function getAiExamples(
   }
 
   const resp = await fetch(
-    `${process.env.EXPO_PUBLIC_BASE_URL}/ask/${provider}?prompt=${encodeURIComponent(prompt)}`,
+    `${
+      process.env.EXPO_PUBLIC_BASE_URL
+    }/ask/${provider}?prompt=${encodeURIComponent(prompt)}`,
     {
       signal,
       method: "GET",
@@ -64,37 +71,33 @@ export async function getAiSound(
   if (!prompt) {
     throw new Error("No prompt provided");
   }
-
-  const tempFilePath = `${FileSystem.cacheDirectory}audio_${Date.now()}.mp3`;
   const defaultOptions = getDefaultOptions();
   const headers: Record<string, string> = {
     Accept: "audio/mpeg",
   };
-  
+
   if (defaultOptions.headers) {
     Object.assign(headers, defaultOptions.headers);
   }
 
-  const downloadResult = await FileSystem.downloadAsync(
-    `${process.env.EXPO_PUBLIC_BASE_URL}/sound/${provider}?prompt=${encodeURIComponent(prompt)}`,
-    tempFilePath,
+  const file = await File.downloadFileAsync(
+    `${
+      process.env.EXPO_PUBLIC_BASE_URL
+    }/sound/${provider}?prompt=${encodeURIComponent(prompt)}`,
+    new Directory(Paths.cache),
     { headers }
   );
 
-  if (downloadResult.status !== 200) {
-    throw new Error(`Failed to download audio: HTTP ${downloadResult.status}`);
+  if (!file.exists) {
+    throw new Error("Failed to download audio" + file.uri);
   }
 
-  return tempFilePath;
+  return file.uri;
 }
 
 function getDefaultOptions(): FetchRequestInit {
-  const username = settingsStorage.getString(
-    SETTINGS_KEYS.API_AUTH_USERNAME
-  );
-  const password = settingsStorage.getString(
-    SETTINGS_KEYS.API_AUTH_PASSWORD
-  );
+  const username = settingsStorage.getString(SETTINGS_KEYS.API_AUTH_USERNAME);
+  const password = settingsStorage.getString(SETTINGS_KEYS.API_AUTH_PASSWORD);
   const headers: Record<string, string> = {};
   if (username && password) {
     headers.Authorization = `Basic ${btoa(`${username}:${password}`)}`;
@@ -157,50 +160,3 @@ export function getAiExplanation(signal?: AbortSignal | null) {
     );
   };
 }
-
-export const aiSoundQueryOptions = (
-  prompt: string,
-  o: { provider?: "cf" | "open" } = { provider: "open" }
-) =>
-  queryOptions({
-    enabled: false,
-    queryKey: ["ai-sound", prompt, o.provider],
-    queryFn: async ({ signal }) => {
-      if (!prompt) {
-        throw new Error("No prompt provided");
-      }
-      const tempFilePath = `${
-        FileSystem.cacheDirectory
-      }audio_${Date.now()}.mp3`;
-
-      const username = settingsStorage.getString(
-        SETTINGS_KEYS.API_AUTH_USERNAME
-      );
-      const password = settingsStorage.getString(
-        SETTINGS_KEYS.API_AUTH_PASSWORD
-      );
-      const headers: Record<string, string> = {
-        Accept: "audio/mpeg",
-      };
-      if (username && password) {
-        headers.Authorization = `Basic ${btoa(`${username}:${password}`)}`;
-      }
-      const downloadResult = await FileSystem.downloadAsync(
-        `${process.env.EXPO_PUBLIC_BASE_URL}/sound/${
-          o.provider
-        }?prompt=${encodeURIComponent(prompt)}`,
-        tempFilePath,
-        {
-          headers,
-        }
-      );
-
-      if (downloadResult.status !== 200) {
-        throw new Error(
-          `Failed to download audio: HTTP ${downloadResult.status}`
-        );
-      }
-
-      return tempFilePath;
-    },
-  });

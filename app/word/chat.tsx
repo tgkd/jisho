@@ -1,53 +1,43 @@
 import { FlashList, FlashListRef } from "@shopify/flash-list";
-import { useSQLiteContext } from "expo-sqlite";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import Markdown from "react-native-markdown-display";
 
 import { ChatFooterView } from "@/components/ChatFooter";
-import { ChatListItem } from "@/components/ChatItem";
 import { ThemedText } from "@/components/ThemedText";
 import { Card } from "@/components/ui/Card";
 import { Colors } from "@/constants/Colors";
 import { useMdStyles } from "@/hooks/useMdStyles";
 import { useUnifiedAI } from "@/providers/UnifiedAIProvider";
-import { addChat, Chat, getChats, removeChatById } from "@/services/database";
 import { ExplainRequestType } from "@/services/request";
 
+interface TemporaryChat {
+  id: number;
+  query: string;
+  response: string;
+}
+
 export default function ExploreScreen() {
-  const db = useSQLiteContext();
   const markdownStyles = useMdStyles();
   const ai = useUnifiedAI();
-  const scrollRef = useRef<FlashListRef<Chat>>(null);
-  const [chatsHistory, setChatsHistory] = useState<Chat[]>([]);
+  const scrollRef = useRef<FlashListRef<TemporaryChat>>(null);
+  const [chatsHistory, setChatsHistory] = useState<TemporaryChat[]>([]);
   const [currentResponse, setCurrentResponse] = useState<string>("");
+  const [currentQuery, setCurrentQuery] = useState<string>("");
+  const [nextId, setNextId] = useState<number>(1);
 
-  useEffect(() => {
-    const fetchChats = async () => {
-      const chats = await getChats(db);
-      setChatsHistory(chats);
+  const handleAddChat = useCallback((query: string, response: string) => {
+    const newChat: TemporaryChat = {
+      id: nextId,
+      query,
+      response,
     };
-
-    fetchChats();
-  }, []);
-
-  const handleDelete = async (id: number) => {
-    await removeChatById(db, id);
-    setChatsHistory((t) => t.filter((c) => c.id !== id));
-  };
-
-  const handleAddChatAndSeparator = async (
-    message: string,
-    reqParams: any[]
-  ) => {
-    const req = getTitle(reqParams, message);
-    const newChat = await addChat(db, req, message);
-    if (newChat) {
-      setChatsHistory((c) => [...c, newChat]);
-      setCurrentResponse("");
-    }
-  };
+    setChatsHistory((c) => [...c, newChat]);
+    setNextId(prev => prev + 1);
+    setCurrentResponse("");
+    setCurrentQuery("");
+  }, [nextId]);
 
   // Remove stream hook - we'll handle streaming directly in handleSubmit
 
@@ -61,57 +51,75 @@ export default function ExploreScreen() {
 
       try {
         setCurrentResponse("");
+        setCurrentQuery(query);
 
         await ai.explainText(query, type, {
           onChunk: (chunk: string) => {
             setCurrentResponse((prev) => prev + chunk);
             scrollRef.current?.scrollToEnd({ animated: true });
           },
-          onComplete: async (fullResponse: string, error?: string) => {
+          onComplete: (fullResponse: string, error?: string) => {
             if (error) {
               console.error("AI error:", error);
               setCurrentResponse("");
+              setCurrentQuery("");
               return;
             }
 
             if (fullResponse) {
-              await handleAddChatAndSeparator(fullResponse, [query]);
+              handleAddChat(query, fullResponse);
             }
           },
           onError: (error: string) => {
             console.error("AI error:", error);
             setCurrentResponse("");
+            setCurrentQuery("");
           }
         });
       } catch (error) {
         console.error("Search failed:", error);
       }
     },
-    [ai, handleAddChatAndSeparator, scrollRef]
+    [ai, handleAddChat, scrollRef]
   );
 
   const renderItem = useCallback(
-    ({ item, index }: { item: Chat; index: number }) => (
-      <ChatListItem
-        data={item}
-        handleDelete={handleDelete}
-        isLast={index === chatsHistory.length - 1}
-      />
+    ({ item }: { item: TemporaryChat }) => (
+      <Card
+        lightColor={Colors.light.secondaryBackground}
+        darkColor={Colors.dark.secondaryBackground}
+      >
+        <View style={styles.chatItem}>
+          <ThemedText type="defaultSemiBold" style={styles.query}>
+            {item.query}
+          </ThemedText>
+          <Markdown style={markdownStyles}>{item.response}</Markdown>
+        </View>
+      </Card>
     ),
-    [chatsHistory]
+    [markdownStyles]
   );
 
   const renderFooter = useCallback(
     () =>
-      currentResponse?.length ? (
+      currentResponse?.length || currentQuery?.length ? (
         <Card
           lightColor={Colors.light.secondaryBackground}
           darkColor={Colors.dark.secondaryBackground}
         >
-          <Markdown style={markdownStyles}>{currentResponse}</Markdown>
+          <View style={styles.chatItem}>
+            {currentQuery && (
+              <ThemedText type="defaultSemiBold" style={styles.query}>
+                {currentQuery}
+              </ThemedText>
+            )}
+            {currentResponse && (
+              <Markdown style={markdownStyles}>{currentResponse}</Markdown>
+            )}
+          </View>
         </Card>
       ) : null,
-    [currentResponse, markdownStyles]
+    [currentResponse, currentQuery, markdownStyles]
   );
 
   const renderEmpty = useCallback(
@@ -151,15 +159,6 @@ export default function ExploreScreen() {
   );
 }
 
-function getTitle(reqParams: any[], msg: string) {
-  if (!reqParams) {
-    return msg;
-  }
-  return reqParams?.[0] && typeof reqParams[0] === "string"
-    ? reqParams[0]
-    : msg;
-}
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -177,5 +176,11 @@ const styles = StyleSheet.create({
     width: "100%",
     justifyContent: "center",
     alignItems: "center",
+  },
+  chatItem: {
+    gap: 8,
+  },
+  query: {
+    opacity: 0.8,
   },
 });

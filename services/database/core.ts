@@ -16,7 +16,7 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
         corruptionError?.message?.includes("database is locked")
       ) {
         // Import File System to manually delete the corrupted database
-        const FileSystem = await import("expo-file-system");
+        const FileSystem = await import("expo-file-system/legacy");
         const dbPath = db.databasePath;
 
         console.log("Deleting corrupted database at:", dbPath);

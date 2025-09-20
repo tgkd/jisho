@@ -61,16 +61,6 @@ export type HistoryEntry = {
   meaning: string;
 };
 
-export type DBChat = {
-  id: number;
-  request: string;
-  response: string;
-  created_at: string;
-};
-
-export type Chat = Omit<DBChat, "created_at"> & {
-  createdAt: string;
-};
 
 export type DBAudio = {
   id: number;

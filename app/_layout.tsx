@@ -74,7 +74,7 @@ export default function RootLayout() {
                   value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
                 >
                   <KeyboardProvider>
-                    <NativeTabs minimizeBehavior="onScrollDown">
+                    <NativeTabs minimizeBehavior="automatic">
                       <NativeTabs.Trigger name="word" role="search">
                         <Icon
                           sf="magnifyingglass"
@@ -89,14 +89,6 @@ export default function RootLayout() {
                           drawable="custom_android_drawable"
                         />
                         <Label>Bookmarks</Label>
-                      </NativeTabs.Trigger>
-
-                      <NativeTabs.Trigger hidden name="explore">
-                        <Icon
-                          sf="bubble.left.and.bubble.right"
-                          drawable="custom_android_drawable"
-                        />
-                        <Label>AI Chat</Label>
                       </NativeTabs.Trigger>
 
                       <NativeTabs.Trigger name="settings">

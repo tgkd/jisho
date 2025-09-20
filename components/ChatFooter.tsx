@@ -1,17 +1,12 @@
-import { PasteEventPayload } from "expo-clipboard";
 import { memo, useRef, useState } from "react";
-import { StyleSheet, TextInput, View } from "react-native";
+import { StyleSheet, View } from "react-native";
+import { Host, TextField, TextFieldRef } from "@expo/ui/swift-ui";
 import { useGenericKeyboardHandler } from "react-native-keyboard-controller";
-import Animated, {
-  interpolate,
-  useAnimatedStyle,
-  useSharedValue,
-} from "react-native-reanimated";
+import Animated, { useAnimatedStyle, useSharedValue } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { HapticTab } from "@/components/HapticTab";
-import { IconSymbol } from "@/components/ui/IconSymbol";
-import { Colors } from "@/constants/Colors";
+import { HapticButton } from "@/components/HapticTab";
+// Colors are resolved via useThemeColor; direct Colors import not needed here
 import { useThemeColor } from "@/hooks/useThemeColor";
 import { ExplainRequestType } from "@/services/request";
 import { Pill } from "./ui/Pill";
@@ -21,8 +16,8 @@ const requestTypes = [
   { label: "Grammar", id: ExplainRequestType.G, icon: "grammar" },
 ];
 
-const ICON_SIZE = 36;
-const HEIGHT = 96;
+// const ICON_SIZE = 32; // Not used in this component
+const HEIGHT = 204;
 
 const useGradualKeyboardAnimation = () => {
   const height = useSharedValue(0);
@@ -44,7 +39,7 @@ const useGradualKeyboardAnimation = () => {
   return height;
 };
 
-export const ChatFooterView = memo(
+const ChatFooterView = memo(
   ({
     handleSubmit,
     loading,
@@ -54,34 +49,28 @@ export const ChatFooterView = memo(
   }) => {
     const kb = useGradualKeyboardAnimation();
     const instets = useSafeAreaInsets();
-    const bg = useThemeColor({}, "secondaryBackground");
-    const iconC = useThemeColor({}, "tint");
-    const inputC = useThemeColor({}, "text");
-    const inputBg = useThemeColor({}, "background");
-    const inputRef = useRef<TextInput>(null);
+    // Themed colors for iOS Messages-like input bubble
+    const bubbleBg = useThemeColor({}, "secondaryBackground");
+    const inputRef = useRef<TextFieldRef>(null);
     const [value, setValue] = useState("");
     const [requestType, setRequestType] = useState<ExplainRequestType>(
       ExplainRequestType.V
     );
 
     const handlePress = () => {
+
       handleSubmit(value, requestType);
-      inputRef.current?.blur();
       setValue("");
     };
 
-    const handlePasteClipboard = (data: PasteEventPayload) => {
-      if (data.type === "text") {
-        setValue(data.text);
-      }
-    };
-
     const animatedStyle = useAnimatedStyle(
-      () => ({
-        transform: [
-          { translateY: interpolate(kb.value, [0, -HEIGHT], [0, -8]) },
-        ],
-      }),
+      () => {
+        "worklet";
+        const progress = Math.min(Math.abs(kb.value) / HEIGHT, 1);
+        return {
+          transform: [{ translateY: -2 * progress }],
+        };
+      },
       []
     );
 
@@ -90,84 +79,106 @@ export const ChatFooterView = memo(
         style={[
           animatedStyle,
           styles.footerContainer,
-          { backgroundColor: bg, paddingBottom: instets.bottom },
+          { bottom: instets.bottom },
         ]}
       >
-        <TextInput
-          scrollEnabled={false}
-          multiline
-          numberOfLines={4}
-          onChangeText={setValue}
-          ref={inputRef}
-          value={value}
-          style={[styles.textArea, { color: inputC, backgroundColor: inputBg }]}
-          placeholder="What does りんご mean?"
-        />
-        <View style={styles.buttons}>
-          <View style={styles.type}>
-            {requestTypes.map((e) => (
-              <Pill
-                key={e.id}
-                text={e.label}
-                onPress={() => {
-                  setRequestType(e.id);
-                }}
-                isActive={requestType === e.id}
+        <View style={styles.type}>
+          {requestTypes.map((e) => (
+            <Pill
+              key={e.id}
+              text={e.label}
+              onPress={() => {
+                setRequestType(e.id);
+              }}
+              isActive={requestType === e.id}
+            />
+          ))}
+        </View>
+
+        <View style={styles.inputRow}>
+          <View
+            style={[
+              styles.inputBubble,
+              { backgroundColor: bubbleBg },
+            ]}
+          >
+            <Host style={{ flex: 1, minHeight: 44 }}>
+              <TextField
+                multiline
+                numberOfLines={3}
+                onChangeText={setValue}
+                ref={inputRef}
+                placeholder="Text Message"
+                modifiers={[
+                  { $type: 'font', style: { fontSize: 17, lineHeight: 22 } },
+                  { $type: 'textInput', style: styles.textArea },
+                ]}
               />
-            ))}
+            </Host>
           </View>
 
-          <HapticTab onPress={handlePress} disabled={loading}>
-            <IconSymbol
-              color={loading ? Colors.light.disabled : iconC}
-              name="arrow.up.circle.fill"
-              size={ICON_SIZE}
-            />
-          </HapticTab>
+          <HapticButton
+            onPress={handlePress}
+            disabled={loading}
+            systemImage="arrow.up.circle"
+          />
         </View>
       </Animated.View>
     );
   }
 );
 
+ChatFooterView.displayName = "ChatFooterView";
+
+export { ChatFooterView };
+
 const styles = StyleSheet.create({
   footerContainer: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: -2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 5,
+    left: 0,
+    right: 0,
     flexDirection: "column",
     alignItems: "stretch",
-    padding: 12,
+    paddingHorizontal: 16,
+    gap: 24,
+  },
+
+  inputRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
     gap: 8,
   },
 
-  textArea: {
-    flexGrow: 1,
-    padding: 10,
-    borderRadius: 12,
-    fontSize: 16,
-    maxHeight: 200,
+  inputBubble: {
+    flex: 1,
+    borderRadius: 22,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    // iOS subtle shadow to match Messages composer
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
   },
 
-  buttons: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+  textArea: {
+    flex: 1,
+    fontSize: 17,
+    lineHeight: 22,
+    maxHeight: 120,
+    // Slightly smaller min height; overall container has 44 min height
+    minHeight: 38,
+    textAlignVertical: "top",
   },
-  paste: {
-    height: 32,
-    width: 32,
+
+  sendButton: {
+    alignSelf: "flex-end",
+    marginBottom: 6,
   },
+
   type: {
     flexDirection: "row",
-    gap: 4,
+    gap: 8,
     alignItems: "center",
+    paddingHorizontal: 4,
   },
 });

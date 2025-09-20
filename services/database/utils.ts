@@ -1,4 +1,4 @@
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import { SQLiteDatabase } from "expo-sqlite";
 import { Alert } from "react-native";
 import * as wanakana from "wanakana";

@@ -48,9 +48,9 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - ExpoAsset (12.0.8):
+  - ExpoAsset (12.0.9):
     - ExpoModulesCore
-  - ExpoAudio (1.0.12):
+  - ExpoAudio (1.0.13):
     - ExpoModulesCore
   - ExpoBlur (15.0.7):
     - ExpoModulesCore
@@ -62,7 +62,7 @@ PODS:
     - ExpoModulesCore
   - ExpoHaptics (15.0.7):
     - ExpoModulesCore
-  - ExpoHead (6.0.6):
+  - ExpoHead (6.0.7):
     - ExpoModulesCore
     - RNScreens
   - ExpoKeepAwake (15.0.7):
@@ -104,7 +104,7 @@ PODS:
     - ExpoModulesCore
   - ExpoSystemUI (6.0.7):
     - ExpoModulesCore
-  - ExpoUI (0.2.0-canary-20250912-b5ce2a8):
+  - ExpoUI (0.2.0-canary-20250919-7a31b96):
     - ExpoModulesCore
   - FBLazyVector (0.81.4)
   - hermes-engine (0.81.4):
@@ -1434,7 +1434,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - react-native-mmkv (3.3.1):
+  - react-native-mmkv (3.3.3):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2411,14 +2411,14 @@ SPEC CHECKSUMS:
   AppleLLM: 5bdfc92651e01b5c5fe692f64d1dfff525c1b7af
   EXConstants: a95804601ee4a6aa7800645f9b070d753b1142b3
   Expo: 4875e1cc72ae1398e33bcd6632943a4e93926ecd
-  ExpoAsset: 84810d6fed8179f04d4a7a4a6b37028bbd726e26
-  ExpoAudio: b04c4ae65e0174a8f4b097b2aa4040441c49fbd5
+  ExpoAsset: 9ba6fbd677fb8e241a3899ac00fa735bc911eadf
+  ExpoAudio: f3ad69235f7e4c36cd09b7951b710fce3eef17fa
   ExpoBlur: 2dd8f64aa31f5d405652c21d3deb2d2588b1852f
   ExpoClipboard: af650d14765f19c60ce2a1eaf9dfe6445eff7365
   ExpoFileSystem: 4fb06865906e781329eb67166bd64fc4749c3019
   ExpoFont: 86ceec09ffed1c99cfee36ceb79ba149074901b5
   ExpoHaptics: 807476b0c39e9d82b7270349d6487928ce32df84
-  ExpoHead: 78f14a8573ae5b882123b272c0af20a80bfa58f6
+  ExpoHead: 9cfb3370834cab0459b3f516a9b76aae944f02f4
   ExpoKeepAwake: 1a2e820692e933c94a565ec3fbbe38ac31658ffe
   ExpoLinking: f051f28e50ea9269ff539317c166adec81d9342d
   ExpoModulesCore: a28d1b4a5a9fbdacc41ca8d0c777a2d73496b022
@@ -2428,7 +2428,7 @@ SPEC CHECKSUMS:
   ExpoSQLite: 7fa091ba5562474093fef09be644161a65e11b3f
   ExpoSymbols: 1ae04ce686de719b9720453b988d8bc5bf776c68
   ExpoSystemUI: 6cd74248a2282adf6dec488a75fa532d69dee314
-  ExpoUI: 469b070b2837be619c3e08645abac7dd839b5e08
+  ExpoUI: fd088e173eff2b990994d0d7d7551c40c739e945
   FBLazyVector: 9e0cd874afd81d9a4d36679daca991b58b260d42
   hermes-engine: 35c763d57c9832d0eef764316ca1c4d043581394
   RCTDeprecation: 7487d6dda857ccd4cb3dd6ecfccdc3170e85dcbc
@@ -2465,7 +2465,7 @@ SPEC CHECKSUMS:
   React-Mapbuffer: fbe1da882a187e5898bdf125e1cc6e603d27ecae
   React-microtasksnativemodule: 76905804171d8ccbe69329fc84c57eb7934add7f
   react-native-keyboard-controller: 1ad78688f744e0ebdf3b04007b91089a254b80f9
-  react-native-mmkv: 6ee361e2515d9eada636fc21c85612f27f20e0ef
+  react-native-mmkv: 3d69c8bbdbceb1c0d3754863ecffa6ec24e4be12
   react-native-safe-area-context: 42a1b4f8774b577d03b53de7326e3d5757fe9513
   react-native-uitextview: d24acf59b5d64c9f0ddcd86d23629655460c1f3f
   React-NativeModulesApple: a9464983ccc0f66f45e93558671f60fc7536e438

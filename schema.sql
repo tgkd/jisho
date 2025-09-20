@@ -278,29 +278,6 @@ CREATE TABLE study_list_words (
 -- AI CHAT TABLES (for AI explanations)
 -- =============================================================================
 
--- Chat conversations with AI about words/grammar
-CREATE TABLE chats (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id TEXT DEFAULT 'default',
-    title TEXT,
-    word_id INTEGER REFERENCES words(id),  -- Related word if applicable
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_chats_user_id ON chats(user_id);
-CREATE INDEX idx_chats_word_id ON chats(word_id);
-
--- Individual messages in chat conversations
-CREATE TABLE chat_messages (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    chat_id INTEGER NOT NULL REFERENCES chats(id) ON DELETE CASCADE,
-    role TEXT NOT NULL,             -- 'user' or 'assistant'
-    content TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_chat_messages_chat_id ON chat_messages(chat_id);
 
 -- =============================================================================
 -- UTILITY VIEWS

@@ -1,4 +1,4 @@
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import { SQLiteDatabase } from "expo-sqlite";
 import { DBAudio, AudioFile } from "./types";
 
