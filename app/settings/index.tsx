@@ -11,14 +11,10 @@ import { useMMKVBoolean, useMMKVString } from "react-native-mmkv";
 
 import { HapticTab } from "@/components/HapticTab";
 import { ThemedText } from "@/components/ThemedText";
-import { ThemedView } from "@/components/ThemedView";
 import { Card } from "@/components/ui/Card";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { Colors, getHighlightColorValue } from "@/constants/Colors";
-import {
-  clearHistory,
-  resetDatabase,
-} from "@/services/database";
+import { clearHistory, resetDatabase } from "@/services/database";
 import { SETTINGS_KEYS } from "@/services/storage";
 
 const highlightColorOptions: {
@@ -114,98 +110,96 @@ export default function SettingsScreen() {
   };
 
   return (
-    <ThemedView style={styles.container}>
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={{ gap: 16 }}
-      >
-        <Card>
-          <View style={styles.settingItem}>
-            <ThemedText size="sm">{"Highlight Color"}</ThemedText>
-            <View style={styles.row}>
-              {highlightColorOptions.map((o) => (
-                <HapticTab
-                  key={o.value}
-                  onPress={() => {
-                    setHighlightColor(o.value);
-                  }}
-                >
-                  <View
-                    style={[
-                      styles.colorPreview,
-                      o.value === highlightColor.value ? styles.active : null,
-                      {
-                        backgroundColor: getHighlightColorValue(o.value),
-                      },
-                    ]}
-                  />
-                </HapticTab>
-              ))}
-            </View>
+    <ScrollView
+      contentInsetAdjustmentBehavior="automatic"
+      contentContainerStyle={styles.container}
+    >
+      <Card>
+        <View style={styles.settingItem}>
+          <ThemedText size="sm">{"Highlight Color"}</ThemedText>
+          <View style={styles.row}>
+            {highlightColorOptions.map((o) => (
+              <HapticTab
+                key={o.value}
+                onPress={() => {
+                  setHighlightColor(o.value);
+                }}
+              >
+                <View
+                  style={[
+                    styles.colorPreview,
+                    o.value === highlightColor.value ? styles.active : null,
+                    {
+                      backgroundColor: getHighlightColorValue(o.value),
+                    },
+                  ]}
+                />
+              </HapticTab>
+            ))}
           </View>
+        </View>
 
-          <View style={styles.settingItem}>
-            <View style={styles.row}>
-              <ThemedText size="sm">{"Use AI API"}</ThemedText>
-              <Switch
-                value={useApiCredentials ?? false}
-                onValueChange={handleToggleApiCredentials}
-                style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
-              />
-            </View>
-            <ThemedText size="xs">
-              {
-                "Enable external API for AI features (local AI works automatically)"
-              }
-            </ThemedText>
+        <View style={styles.settingItem}>
+          <View style={styles.row}>
+            <ThemedText size="sm">{"Use AI API"}</ThemedText>
+            <Switch
+              value={useApiCredentials ?? false}
+              onValueChange={handleToggleApiCredentials}
+              style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
+            />
+          </View>
+          <ThemedText size="xs">
+            {
+              "Enable external API for AI features (local AI works automatically)"
+            }
+          </ThemedText>
 
-            {useApiCredentials ? (
-              <View>
-                <View style={styles.settingItem}>
-                  <TextInput
-                    style={styles.textInput}
-                    value={apiAuthUsername}
-                    onChangeText={setApiAuthUsername}
-                    placeholder="Username"
-                    autoCapitalize="none"
-                  />
-                </View>
-                <View style={styles.settingItem}>
-                  <TextInput
-                    style={styles.textInput}
-                    value={apiAuthPassword}
-                    onChangeText={setApiAuthPassword}
-                    placeholder="Password"
-                    autoCapitalize="none"
-                    secureTextEntry
-                  />
-                </View>
+          {useApiCredentials ? (
+            <View>
+              <View style={styles.settingItem}>
+                <TextInput
+                  style={styles.textInput}
+                  value={apiAuthUsername}
+                  onChangeText={setApiAuthUsername}
+                  placeholder="Username"
+                  autoCapitalize="none"
+                />
               </View>
-            ) : null}
-          </View>
-        </Card>
+              <View style={styles.settingItem}>
+                <TextInput
+                  style={styles.textInput}
+                  value={apiAuthPassword}
+                  onChangeText={setApiAuthPassword}
+                  placeholder="Password"
+                  autoCapitalize="none"
+                  secureTextEntry
+                />
+              </View>
+            </View>
+          ) : null}
+        </View>
+      </Card>
 
-        <Card>
-          <HapticTab onPress={handleClearHistory} style={styles.actionButton}>
-            <IconSymbol
-              name="clock.arrow.circlepath"
-              size={20}
-              color={Colors.light.error}
-            />
-            <ThemedText style={styles.warn}>{"Clear Search History"}</ThemedText>
-          </HapticTab>
+      <Card>
+        <HapticTab onPress={handleClearHistory} style={styles.actionButton}>
+          <IconSymbol
+            name="clock.arrow.circlepath"
+            size={20}
+            color={Colors.light.error}
+          />
+          <ThemedText style={styles.warn}>{"Clear Search History"}</ThemedText>
+        </HapticTab>
 
-          <HapticTab onPress={handleDatabaseReset} style={styles.actionButton}>
-            <IconSymbol
-              name="arrow.clockwise"
-              size={20}
-              color={Colors.light.error}
-            />
-            <ThemedText style={styles.warn}>{"Reset Database"}</ThemedText>
-          </HapticTab>
-        </Card>
-      </ScrollView>
-    </ThemedView>
+        <HapticTab onPress={handleDatabaseReset} style={styles.actionButton}>
+          <IconSymbol
+            name="arrow.clockwise"
+            size={20}
+            color={Colors.light.error}
+          />
+          <ThemedText style={styles.warn}>{"Reset Database"}</ThemedText>
+        </HapticTab>
+      </Card>
+    </ScrollView>
   );
 }
 
@@ -214,6 +208,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 16,
     paddingVertical: 24,
+    gap: 24,
   },
   settingItem: {
     flexDirection: "column",

@@ -15,7 +15,6 @@ export async function addExamplesList(
   examples: AiExample[],
   db: SQLiteDatabase
 ) {
-  console.log(`Adding ${examples.length} examples for word_id: ${wId}`);
   try {
     await db.withTransactionAsync(async () => {
       for (const example of examples) {
@@ -25,7 +24,6 @@ export async function addExamplesList(
         );
       }
     });
-    console.log(`Successfully replaced with ${examples.length} new examples`);
   } catch (error) {
     console.error("Failed to add examples:", error);
     throw error;

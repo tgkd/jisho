@@ -29,17 +29,20 @@ export default function ExploreScreen() {
   const [currentQuery, setCurrentQuery] = useState<string>("");
   const [nextId, setNextId] = useState<number>(1);
 
-  const handleAddChat = useCallback((query: string, response: string) => {
-    const newChat: TemporaryChat = {
-      id: nextId,
-      query,
-      response,
-    };
-    setChatsHistory((c) => [...c, newChat]);
-    setNextId(prev => prev + 1);
-    setCurrentResponse("");
-    setCurrentQuery("");
-  }, [nextId]);
+  const handleAddChat = useCallback(
+    (query: string, response: string) => {
+      const newChat: TemporaryChat = {
+        id: nextId,
+        query,
+        response,
+      };
+      setChatsHistory((c) => [...c, newChat]);
+      setNextId((prev) => prev + 1);
+      setCurrentResponse("");
+      setCurrentQuery("");
+    },
+    [nextId]
+  );
 
   const handleSubmit = useCallback(
     async (query: string) => {
@@ -56,7 +59,6 @@ export default function ExploreScreen() {
         await ai.explainText(query, ExplainRequestType.V, {
           onChunk: (chunk: string) => {
             setCurrentResponse((prev) => prev + chunk);
-
           },
           onComplete: (fullResponse: string, error?: string) => {
             if (error) {
@@ -75,7 +77,7 @@ export default function ExploreScreen() {
             console.error("AI error:", error);
             setCurrentResponse("");
             setCurrentQuery("");
-          }
+          },
         });
       } catch (error) {
         console.error("Search failed:", error);
@@ -128,7 +130,9 @@ export default function ExploreScreen() {
       !chatsHistory.length && !currentResponse.length ? (
         <View style={styles.emptyMsg}>
           <ThemedText textAlign="center" type="secondary">
-            {"All messages are temporary and will disappear after closing the chat."}
+            {
+              "All messages are temporary and will disappear after closing the chat."
+            }
           </ThemedText>
         </View>
       ) : null,
@@ -136,12 +140,9 @@ export default function ExploreScreen() {
   );
 
   return (
-    <KeyboardAvoidingView
-      behavior="translate-with-padding"
-      keyboardVerticalOffset={32}
-      style={[styles.container, { backgroundColor }]}
-    >
+    <>
       <FlashList
+        contentInsetAdjustmentBehavior="automatic"
         ref={scrollRef}
         style={styles.list}
         contentContainerStyle={styles.scrollContainer}
@@ -152,12 +153,13 @@ export default function ExploreScreen() {
         ListEmptyComponent={renderEmpty}
         ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
       />
-
-      <ChatFooterView
-        handleSubmit={handleSubmit}
-        loading={ai.isGenerating}
-      />
-    </KeyboardAvoidingView>
+      <KeyboardAvoidingView
+        behavior="translate-with-padding"
+        keyboardVerticalOffset={32}
+      >
+        <ChatFooterView handleSubmit={handleSubmit} loading={ai.isGenerating} />
+      </KeyboardAvoidingView>
+    </>
   );
 }
 

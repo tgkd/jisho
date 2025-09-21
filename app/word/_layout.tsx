@@ -1,12 +1,10 @@
 import { apple } from "@react-native-ai/apple";
 import { Stack, useRouter } from "expo-router";
 import * as React from "react";
-import { useColorScheme } from "react-native";
 
 import { HapticButton } from "@/components/HapticTab";
 
 export default function WordLayout() {
-  const theme = useColorScheme();
   const router = useRouter();
 
   return (
@@ -16,10 +14,6 @@ export default function WordLayout() {
         options={{
           headerLargeTitle: true,
           headerTransparent: true,
-          headerTintColor: theme === "dark" ? "white" : "black",
-          headerLargeStyle: {
-            backgroundColor: "transparent",
-          },
           headerLeft: () => apple.isAvailable()
           ? (
             <HapticButton

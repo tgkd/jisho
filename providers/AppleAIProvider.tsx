@@ -1,4 +1,4 @@
-import { apple } from "@react-native-ai/apple";
+import { apple, AppleSpeech } from "@react-native-ai/apple";
 import {
   experimental_generateSpeech as speech,
   generateObject,
@@ -33,10 +33,7 @@ export interface AIProviderValue {
     onChunk: (text: string) => void,
     onComplete: (fullResponse: string, error?: string) => void
   ) => Promise<void>;
-  generateSpeech: (
-    text: string,
-    options?: { language?: string; rate?: number }
-  ) => Promise<void>;
+  generateSpeech: (text: string) => Promise<void>;
   isReady: boolean;
   isGenerating: boolean;
   error: string | null;
@@ -56,9 +53,9 @@ export function AppleAIProvider({ children }: { children: ReactNode }) {
   const [abortController, setAbortController] =
     useState<AbortController | null>(null);
   const isReady = apple.isAvailable();
-
-  // Audio player for speech synthesis
-  const audioPlayer = useAudioPlayer();
+  const audioPlayer = useAudioPlayer(undefined, {
+    keepAudioSessionActive: false,
+  });
 
   const generateExamples = useCallback(
     async (prompt: string, onComplete: (resp: AiExample[]) => void) => {
@@ -171,30 +168,23 @@ export function AppleAIProvider({ children }: { children: ReactNode }) {
   }, [abortController]);
 
   const generateSpeech = useCallback(
-    async (
-      text: string,
-      options: { language?: string; rate?: number } = {}
-    ) => {
-      console.log("start local", text);
-
+    async (text: string) => {
       if (!isReady) {
         throw new Error("Apple AI not ready for speech synthesis");
       }
+      const voices = await AppleSpeech.getVoices();
+      const voice = pickBestJaVoice(voices);
 
       try {
-        console.log("generating speech for:", text);
-
         const data = await speech({
           model: apple.speechModel(),
           text,
-          language:
-            options.language === "ja" ? "ja-JP" : options.language || "en-US",
+          speed: voice.rate,
+          voice: voice.identifier,
+          language: voice.language,
         });
 
-        const audioDataUri = `data:audio/wav;base64,${data.audio.base64}`;
-
-        // Load and play the audio
-        await audioPlayer.replace(audioDataUri);
+        await audioPlayer.replace(`data:audio/wav;base64,${data.audio.base64}`);
         await audioPlayer.play();
       } catch (error) {
         console.error("Apple AI speech synthesis failed:", error);
@@ -259,3 +249,48 @@ If helpful, include up to 2 short natural examples with kana and translations.
 Keep it compact and free-form (no rigid structure).`;
 
 // note: prompt separation by type removed; a single generic prompt is used for both words and sentences.
+/**
+ * Picks the best Japanese voice from a voice list and returns a TTS config.
+ * Prefers native Apple Japanese voices (Kyoko) over Eloquence voices.
+ * @param voices The enumerated system voices.
+ * @returns Config with identifier (if found), language, and sane defaults.
+ */
+export type SystemVoice = {
+  identifier: string;
+  isNoveltyVoice: boolean;
+  isPersonalVoice: boolean;
+  language: string;
+  name: string;
+  quality?: string | undefined;
+};
+
+export type JaTtsConfig = {
+  identifier?: string;
+  language: "ja-JP";
+  rate: number;
+  pitch: number;
+  volume: number;
+};
+
+export function pickBestJaVoice(voices: SystemVoice[]): JaTtsConfig {
+  const isJa = (v: SystemVoice) => v.language === "ja-JP";
+  const notNovelty = (v: SystemVoice) => !v.isNoveltyVoice;
+  const notEloquence = (v: SystemVoice) =>
+    !v.identifier.includes(".eloquence.");
+  // Prefer Kyoko, then any non-Eloquence JA voice, then any JA voice.
+  const kyoko = voices.find((v) => isJa(v) && v.name.includes("Kyoko"));
+  const naturalJa = voices.find(
+    (v) => isJa(v) && notNovelty(v) && notEloquence(v)
+  );
+  const anyJa = voices.find(isJa);
+
+  const chosen = kyoko ?? naturalJa ?? anyJa;
+
+  return {
+    identifier: chosen?.identifier,
+    language: "ja-JP",
+    rate: 0.5, // tweak 0.48–0.55 to taste
+    pitch: 1.0,
+    volume: 1.0,
+  };
+}

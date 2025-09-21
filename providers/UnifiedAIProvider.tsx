@@ -5,7 +5,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
-  useState
+  useState,
 } from "react";
 import { useMMKVBoolean, useMMKVString } from "react-native-mmkv";
 
@@ -14,7 +14,7 @@ import {
   ExplainRequestType,
   getAiExamples,
   getAiExplanation,
-  getAiSound
+  getAiSound,
 } from "@/services/request";
 import { SETTINGS_KEYS } from "@/services/storage";
 import { useAppleAI } from "./AppleAIProvider";
@@ -38,7 +38,10 @@ export interface UnifiedAIContextValue {
     signal?: AbortSignal
   ) => Promise<void>;
   generateAudio: (text: string) => Promise<string | null>;
-  generateSpeech: (text: string, options?: { language?: string; rate?: number }) => Promise<void>;
+  generateSpeech: (
+    text: string,
+    options?: { language?: string; rate?: number }
+  ) => Promise<void>;
 
   // State management
   isGenerating: boolean;
@@ -250,29 +253,35 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
   );
 
   const generateSpeech = useCallback(
-    async (text: string, options: { language?: string; rate?: number } = {}): Promise<void> => {
+    async (
+      text: string,
+      options: { language?: string; rate?: number } = {}
+    ): Promise<void> => {
       if (currentProvider === "none") {
         // Fallback to expo-speech when no AI provider available
         Speech.speak(text, {
           language: options.language || "ja",
-          rate: options.rate
+          rate: options.rate,
         });
         return;
       }
 
       try {
         if (currentProvider === "local" && localAI.isReady) {
-          await localAI.generateSpeech(text, options);
+          await localAI.generateSpeech(text);
           return;
         }
       } catch (error) {
-        console.warn("Apple AI speech failed, falling back to expo-speech:", error);
+        console.warn(
+          "Apple AI speech failed, falling back to expo-speech:",
+          error
+        );
       }
 
       // Universal fallback to expo-speech
       Speech.speak(text, {
         language: options.language || "ja",
-        rate: options.rate
+        rate: options.rate,
       });
     },
     [currentProvider, localAI]

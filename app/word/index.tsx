@@ -3,13 +3,12 @@ import * as Clipboard from "expo-clipboard";
 import { Stack, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useRef, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { SearchBarCommands } from "react-native-screens";
 
 import { HapticButton } from "@/components/HapticTab";
 import { ListItem } from "@/components/ListItem";
 import { Loader } from "@/components/Loader";
-import { NavHeader } from "@/components/NavHeader";
 import TagsList from "@/components/TagsList";
 import { ThemedText } from "@/components/ThemedText";
 import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
@@ -24,7 +23,6 @@ import {
 } from "@/services/database";
 import { getJpTokens } from "@/services/parse";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
-import { ThemedView } from "@/components/ThemedView";
 
 type SearchResult = DictionaryEntry | KanjiEntry;
 
@@ -269,9 +267,7 @@ export default function HomeScreen() {
     if (!search.length) {
       return (
         <View style={styles.emptyContainer}>
-          <ThemedText type="secondary">
-            {"Start search..."}
-          </ThemedText>
+          <ThemedText type="secondary">{"Start search..."}</ThemedText>
         </View>
       );
     }
@@ -297,8 +293,8 @@ export default function HomeScreen() {
             hideWhenScrolling: false,
             autoCapitalize: searchMode === "kanji" ? "none" : "sentences",
           },
+          headerTitle: ({}) => <Text style={{ flex: 1 }} />,
           title: searchMode === "word" ? "Words" : "Kanji",
-          headerTitle: () => <NavHeader title={""} />,
           headerRight: () => (
             <HapticButton
               onPress={toggleSearchMode}
@@ -309,30 +305,26 @@ export default function HomeScreen() {
           ),
         }}
       />
-      <ThemedView style={styles.container}>
-        <FlashList
-          data={displayData}
-          renderItem={renderItem}
-          keyExtractor={(item) =>
-            isHistoryItem(item) ? `history-${item.id}` : `result-${item.id}`
-          }
-          style={{ flex: 1 }}
-          contentContainerStyle={styles.scrollContainer}
-          contentInsetAdjustmentBehavior="automatic"
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-          drawDistance={400}
-          ListHeaderComponent={searchMode === "word" ? renderHeader() : null}
-          ListEmptyComponent={renderEmptyContainer()}
-          ListFooterComponent={
-            loading ? (
-              <View style={styles.loader}>
-                <Loader />
-              </View>
-            ) : null
-          }
-        />
-      </ThemedView>
+      <FlashList
+        data={displayData}
+        renderItem={renderItem}
+        keyExtractor={(item) =>
+          isHistoryItem(item) ? `history-${item.id}` : `result-${item.id}`
+        }
+        contentContainerStyle={styles.scrollContainer}
+        contentInsetAdjustmentBehavior="automatic"
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        ListHeaderComponent={searchMode === "word" ? renderHeader() : null}
+        ListEmptyComponent={renderEmptyContainer()}
+        ListFooterComponent={
+          loading ? (
+            <View style={styles.loader}>
+              <Loader />
+            </View>
+          ) : null
+        }
+      />
       {Clipboard.isPasteButtonAvailable ? (
         <KeyboardAvoidingView behavior="position" keyboardVerticalOffset={-24}>
           <Clipboard.ClipboardPasteButton
@@ -354,9 +346,6 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
   loader: {
     paddingTop: 16,
   },

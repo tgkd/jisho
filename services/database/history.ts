@@ -1,5 +1,5 @@
 import { SQLiteDatabase } from "expo-sqlite";
-import { DBHistoryEntry, HistoryEntry, DictionaryEntry } from "./types";
+import { DBHistoryEntry, DictionaryEntry, HistoryEntry } from "./types";
 
 export async function addToHistory(db: SQLiteDatabase, entry: DictionaryEntry) {
   try {
@@ -16,7 +16,8 @@ export async function addToHistory(db: SQLiteDatabase, entry: DictionaryEntry) {
 
 export async function getHistory(
   db: SQLiteDatabase,
-  limit = 100
+  limit = 20,
+  offset = 0
 ): Promise<HistoryEntry[]> {
   const result = await db.getAllAsync<
     DBHistoryEntry & { meaning?: string; history_id?: number }
@@ -33,9 +34,9 @@ export async function getHistory(
     FROM words w
     INNER JOIN history h ON w.id = h.word_id
     ORDER BY h.created_at DESC
-    LIMIT ?
+    LIMIT ? OFFSET ?
     `,
-    [limit]
+    [limit, offset]
   );
 
   return result.map((e) => ({
