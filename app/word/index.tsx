@@ -261,6 +261,28 @@ export default function HomeScreen() {
     );
   };
 
+  const renderEmptyContainer = () => {
+    if (loading) {
+      return null;
+    }
+
+    if (!search.length) {
+      return (
+        <View style={styles.emptyContainer}>
+          <ThemedText type="secondary">
+            {"Start search..."}
+          </ThemedText>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.emptyContainer}>
+        <ThemedText type="secondary">{"No results found"}</ThemedText>
+      </View>
+    );
+  };
+
   return (
     <>
       <Stack.Screen
@@ -301,25 +323,7 @@ export default function HomeScreen() {
           keyboardDismissMode="on-drag"
           drawDistance={400}
           ListHeaderComponent={searchMode === "word" ? renderHeader() : null}
-          ListEmptyComponent={
-            loading ? null : shouldShowRecentHistory ? (
-              <View style={styles.emptyContainer}>
-                <ThemedText type="secondary">
-                  {"Start searching for words..."}
-                </ThemedText>
-              </View>
-            ) : searchMode === "kanji" && !search.length ? (
-              <View style={styles.emptyContainer}>
-                <ThemedText type="secondary">
-                  {"Search for kanji..."}
-                </ThemedText>
-              </View>
-            ) : !search.length ? null : (
-              <View style={styles.emptyContainer}>
-                <ThemedText type="secondary">{"No results found"}</ThemedText>
-              </View>
-            )
-          }
+          ListEmptyComponent={renderEmptyContainer()}
           ListFooterComponent={
             loading ? (
               <View style={styles.loader}>

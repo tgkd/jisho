@@ -81,13 +81,7 @@ export default function RootLayout() {
                         <Label>Search</Label>
                       </NativeTabs.Trigger>
 
-                      <NativeTabs.Trigger name="history">
-                        <Icon
-                          sf="clock"
-                          drawable="custom_android_drawable"
-                        />
-                        <Label>History</Label>
-                      </NativeTabs.Trigger>
+                      <NativeTabs.Trigger name="history" role="history" />
 
                       <NativeTabs.Trigger name="settings">
                         <Icon sf="gear" drawable="custom_android_drawable" />

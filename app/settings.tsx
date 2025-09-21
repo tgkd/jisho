@@ -16,7 +16,6 @@ import { Card } from "@/components/ui/Card";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { Colors, getHighlightColorValue } from "@/constants/Colors";
 import {
-  clearBookmarks,
   clearHistory,
   resetDatabase,
 } from "@/services/database";
@@ -102,35 +101,6 @@ export default function SettingsScreen() {
               Alert.alert(
                 "Error",
                 "Failed to clear search history. Please try again."
-              );
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const handleClearBookmarks = () => {
-    Alert.alert(
-      "Clear Bookmarks",
-      "This will clear all your bookmarks. This operation cannot be undone. Are you sure you want to continue?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Clear",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await clearBookmarks(db);
-              Alert.alert("Success", "Bookmarks have been cleared.");
-            } catch (error) {
-              console.error("Failed to clear bookmarks:", error);
-              Alert.alert(
-                "Error",
-                "Failed to clear bookmarks. Please try again."
               );
             }
           },
@@ -225,14 +195,6 @@ export default function SettingsScreen() {
             <ThemedText style={styles.warn}>{"Clear Search History"}</ThemedText>
           </HapticTab>
 
-          <HapticTab onPress={handleClearBookmarks} style={styles.actionButton}>
-            <IconSymbol
-              name="bookmark.slash"
-              size={20}
-              color={Colors.light.error}
-            />
-            <ThemedText style={styles.warn}>{"Clear Bookmarks"}</ThemedText>
-          </HapticTab>
           <HapticTab onPress={handleDatabaseReset} style={styles.actionButton}>
             <IconSymbol
               name="arrow.clockwise"

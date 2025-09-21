@@ -2,7 +2,7 @@ import { Stack, useRouter } from "expo-router";
 import { useCallback } from "react";
 
 import { FlashList } from "@shopify/flash-list";
-import { StyleSheet } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import { ListItem } from "@/components/ListItem";
 import { ThemedText } from "@/components/ThemedText";
@@ -16,30 +16,15 @@ export default function HistoryScreen() {
   const colorScheme = useColorScheme();
   const history = useSearchHistory();
 
-  const handleHistoryItemPress = useCallback((item: HistoryEntry) => {
-    router.push({
-      pathname: "/word/[id]",
-      params: { id: item.wordId.toString(), title: item.word },
-    });
-  }, [router]);
-
-  const renderListHeader = () => {
-    let text = "";
-
-    if (history.list.length === 0) {
-      text = "No search history yet";
-    }
-
-    if (text.length === 0) {
-      return null;
-    }
-
-    return (
-      <ThemedText textAlign="center" type="secondary">
-        {text}
-      </ThemedText>
-    );
-  };
+  const handleHistoryItemPress = useCallback(
+    (item: HistoryEntry) => {
+      router.push({
+        pathname: "/word/[id]",
+        params: { id: item.wordId.toString(), title: item.word },
+      });
+    },
+    [router]
+  );
 
   return (
     <>
@@ -70,7 +55,15 @@ export default function HistoryScreen() {
           )}
           keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={styles.scrollContainer}
-          ListHeaderComponent={renderListHeader}
+          ListHeaderComponent={() =>
+            history.list.length === 0 ? (
+              <View style={styles.emptyText}>
+                <ThemedText type="secondary">
+                  {"No search history yet."}
+                </ThemedText>
+              </View>
+            ) : null
+          }
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
         />
@@ -86,5 +79,9 @@ const styles = StyleSheet.create({
   scrollContainer: {
     paddingVertical: 24,
     paddingHorizontal: 16,
+  },
+  emptyText: {
+    flex: 1,
+    alignItems: "center",
   },
 });

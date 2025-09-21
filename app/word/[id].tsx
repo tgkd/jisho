@@ -1,5 +1,5 @@
 import { useAudioPlayer } from "expo-audio";
-import { Stack, useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -7,14 +7,13 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  View
+  View,
 } from "react-native";
 
 import { HapticTab } from "@/components/HapticTab";
 import { HighlightText } from "@/components/HighlightText";
 import { KanjiDetails, KanjiListView } from "@/components/KanjiList";
 import { Loader } from "@/components/Loader";
-import { NavHeader } from "@/components/NavHeader";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { Card } from "@/components/ui/Card";
@@ -30,21 +29,20 @@ import {
   getDictionaryEntry,
   getWordExamples,
   saveAudioFile,
-  WordMeaning
+  WordMeaning,
 } from "@/services/database";
 import {
   cleanupJpReadings,
   deduplicateEn,
   findKanji,
   formatEn,
-  formatJp
+  formatJp,
 } from "@/services/parse";
 import { createWordPrompt } from "@/services/request";
 
 export default function WordDetailScreen() {
   const markColor = useThemeColor({}, "text");
   const params = useLocalSearchParams();
-  const title = typeof params.title === "string" ? params.title : "Details";
   const [entry, setEntry] = useState<{
     word: DictionaryEntry;
     meanings: WordMeaning[];
@@ -121,12 +119,6 @@ export default function WordDetailScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <Stack.Screen
-        options={{
-          headerTitle: () => <NavHeader title={title} />,
-        }}
-      />
-
       <ScrollView
         contentContainerStyle={styles.content}
         contentInsetAdjustmentBehavior="automatic"
