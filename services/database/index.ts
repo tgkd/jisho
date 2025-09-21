@@ -1,5 +1,4 @@
 export { getAudioFile, saveAudioFile } from "./audio";
-export { addBookmark, clearBookmarks, getBookmarks, isBookmarked, removeBookmark } from "./bookmarks";
 export { migrateDbIfNeeded } from "./core";
 export { addExamplesList, getDictionaryEntry, getWordExamples } from "./dictionary";
 export { addToHistory, clearHistory, getHistory, removeHistoryById } from "./history";

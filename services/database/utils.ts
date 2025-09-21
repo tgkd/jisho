@@ -145,9 +145,7 @@ export async function resetDatabase(db: SQLiteDatabase): Promise<void> {
       DROP TABLE IF EXISTS edict_fts;
       DROP TABLE IF EXISTS edict_meanings;
       DROP TABLE IF EXISTS edict_entries;
-      DROP TABLE IF EXISTS bookmarks;
       DROP TABLE IF EXISTS history;
-      DROP TABLE IF EXISTS chats;
       DROP TABLE IF EXISTS audio_blobs;
       DROP TABLE IF EXISTS kanji;
     `);

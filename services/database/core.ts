@@ -105,20 +105,7 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
       currentDbVersion = 2;
     }
 
-    if (currentDbVersion < 3) {
-      await db.execAsync(`
-      CREATE TABLE IF NOT EXISTS bookmarks (
-        id INTEGER PRIMARY KEY NOT NULL,
-        word_id INTEGER NOT NULL,
-        created_at TEXT NOT NULL,
-        FOREIGN KEY (word_id) REFERENCES words (id)
-      );
-
-          `);
-
-      await db.execAsync(`PRAGMA user_version = 3`);
-      currentDbVersion = 3;
-    }
+    // Version 3 was bookmarks table - removed as no longer needed
 
     if (currentDbVersion < 4) {
       await db.execAsync(`
@@ -143,21 +130,7 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
       currentDbVersion = 5;
     }
 
-    if (currentDbVersion < 6) {
-      await db.execAsync(`
-        CREATE TABLE IF NOT EXISTS chats (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          request TEXT NOT NULL,
-          response TEXT NOT NULL,
-          created_at TEXT NOT NULL
-        );
-
-        CREATE INDEX IF NOT EXISTS idx_chats_created_at ON chats(created_at);
-      `);
-
-      await db.execAsync(`PRAGMA user_version = 6`);
-      currentDbVersion = 6;
-    }
+    // Version 6 was chats table - removed as no longer needed
 
     if (currentDbVersion < 7) {
       try {

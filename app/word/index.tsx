@@ -1,6 +1,6 @@
 import { FlashList } from "@shopify/flash-list";
 import * as Clipboard from "expo-clipboard";
-import { router, Stack, useFocusEffect } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
@@ -16,7 +16,6 @@ import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
 import {
   DictionaryEntry,
-  getKanjiList,
   HistoryEntry,
   KanjiEntry,
   searchDictionary,
@@ -25,15 +24,24 @@ import {
 } from "@/services/database";
 import { getJpTokens } from "@/services/parse";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
+import { ThemedView } from "@/components/ThemedView";
 
 type SearchResult = DictionaryEntry | KanjiEntry;
 
-function isKanjiEntry(item: SearchResult): item is KanjiEntry {
+function isKanjiEntry(item: SearchResult | HistoryEntry): item is KanjiEntry {
   return "character" in item;
+}
+
+function isHistoryItem(
+  item: SearchResult | HistoryEntry
+): item is HistoryEntry {
+  return "wordId" in item;
 }
 
 export default function HomeScreen() {
   const db = useSQLiteContext();
+  const router = useRouter();
+  const history = useSearchHistory();
 
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -47,18 +55,6 @@ export default function HomeScreen() {
   const isSearchingRef = useRef(false);
   const [searchMode, setSearchMode] = useState<"word" | "kanji">("word");
 
-  const getRandomKanjiList = useCallback(async () => {
-    setLoading(true);
-    try {
-      const results = await getKanjiList(db);
-      setResults(results);
-    } catch (error) {
-      console.error("Failed to fetch random kanji:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [db]);
-
   const handleSearch = useDebouncedCallback(async (query: string) => {
     const text = query.trim();
 
@@ -68,10 +64,6 @@ export default function HomeScreen() {
     }
 
     if (text.length === 0) {
-      if (searchMode === "kanji") {
-        getRandomKanjiList();
-        return;
-      }
       setResults([]);
       setLoading(false);
       isSearchingRef.current = false;
@@ -167,23 +159,6 @@ export default function HomeScreen() {
     setTokens([]);
   };
 
-  const history = useSearchHistory();
-  const showHistory =
-    searchMode === "word" &&
-    !search.trim().length &&
-    !results.length &&
-    !loading;
-
-  const flatListData = showHistory ? history.list : results;
-
-  useFocusEffect(
-    useCallback(() => {
-      if (searchMode === "kanji" && !search.trim().length) {
-        getRandomKanjiList();
-      }
-    }, [searchMode, search, getRandomKanjiList])
-  );
-
   const toggleSearchMode = useCallback(() => {
     const newMode = searchMode === "word" ? "kanji" : "word";
     setSearchMode(newMode);
@@ -193,17 +168,31 @@ export default function HomeScreen() {
     setMeaningsMap(new Map());
     searchBarRef.current?.setText("");
 
-    if (newMode === "kanji") {
-      getRandomKanjiList();
-    }
-  }, [searchMode, getRandomKanjiList]);
+    // No automatic loading of random kanji - show placeholder instead
+  }, [searchMode]);
 
-  const handleHistoryWordPress = async (item: HistoryEntry) => {
-    router.push({
-      pathname: "/word/[id]",
-      params: { id: item.wordId.toString(), title: item.word },
-    });
-  };
+  const handleHistoryItemPress = useCallback(
+    (item: HistoryEntry) => {
+      router.push({
+        pathname: "/word/[id]",
+        params: { id: item.wordId.toString(), title: item.word },
+      });
+    },
+    [router]
+  );
+
+  // Determine what data to show
+  const shouldShowRecentHistory =
+    searchMode === "word" &&
+    !search.trim().length &&
+    !results.length &&
+    !loading;
+  const recentHistory = shouldShowRecentHistory
+    ? history.list.slice(0, 10)
+    : [];
+  const displayData: (SearchResult | HistoryEntry)[] = shouldShowRecentHistory
+    ? recentHistory
+    : results;
 
   const handleCancelButtonPress = () => {
     // Cancel any pending searches
@@ -235,8 +224,8 @@ export default function HomeScreen() {
           variant="history"
           item={item}
           index={index}
-          total={history.list.length}
-          onPress={() => handleHistoryWordPress(item)}
+          total={recentHistory.length}
+          onPress={() => handleHistoryItemPress(item)}
           onRemove={history.removeItem}
         />
       );
@@ -298,35 +287,48 @@ export default function HomeScreen() {
           ),
         }}
       />
-
-      <FlashList
-        data={flatListData}
-        renderItem={renderItem}
-        keyExtractor={(item) =>
-          `${showHistory ? "history" : "result"}-${item.id}`
-        }
-        style={{ flex: 1 }}
-        contentContainerStyle={styles.scrollContainer}
-        contentInsetAdjustmentBehavior="automatic"
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        drawDistance={400}
-        ListHeaderComponent={searchMode === "word" ? renderHeader() : null}
-        ListEmptyComponent={
-          loading || !search.length ? null : (
-            <View style={styles.emptyContainer}>
-              <ThemedText type="secondary">{"No results found"}</ThemedText>
-            </View>
-          )
-        }
-        ListFooterComponent={
-          loading ? (
-            <View style={styles.loader}>
-              <Loader />
-            </View>
-          ) : null
-        }
-      />
+      <ThemedView style={styles.container}>
+        <FlashList
+          data={displayData}
+          renderItem={renderItem}
+          keyExtractor={(item) =>
+            isHistoryItem(item) ? `history-${item.id}` : `result-${item.id}`
+          }
+          style={{ flex: 1 }}
+          contentContainerStyle={styles.scrollContainer}
+          contentInsetAdjustmentBehavior="automatic"
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          drawDistance={400}
+          ListHeaderComponent={searchMode === "word" ? renderHeader() : null}
+          ListEmptyComponent={
+            loading ? null : shouldShowRecentHistory ? (
+              <View style={styles.emptyContainer}>
+                <ThemedText type="secondary">
+                  {"Start searching for words..."}
+                </ThemedText>
+              </View>
+            ) : searchMode === "kanji" && !search.length ? (
+              <View style={styles.emptyContainer}>
+                <ThemedText type="secondary">
+                  {"Search for kanji..."}
+                </ThemedText>
+              </View>
+            ) : !search.length ? null : (
+              <View style={styles.emptyContainer}>
+                <ThemedText type="secondary">{"No results found"}</ThemedText>
+              </View>
+            )
+          }
+          ListFooterComponent={
+            loading ? (
+              <View style={styles.loader}>
+                <Loader />
+              </View>
+            ) : null
+          }
+        />
+      </ThemedView>
       {Clipboard.isPasteButtonAvailable ? (
         <KeyboardAvoidingView behavior="position" keyboardVerticalOffset={-24}>
           <Clipboard.ClipboardPasteButton
@@ -347,13 +349,10 @@ export default function HomeScreen() {
   );
 }
 
-function isHistoryItem(
-  item: SearchResult | HistoryEntry
-): item is HistoryEntry {
-  return (item as HistoryEntry).wordId !== undefined;
-}
-
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   loader: {
     paddingTop: 16,
   },

@@ -128,7 +128,7 @@ export default function ExploreScreen() {
       !chatsHistory.length && !currentResponse.length ? (
         <View style={styles.emptyMsg}>
           <ThemedText textAlign="center" type="secondary">
-            {"No messages yet. Start by asking a question!"}
+            {"All messages are temporary and will disappear after closing the chat."}
           </ThemedText>
         </View>
       ) : null,

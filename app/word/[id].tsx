@@ -10,7 +10,7 @@ import {
   View
 } from "react-native";
 
-import { HapticButton, HapticTab } from "@/components/HapticTab";
+import { HapticTab } from "@/components/HapticTab";
 import { HighlightText } from "@/components/HighlightText";
 import { KanjiDetails, KanjiListView } from "@/components/KanjiList";
 import { Loader } from "@/components/Loader";
@@ -22,7 +22,6 @@ import { IconSymbol } from "@/components/ui/IconSymbol";
 import { useThemeColor } from "@/hooks/useThemeColor";
 import { useUnifiedAI } from "@/providers/UnifiedAIProvider";
 import {
-  addBookmark,
   addExamplesList,
   addToHistory,
   DictionaryEntry,
@@ -30,8 +29,6 @@ import {
   getAudioFile,
   getDictionaryEntry,
   getWordExamples,
-  isBookmarked,
-  removeBookmark,
   saveAudioFile,
   WordMeaning
 } from "@/services/database";
@@ -46,7 +43,6 @@ import { createWordPrompt } from "@/services/request";
 
 export default function WordDetailScreen() {
   const markColor = useThemeColor({}, "text");
-  const headerColor = useThemeColor({}, "text");
   const params = useLocalSearchParams();
   const title = typeof params.title === "string" ? params.title : "Details";
   const [entry, setEntry] = useState<{
@@ -55,7 +51,6 @@ export default function WordDetailScreen() {
     examples: ExampleSentence[];
   } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [bookmarked, setBookmarked] = useState(false);
   const db = useSQLiteContext();
   const ai = useUnifiedAI();
 
@@ -73,8 +68,6 @@ export default function WordDetailScreen() {
 
       if (result) {
         setEntry(result);
-        const bookmarkStatus = await isBookmarked(db, result.word.id);
-        setBookmarked(bookmarkStatus);
         await addToHistory(db, result.word);
       }
     } catch (error) {
@@ -95,23 +88,6 @@ export default function WordDetailScreen() {
   useEffect(() => {
     initEntry();
   }, []);
-
-  const handleToggleBookmark = async () => {
-    if (!entry) {
-      return;
-    }
-
-    try {
-      if (bookmarked) {
-        await removeBookmark(db, entry.word.id);
-      } else {
-        await addBookmark(db, entry.word.id);
-      }
-      setBookmarked((prev) => !prev);
-    } catch (error) {
-      console.error("Failed to toggle bookmark:", error);
-    }
-  };
 
   const handleSpeech = async () => {
     if (entry) {
@@ -148,13 +124,6 @@ export default function WordDetailScreen() {
       <Stack.Screen
         options={{
           headerTitle: () => <NavHeader title={title} />,
-          headerRight: () => (
-            <HapticButton
-              color={headerColor}
-              systemImage={bookmarked ? "bookmark.fill" : "bookmark"}
-              onPress={handleToggleBookmark}
-            />
-          ),
         }}
       />
 

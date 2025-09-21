@@ -1,6 +1,5 @@
-import { Stack, useFocusEffect } from "expo-router";
-import { useSQLiteContext } from "expo-sqlite";
-import { useCallback, useState } from "react";
+import { Stack, useRouter } from "expo-router";
+import { useCallback } from "react";
 
 import { FlashList } from "@shopify/flash-list";
 import { StyleSheet } from "react-native";
@@ -8,52 +7,27 @@ import { StyleSheet } from "react-native";
 import { ListItem } from "@/components/ListItem";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
-import { Colors } from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
-import {
-  DictionaryEntry,
-  getBookmarks,
-  removeBookmark
-} from "@/services/database";
+import { useSearchHistory } from "@/hooks/useSearchHistory";
+import { HistoryEntry } from "@/services/database";
 
-export default function BookmarksScreen() {
-  const [bookmarks, setBookmarks] = useState<DictionaryEntry[]>([]);
-  const db = useSQLiteContext();
-  const [loading, setLoading] = useState(false);
+export default function HistoryScreen() {
+  const router = useRouter();
   const colorScheme = useColorScheme();
+  const history = useSearchHistory();
 
-  useFocusEffect(
-    useCallback(() => {
-      const fetchBookmarks = async () => {
-        try {
-          setLoading(true);
-          const results = await getBookmarks(db);
-          setBookmarks(results);
-        } catch (error) {
-          console.error("Failed to fetch bookmarks:", error);
-        } finally {
-          setLoading(false);
-        }
-      };
-
-      fetchBookmarks();
-    }, [db])
-  );
-
-  const handleRemoveBookmark = async (item: DictionaryEntry & { meaning?: string }) => {
-    await removeBookmark(db, item.id);
-    setBookmarks((prev) => prev.filter((b) => b.id !== item.id));
-  };
+  const handleHistoryItemPress = useCallback((item: HistoryEntry) => {
+    router.push({
+      pathname: "/word/[id]",
+      params: { id: item.wordId.toString(), title: item.word },
+    });
+  }, [router]);
 
   const renderListHeader = () => {
     let text = "";
 
-    if (loading) {
-      text = "Loading bookmarks...";
-    }
-
-    if (bookmarks.length === 0) {
-      text = "No bookmarks yet";
+    if (history.list.length === 0) {
+      text = "No search history yet";
     }
 
     if (text.length === 0) {
@@ -71,7 +45,7 @@ export default function BookmarksScreen() {
     <>
       <Stack.Screen
         options={{
-          title: "Bookmarks",
+          title: "History",
           headerLargeTitle: true,
           headerTransparent: true,
           headerTintColor: colorScheme === "dark" ? "white" : "black",
@@ -80,21 +54,18 @@ export default function BookmarksScreen() {
           },
         }}
       />
-      <ThemedView
-        style={styles.container}
-        lightColor={Colors.light.background}
-        darkColor={Colors.dark.background}
-      >
+      <ThemedView style={styles.container}>
         <FlashList
           contentInsetAdjustmentBehavior="automatic"
-          data={bookmarks}
+          data={history.list}
           renderItem={({ index, item }) => (
             <ListItem
-              variant="bookmark"
+              variant="history"
               item={item}
               index={index}
-              total={bookmarks.length}
-              onRemove={handleRemoveBookmark}
+              total={history.list.length}
+              onPress={() => handleHistoryItemPress(item)}
+              onRemove={history.removeItem}
             />
           )}
           keyExtractor={(item) => item.id.toString()}
