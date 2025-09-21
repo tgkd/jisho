@@ -1,6 +1,5 @@
 import { useAudioPlayer } from "expo-audio";
 import { Stack, useLocalSearchParams } from "expo-router";
-import * as Speech from "expo-speech";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -58,6 +57,7 @@ export default function WordDetailScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [bookmarked, setBookmarked] = useState(false);
   const db = useSQLiteContext();
+  const ai = useUnifiedAI();
 
   const details = useMemo(
     () =>
@@ -113,9 +113,13 @@ export default function WordDetailScreen() {
     }
   };
 
-  const handleSpeech = () => {
+  const handleSpeech = async () => {
     if (entry) {
-      Speech.speak(entry.word.word, { language: "ja" });
+      try {
+        await ai.generateSpeech(entry.word.word, { language: "ja" });
+      } catch (error) {
+        console.error("Speech generation failed:", error);
+      }
     }
   };
 
@@ -297,13 +301,17 @@ function ExampleRow({
   const audioAvailable = ai.getProviderCapabilities().audio;
   const [loading, setLoading] = useState(false);
 
-  const fallbackToSpeech = () => {
-    Speech.speak(e.japaneseText, { language: "ja" });
+  const fallbackToSpeech = async () => {
+    try {
+      await ai.generateSpeech(e.japaneseText, { language: "ja" });
+    } catch (error) {
+      console.error("Speech generation failed:", error);
+    }
   };
 
   const handlePlayText = async () => {
     if (!audioAvailable) {
-      fallbackToSpeech();
+      await fallbackToSpeech();
       return;
     }
 
@@ -326,11 +334,11 @@ function ExampleRow({
         player.play();
         await saveAudioFile(db, wordId, e.id, audioPath);
       } else {
-        fallbackToSpeech();
+        await fallbackToSpeech();
       }
     } catch (error) {
       console.error("Failed to play text:", error);
-      fallbackToSpeech();
+      await fallbackToSpeech();
     } finally {
       setLoading(false);
     }

@@ -1,5 +1,4 @@
 import { Stack, useLocalSearchParams } from "expo-router";
-import * as Speech from "expo-speech";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
@@ -11,6 +10,7 @@ import { ThemedView } from "@/components/ThemedView";
 import { Card } from "@/components/ui/Card";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { useThemeColor } from "@/hooks/useThemeColor";
+import { useUnifiedAI } from "@/providers/UnifiedAIProvider";
 import { getKanjiById, KanjiEntry } from "@/services/database";
 
 export default function KanjiDetailScreen() {
@@ -93,9 +93,14 @@ export default function KanjiDetailScreen() {
 
 function ReadingsSection({ entry }: { entry: KanjiEntry }) {
   const tintColor = useThemeColor({}, "tint");
+  const ai = useUnifiedAI();
 
-  const handleSpeech = (reading: string) => {
-    Speech.speak(reading, { language: "ja", rate: 0.75 });
+  const handleSpeech = async (reading: string) => {
+    try {
+      await ai.generateSpeech(reading, { language: "ja", rate: 0.75 });
+    } catch (error) {
+      console.error("Speech generation failed:", error);
+    }
   };
 
   return (

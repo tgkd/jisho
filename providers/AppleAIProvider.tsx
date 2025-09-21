@@ -1,5 +1,10 @@
 import { apple } from "@react-native-ai/apple";
-import { generateObject, streamText } from "ai";
+import {
+  experimental_generateSpeech as speech,
+  generateObject,
+  streamText,
+} from "ai";
+import { useAudioPlayer } from "expo-audio";
 import type { ReactNode } from "react";
 import React, { createContext, useCallback, useContext, useState } from "react";
 
@@ -28,6 +33,10 @@ export interface AIProviderValue {
     onChunk: (text: string) => void,
     onComplete: (fullResponse: string, error?: string) => void
   ) => Promise<void>;
+  generateSpeech: (
+    text: string,
+    options?: { language?: string; rate?: number }
+  ) => Promise<void>;
   isReady: boolean;
   isGenerating: boolean;
   error: string | null;
@@ -47,6 +56,9 @@ export function AppleAIProvider({ children }: { children: ReactNode }) {
   const [abortController, setAbortController] =
     useState<AbortController | null>(null);
   const isReady = apple.isAvailable();
+
+  // Audio player for speech synthesis
+  const audioPlayer = useAudioPlayer();
 
   const generateExamples = useCallback(
     async (prompt: string, onComplete: (resp: AiExample[]) => void) => {
@@ -158,6 +170,40 @@ export function AppleAIProvider({ children }: { children: ReactNode }) {
     }
   }, [abortController]);
 
+  const generateSpeech = useCallback(
+    async (
+      text: string,
+      options: { language?: string; rate?: number } = {}
+    ) => {
+      console.log("start local", text);
+
+      if (!isReady) {
+        throw new Error("Apple AI not ready for speech synthesis");
+      }
+
+      try {
+        console.log("generating speech for:", text);
+
+        const data = await speech({
+          model: apple.speechModel(),
+          text,
+          language:
+            options.language === "ja" ? "ja-JP" : options.language || "en-US",
+        });
+
+        const audioDataUri = `data:audio/wav;base64,${data.audio.base64}`;
+
+        // Load and play the audio
+        await audioPlayer.replace(audioDataUri);
+        await audioPlayer.play();
+      } catch (error) {
+        console.error("Apple AI speech synthesis failed:", error);
+        throw error;
+      }
+    },
+    [isReady, audioPlayer]
+  );
+
   const clearHistory = useCallback(() => {
     setCurrentResponse("");
     setError(null);
@@ -168,6 +214,7 @@ export function AppleAIProvider({ children }: { children: ReactNode }) {
       value={{
         generateExamples,
         explainText,
+        generateSpeech,
         clearHistory,
         isReady,
         isGenerating,
