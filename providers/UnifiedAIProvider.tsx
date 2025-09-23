@@ -5,16 +5,14 @@ import React, {
   useCallback,
   useContext,
   useEffect,
-  useState,
+  useState
 } from "react";
 import { useMMKVBoolean, useMMKVString } from "react-native-mmkv";
 
 import {
   AiExample,
-  ExplainRequestType,
-  getAiExamples,
-  getAiExplanation,
-  getAiSound,
+  ExplainRequestType, getAiChat, getAiExamples,
+  getAiExplanation, getAiSound
 } from "@/services/request";
 import { SETTINGS_KEYS } from "@/services/storage";
 import { useAppleAI } from "./AppleAIProvider";
@@ -34,6 +32,11 @@ export interface UnifiedAIContextValue {
   explainText: (
     text: string,
     type: ExplainRequestType,
+    streaming: StreamingResponse,
+    signal?: AbortSignal
+  ) => Promise<void>;
+  chatWithMessages: (
+    messages: { role: 'user' | 'assistant'; content: string }[],
     streaming: StreamingResponse,
     signal?: AbortSignal
   ) => Promise<void>;
@@ -235,6 +238,97 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
     [currentProvider, localAI, remoteAvailable]
   );
 
+  const chatWithMessages = useCallback(
+    async (
+      messages: { role: 'user' | 'assistant'; content: string }[],
+      streaming: StreamingResponse,
+      signal?: AbortSignal
+    ): Promise<void> => {
+      if (currentProvider === "none") {
+        streaming.onError(
+          "No AI provider available. Please configure API credentials in Settings or ensure Apple Intelligence is available."
+        );
+        return;
+      }
+
+      try {
+        if (currentProvider === "local") {
+          await localAI.chatWithMessages(
+            messages,
+            streaming.onChunk,
+            (fullResponse, error) => {
+              if (error) {
+                streaming.onError(error);
+              } else {
+                streaming.onComplete(fullResponse);
+              }
+            }
+          );
+        } else {
+          // Remote provider with streaming
+          const fetchFn = getAiChat(signal);
+          const response = await fetchFn(messages);
+
+          if (!response.ok) {
+            throw new Error(`HTTP error: ${response.status}`);
+          }
+
+          const reader = response.body?.getReader();
+          if (!reader) {
+            const fullText = await response.text();
+            streaming.onChunk(fullText);
+            streaming.onComplete(fullText);
+            return;
+          }
+
+          const decoder = new TextDecoder();
+          let fullText = "";
+
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+
+              const chunk = decoder.decode(value, { stream: true });
+              fullText += chunk;
+              streaming.onChunk(chunk);
+            }
+
+            const remaining = decoder.decode();
+            if (remaining) {
+              fullText += remaining;
+              streaming.onChunk(remaining);
+            }
+
+            streaming.onComplete(fullText);
+          } catch (streamError) {
+            streaming.onError(`Stream reading error: ${streamError}`);
+          }
+        }
+      } catch (error) {
+        // Fallback logic
+        if (currentProvider === "local" && remoteAvailable) {
+          console.warn("Local AI failed, falling back to remote");
+          try {
+            const fetchFn = getAiChat(signal);
+            const response = await fetchFn(messages);
+            // Handle remote streaming fallback...
+            const fullText = await response.text();
+            streaming.onChunk(fullText);
+            streaming.onComplete(fullText);
+          } catch (fallbackError) {
+            streaming.onError(`All providers failed: ${fallbackError}`);
+          }
+        } else {
+          streaming.onError(
+            error instanceof Error ? error.message : "Unknown error"
+          );
+        }
+      }
+    },
+    [currentProvider, localAI, remoteAvailable]
+  );
+
   const generateAudio = useCallback(
     async (text: string): Promise<string | null> => {
       if (currentProvider === "none" || currentProvider === "local") {
@@ -307,6 +401,7 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
   const contextValue: UnifiedAIContextValue = {
     generateExamples,
     explainText,
+    chatWithMessages,
     generateAudio,
     generateSpeech,
     isGenerating,

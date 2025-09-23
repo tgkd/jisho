@@ -33,20 +33,27 @@ export interface AIProviderValue {
     onChunk: (text: string) => void,
     onComplete: (fullResponse: string, error?: string) => void
   ) => Promise<void>;
+  chatWithMessages: (
+    messages: { role: "user" | "assistant"; content: string }[],
+    onChunk: (text: string) => void,
+    onComplete: (fullResponse: string, error?: string) => void
+  ) => Promise<void>;
   generateSpeech: (text: string) => Promise<void>;
   isReady: boolean;
   isGenerating: boolean;
   error: string | null;
   interrupt: () => void;
   clearHistory: () => void;
-  genType: "examples" | "explain" | null;
+  genType: "examples" | "explain" | "chat" | null;
   currentResponse: string;
 }
 
 const AIContext = createContext<AIProviderValue | undefined>(undefined);
 
 export function AppleAIProvider({ children }: { children: ReactNode }) {
-  const [genType, setGenType] = useState<"examples" | "explain" | null>(null);
+  const [genType, setGenType] = useState<
+    "examples" | "explain" | "chat" | null
+  >(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentResponse, setCurrentResponse] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -121,13 +128,10 @@ export function AppleAIProvider({ children }: { children: ReactNode }) {
       const controller = new AbortController();
       setAbortController(controller);
 
-      // Build a concise, free-form prompt that works for both words and sentences
-      const systemPrompt = `${EXPLAIN_GRAMMAR}\n\nTarget: ${text}`;
-
       try {
         const { textStream } = await streamText({
           model: apple(),
-          prompt: systemPrompt,
+          prompt: `${EXPLAIN_GRAMMAR}\n\nTarget: ${text}`,
           abortSignal: controller.signal,
         });
 
@@ -144,6 +148,63 @@ export function AppleAIProvider({ children }: { children: ReactNode }) {
           console.log("Text explanation was aborted");
         } else {
           console.error("Error explaining text:", error);
+          const errorMessage =
+            error instanceof Error ? error.message : "Unknown error";
+          setError(errorMessage);
+          onComplete("", errorMessage);
+        }
+      } finally {
+        setIsGenerating(false);
+        setGenType(null);
+        setAbortController(null);
+      }
+    },
+    [isReady]
+  );
+
+  const chatWithMessages = useCallback(
+    async (
+      messages: { role: "user" | "assistant"; content: string }[],
+      onChunk: (text: string) => void,
+      onComplete: (fullResponse: string, error?: string) => void
+    ) => {
+      if (!isReady) {
+        console.warn("Apple AI not ready or not enabled for chat.");
+        onComplete("", "Apple AI not available");
+        return;
+      }
+
+      setGenType("chat");
+      setIsGenerating(true);
+      setError(null);
+      setCurrentResponse("");
+
+      const controller = new AbortController();
+      setAbortController(controller);
+
+      try {
+        const { textStream } = await streamText({
+          model: apple(),
+          messages: [
+            { role: "system", content: CHAT_SYSTEM_PROMPT },
+            ...messages,
+          ],
+          abortSignal: controller.signal,
+        });
+
+        let fullResponse = "";
+        for await (const chunk of textStream) {
+          fullResponse += chunk;
+          onChunk(chunk);
+          setCurrentResponse(fullResponse);
+        }
+
+        onComplete(fullResponse);
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") {
+          console.log("Chat was aborted");
+        } else {
+          console.error("Error in chat:", error);
           const errorMessage =
             error instanceof Error ? error.message : "Unknown error";
           setError(errorMessage);
@@ -204,6 +265,7 @@ export function AppleAIProvider({ children }: { children: ReactNode }) {
       value={{
         generateExamples,
         explainText,
+        chatWithMessages,
         generateSpeech,
         clearHistory,
         isReady,
@@ -247,6 +309,12 @@ Given a word or a sentence, explain the core meaning or grammatical function and
 Mention part of speech or grammar role when relevant.
 If helpful, include up to 2 short natural examples with kana and translations.
 Keep it compact and free-form (no rigid structure).`;
+
+const CHAT_SYSTEM_PROMPT = `You are a helpful Japanese language tutor assistant.
+You have expertise in Japanese vocabulary, grammar, cultural nuances, and language learning.
+Provide clear, concise, and helpful responses to questions about Japanese language and culture.
+You can explain grammar points, provide examples, suggest learning strategies, and help with translations.
+Keep your responses conversational and educational.`;
 
 // note: prompt separation by type removed; a single generic prompt is used for both words and sentences.
 /**

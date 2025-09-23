@@ -46,7 +46,7 @@
     "@tanstack/react-query": "5.89.0",
     "ai": "^5.1.0-beta.4",
     "eventsource-parser": "^1.1.2",
-    "expo": "54.0.8",
+    "expo": "~54.0.10",
     "expo-audio": "~1.0.13",
     "expo-blur": "~15.0.7",
     "expo-clipboard": "~8.0.7",
@@ -56,7 +56,7 @@
     "expo-haptics": "~15.0.7",
     "expo-linking": "~8.0.8",
     "expo-network": "~8.0.7",
-    "expo-router": "~6.0.7",
+    "expo-router": "~6.0.8",
     "expo-speech": "~14.0.7",
     "expo-splash-screen": "~31.0.10",
     "expo-sqlite": "~16.0.8",
@@ -102,5 +102,5 @@
     "typescript": "~5.9.2"
   },
   "private": true,
-  "packageManager": "yarn@4.9.4"
+  "packageManager": "yarn@4.10.2"
 }

@@ -1,5 +1,5 @@
 import { queryOptions } from "@tanstack/react-query";
-import { Paths, File, Directory } from "expo-file-system";
+import { Directory, File, Paths } from "expo-file-system";
 import { fetch, FetchRequestInit } from "expo/fetch";
 import { z } from "zod";
 
@@ -156,6 +156,35 @@ export function getAiExplanation(signal?: AbortSignal | null) {
         signal: signal || undefined,
         headers,
         credentials: defaultOptions.credentials,
+      }
+    );
+  };
+}
+
+export function getAiChat(signal?: AbortSignal | null) {
+  return function (
+    messages: { role: 'user' | 'assistant'; content: string }[],
+    provider: "cf" | "open" = "open"
+  ) {
+    if (!messages.length) {
+      return Promise.resolve(new Response());
+    }
+    const defaultOptions = getDefaultOptions();
+    const headers = {
+      ...defaultOptions.headers,
+      "Content-Type": "application/json",
+      Accept: "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    };
+    return fetch(
+      `${process.env.EXPO_PUBLIC_BASE_URL}/chat/${provider}`,
+      {
+        method: "POST",
+        signal: signal || undefined,
+        headers,
+        credentials: defaultOptions.credentials,
+        body: JSON.stringify({ messages }),
       }
     );
   };

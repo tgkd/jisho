@@ -9,125 +9,132 @@ import { ThemedText } from "@/components/ThemedText";
 import { Card } from "@/components/ui/Card";
 import { Colors } from "@/constants/Colors";
 import { useMdStyles } from "@/hooks/useMdStyles";
-import { useThemeColor } from "@/hooks/useThemeColor";
 import { useUnifiedAI } from "@/providers/UnifiedAIProvider";
-import { ExplainRequestType } from "@/services/request";
 
-interface TemporaryChat {
-  id: number;
-  query: string;
-  response: string;
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
 }
 
 export default function ExploreScreen() {
   const markdownStyles = useMdStyles();
-  const backgroundColor = useThemeColor({}, "background");
   const ai = useUnifiedAI();
-  const scrollRef = useRef<FlashListRef<TemporaryChat>>(null);
-  const [chatsHistory, setChatsHistory] = useState<TemporaryChat[]>([]);
-  const [currentResponse, setCurrentResponse] = useState<string>("");
-  const [currentQuery, setCurrentQuery] = useState<string>("");
-  const [nextId, setNextId] = useState<number>(1);
-
-  const handleAddChat = useCallback(
-    (query: string, response: string) => {
-      const newChat: TemporaryChat = {
-        id: nextId,
-        query,
-        response,
-      };
-      setChatsHistory((c) => [...c, newChat]);
-      setNextId((prev) => prev + 1);
-      setCurrentResponse("");
-      setCurrentQuery("");
-    },
-    [nextId]
-  );
+  const scrollRef = useRef<FlashListRef<Message>>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
 
   const handleSubmit = useCallback(
     async (query: string) => {
       const text = query.trim();
 
-      if (text.length === 0) {
+      if (text.length === 0 || isGenerating) {
         return;
       }
 
       try {
-        setCurrentResponse("");
-        setCurrentQuery(query);
+        setIsGenerating(true);
 
-        await ai.explainText(query, ExplainRequestType.V, {
+        // Add user message and placeholder assistant message to UI
+        const userMessage: Message = { role: 'user', content: text };
+        const placeholderAssistant: Message = { role: 'assistant', content: '' };
+
+        const updatedUIMessages: Message[] = [
+          ...messages,
+          userMessage,
+          placeholderAssistant,
+        ];
+        setMessages(updatedUIMessages);
+
+        // Send only messages up to the user message (no empty assistant message)
+        const conversationMessages = [...messages, userMessage];
+        const assistantMessageIndex = updatedUIMessages.length - 1;
+        let accumulatedContent = '';
+
+        await ai.chatWithMessages(conversationMessages, {
           onChunk: (chunk: string) => {
-            setCurrentResponse((prev) => prev + chunk);
+            accumulatedContent += chunk;
+            setMessages((prev) => {
+              const newMessages = [...prev];
+              newMessages[assistantMessageIndex] = {
+                role: 'assistant',
+                content: accumulatedContent,
+              };
+              return newMessages;
+            });
+            scrollRef.current?.scrollToEnd({ animated: true });
+
           },
-          onComplete: (fullResponse: string, error?: string) => {
+          onComplete: (_fullResponse: string, error?: string) => {
+            setIsGenerating(false);
+
             if (error) {
               console.error("AI error:", error);
-              setCurrentResponse("");
-              setCurrentQuery("");
+              setMessages((prev) => {
+                const newMessages = [...prev];
+                newMessages[assistantMessageIndex] = {
+                  role: 'assistant',
+                  content: `Error: ${error}`,
+                };
+                return newMessages;
+              });
               return;
             }
 
-            if (fullResponse) {
-              scrollRef.current?.scrollToEnd({ animated: true });
-              handleAddChat(query, fullResponse);
-            }
           },
           onError: (error: string) => {
             console.error("AI error:", error);
-            setCurrentResponse("");
-            setCurrentQuery("");
+            setIsGenerating(false);
+            setMessages((prev) => {
+              const newMessages = [...prev];
+              newMessages[assistantMessageIndex] = {
+                role: 'assistant',
+                content: `Error: ${error}`,
+              };
+              return newMessages;
+            });
           },
         });
       } catch (error) {
         console.error("Search failed:", error);
+        setIsGenerating(false);
       }
     },
-    [ai, handleAddChat, scrollRef]
+    [ai, messages, isGenerating, scrollRef]
   );
 
   const renderItem = useCallback(
-    ({ item }: { item: TemporaryChat }) => (
+    ({ item }: { item: Message }) => (
       <Card
-        lightColor={Colors.light.secondaryBackground}
-        darkColor={Colors.dark.secondaryBackground}
+        lightColor={
+          item.role === 'user'
+            ? Colors.light.background
+            : Colors.light.secondaryBackground
+        }
+        darkColor={
+          item.role === 'user'
+            ? Colors.dark.background
+            : Colors.dark.secondaryBackground
+        }
       >
         <View style={styles.chatItem}>
-          <ThemedText type="defaultSemiBold" style={styles.query}>
-            {item.query}
-          </ThemedText>
-          <Markdown style={markdownStyles}>{item.response}</Markdown>
+          {item.role === 'user' ? (
+            <ThemedText type="defaultSemiBold" style={styles.userMessage}>
+              {item.content}
+            </ThemedText>
+          ) : (
+            <Markdown style={markdownStyles}>
+              {item.content || '...'}
+            </Markdown>
+          )}
         </View>
       </Card>
     ),
     [markdownStyles]
   );
 
-  const renderFooter = useCallback(
-    () =>
-      currentResponse?.length || currentQuery?.length ? (
-        <Card
-          lightColor={Colors.light.secondaryBackground}
-          darkColor={Colors.dark.secondaryBackground}
-        >
-          <View style={styles.chatItem}>
-            {currentQuery && (
-              <ThemedText type="defaultSemiBold" style={styles.query}>
-                {currentQuery}
-              </ThemedText>
-            )}
-            {currentResponse && (
-              <Markdown style={markdownStyles}>{currentResponse}</Markdown>
-            )}
-          </View>
-        </Card>
-      ) : null,
-    [currentResponse, currentQuery, markdownStyles]
-  );
-
   const renderEmpty = useCallback(
     () =>
-      !chatsHistory.length && !currentResponse.length ? (
+      !messages.length ? (
         <View style={styles.emptyMsg}>
           <ThemedText textAlign="center" type="secondary">
             {
@@ -136,7 +143,7 @@ export default function ExploreScreen() {
           </ThemedText>
         </View>
       ) : null,
-    [chatsHistory, currentResponse]
+    [messages]
   );
 
   return (
@@ -148,8 +155,7 @@ export default function ExploreScreen() {
         contentContainerStyle={styles.scrollContainer}
         keyboardDismissMode="on-drag"
         renderItem={renderItem}
-        data={chatsHistory}
-        ListFooterComponent={renderFooter}
+        data={messages}
         ListEmptyComponent={renderEmpty}
         ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
       />
@@ -157,7 +163,7 @@ export default function ExploreScreen() {
         behavior="translate-with-padding"
         keyboardVerticalOffset={32}
       >
-        <ChatFooterView handleSubmit={handleSubmit} loading={ai.isGenerating} />
+        <ChatFooterView handleSubmit={handleSubmit} loading={isGenerating} />
       </KeyboardAvoidingView>
     </>
   );
@@ -185,6 +191,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   query: {
+    opacity: 0.8,
+  },
+  userMessage: {
     opacity: 0.8,
   },
 });
