@@ -7,7 +7,15 @@ import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { ListItem } from "@/components/ListItem";
 import { ThemedText } from "@/components/ThemedText";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
-import { HistoryEntry } from "@/services/database";
+import { HistoryEntry, WordHistoryEntry, KanjiHistoryEntry } from "@/services/database";
+
+function isWordHistoryEntry(item: HistoryEntry): item is WordHistoryEntry {
+  return item.entryType === 'word';
+}
+
+function isKanjiHistoryEntry(item: HistoryEntry): item is KanjiHistoryEntry {
+  return item.entryType === 'kanji';
+}
 
 export default function HistoryScreen() {
   const router = useRouter();
@@ -15,10 +23,17 @@ export default function HistoryScreen() {
 
   const handleHistoryItemPress = useCallback(
     (item: HistoryEntry) => {
-      router.push({
-        pathname: "/word/[id]",
-        params: { id: item.wordId.toString(), title: item.word },
-      });
+      if (isWordHistoryEntry(item)) {
+        router.push({
+          pathname: "/word/[id]",
+          params: { id: item.wordId.toString(), title: item.word },
+        });
+      } else if (isKanjiHistoryEntry(item)) {
+        router.navigate({
+          pathname: "/word/kanji/[id]",
+          params: { id: item.kanjiId.toString(), title: item.character },
+        });
+      }
     },
     [router]
   );

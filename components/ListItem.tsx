@@ -15,6 +15,8 @@ import { useThemeColor } from "@/hooks/useThemeColor";
 import {
   DictionaryEntry,
   HistoryEntry,
+  WordHistoryEntry,
+  KanjiHistoryEntry,
   KanjiEntry,
   WordMeaning,
 } from "@/services/database";
@@ -25,6 +27,15 @@ import { ThemedView } from "./ThemedView";
 import { IconSymbol } from "./ui/IconSymbol";
 
 const ACTION_WIDTH = 40;
+
+// Helper functions for type checking
+function isWordHistoryEntry(item: HistoryEntry): item is WordHistoryEntry {
+  return item.entryType === 'word';
+}
+
+function isKanjiHistoryEntry(item: HistoryEntry): item is KanjiHistoryEntry {
+  return item.entryType === 'kanji';
+}
 
 type BaseListItemProps = {
   index: number;
@@ -71,10 +82,17 @@ export const ListItem = (props: ListItemProps) => {
     (() => {
       if (variant === "history") {
         const item = props.item as HistoryEntry;
-        router.push({
-          pathname: "/word/[id]",
-          params: { id: item.wordId.toString(), title: item.word },
-        });
+        if (isWordHistoryEntry(item)) {
+          router.push({
+            pathname: "/word/[id]",
+            params: { id: item.wordId.toString(), title: item.word },
+          });
+        } else if (isKanjiHistoryEntry(item)) {
+          router.navigate({
+            pathname: "/word/kanji/[id]",
+            params: { id: item.kanjiId.toString(), title: item.character },
+          });
+        }
       } else if (variant === "search") {
         const item = props.item as DictionaryEntry;
         router.push({
@@ -219,20 +237,38 @@ function HistoryContent({
         lightColor={Colors.light.groupedBackground}
         darkColor={Colors.dark.groupedBackground}
       >
-        <ThemedText uiTextView={false}>
-          <ThemedText type="defaultSemiBold" uiTextView={false}>
-            {item.word + " "}
-          </ThemedText>
-          <ThemedText size="sm" uiTextView={false}>
-            {formatJp(item.reading, false)}
-          </ThemedText>
-        </ThemedText>
-        <ThemedText type="secondary" style={styles.meaning} uiTextView={false}>
-          {formatEn(item.meaning, "none", { truncateAll: 45 }).replace(
-            /[,;]\s*$/,
-            ""
-          )}
-        </ThemedText>
+        {isWordHistoryEntry(item) ? (
+          <>
+            <ThemedText uiTextView={false}>
+              <ThemedText type="defaultSemiBold" uiTextView={false}>
+                {item.word + " "}
+              </ThemedText>
+              <ThemedText size="sm" uiTextView={false}>
+                {formatJp(item.reading, false)}
+              </ThemedText>
+            </ThemedText>
+            <ThemedText type="secondary" style={styles.meaning} uiTextView={false}>
+              {formatEn(item.meaning, "none", { truncateAll: 45 }).replace(
+                /[,;]\s*$/,
+                ""
+              )}
+            </ThemedText>
+          </>
+        ) : (
+          <>
+            <ThemedText uiTextView={false}>
+              <ThemedText type="defaultSemiBold" size="lg" uiTextView={false}>
+                {item.character}
+              </ThemedText>
+            </ThemedText>
+            <ThemedText type="secondary" style={styles.meaning} uiTextView={false}>
+              {formatEn(item.meaning, "none", { truncateAll: 45 }).replace(
+                /[,;]\s*$/,
+                ""
+              )}
+            </ThemedText>
+          </>
+        )}
       </ThemedView>
       {!isLast ? <View style={styles.separator} /> : null}
     </HapticTab>

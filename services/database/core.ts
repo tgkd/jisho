@@ -115,10 +115,18 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
       await db.execAsync(`
         CREATE TABLE IF NOT EXISTS history (
           id INTEGER PRIMARY KEY NOT NULL,
-          word_id INTEGER NOT NULL,
+          entry_type TEXT DEFAULT 'word' NOT NULL,
+          word_id INTEGER,
+          kanji_id INTEGER,
+          kanji_character TEXT,
+          kanji_meaning TEXT,
           created_at TEXT NOT NULL,
           FOREIGN KEY (word_id) REFERENCES words (id)
-        );`);
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_history_entry_type ON history(entry_type);
+        CREATE INDEX IF NOT EXISTS idx_history_kanji_id ON history(kanji_id);
+      `);
 
       await db.execAsync(`PRAGMA user_version = 4`);
       currentDbVersion = 4;
@@ -226,6 +234,51 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
     if (currentDbVersion < 11) {
       await db.execAsync(`PRAGMA user_version = 11`);
       currentDbVersion = 11;
+    }
+
+    if (currentDbVersion < 12) {
+      try {
+        // Update existing history table to support both word and kanji entries
+        // For existing databases that already have the old history table structure
+
+        // Create new history table with correct structure
+        await db.execAsync(`
+          CREATE TABLE history_new (
+            id INTEGER PRIMARY KEY NOT NULL,
+            entry_type TEXT DEFAULT 'word' NOT NULL,
+            word_id INTEGER,
+            kanji_id INTEGER,
+            kanji_character TEXT,
+            kanji_meaning TEXT,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (word_id) REFERENCES words (id)
+          );
+        `);
+
+        // Copy existing word history data
+        await db.execAsync(`
+          INSERT INTO history_new (id, entry_type, word_id, created_at)
+          SELECT id, 'word', word_id, created_at FROM history;
+        `);
+
+        // Drop old table and rename new one
+        await db.execAsync(`DROP TABLE history;`);
+        await db.execAsync(`ALTER TABLE history_new RENAME TO history;`);
+
+        // Create indexes for performance
+        await db.execAsync(`
+          CREATE INDEX IF NOT EXISTS idx_history_entry_type ON history(entry_type);
+          CREATE INDEX IF NOT EXISTS idx_history_kanji_id ON history(kanji_id);
+        `);
+
+        await db.execAsync(`PRAGMA user_version = 12`);
+        currentDbVersion = 12;
+
+        console.log("✅ History table successfully migrated to support kanji entries");
+      } catch (error) {
+        console.error("Error migrating to version 12:", error);
+        throw error;
+      }
     }
 
     console.log(

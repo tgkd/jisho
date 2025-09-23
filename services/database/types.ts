@@ -46,20 +46,39 @@ export type WordMeaning = Omit<DBWordMeaning, "word_id" | "part_of_speech"> & {
 
 export type DBHistoryEntry = {
   id: number;
-  word_id: number;
+  entry_type: 'word' | 'kanji';
+  // Word fields (nullable for kanji entries)
+  word_id: number | null;
   created_at: number;
-  word: string;
-  reading: string;
+  word: string | null;
+  reading: string | null;
+  // Kanji fields (nullable for word entries)
+  kanji_id: number | null;
+  kanji_character: string | null;
+  kanji_meaning: string | null;
 };
 
-export type HistoryEntry = {
+export type BaseHistoryEntry = {
   id: number;
-  wordId: number;
   createdAt: number;
+};
+
+export type WordHistoryEntry = BaseHistoryEntry & {
+  entryType: 'word';
+  wordId: number;
   word: string;
   reading: string;
   meaning: string;
 };
+
+export type KanjiHistoryEntry = BaseHistoryEntry & {
+  entryType: 'kanji';
+  kanjiId: number;
+  character: string;
+  meaning: string;
+};
+
+export type HistoryEntry = WordHistoryEntry | KanjiHistoryEntry;
 
 
 export type DBAudio = {

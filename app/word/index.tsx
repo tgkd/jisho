@@ -16,6 +16,8 @@ import { useSearchHistory } from "@/hooks/useSearchHistory";
 import {
   DictionaryEntry,
   HistoryEntry,
+  WordHistoryEntry,
+  KanjiHistoryEntry,
   KanjiEntry,
   searchDictionary,
   searchKanji,
@@ -33,7 +35,15 @@ function isKanjiEntry(item: SearchResult | HistoryEntry): item is KanjiEntry {
 function isHistoryItem(
   item: SearchResult | HistoryEntry
 ): item is HistoryEntry {
-  return "wordId" in item;
+  return "entryType" in item;
+}
+
+function isWordHistoryEntry(item: HistoryEntry): item is WordHistoryEntry {
+  return item.entryType === 'word';
+}
+
+function isKanjiHistoryEntry(item: HistoryEntry): item is KanjiHistoryEntry {
+  return item.entryType === 'kanji';
 }
 
 export default function HomeScreen() {
@@ -171,20 +181,24 @@ export default function HomeScreen() {
 
   const handleHistoryItemPress = useCallback(
     (item: HistoryEntry) => {
-      router.push({
-        pathname: "/word/[id]",
-        params: { id: item.wordId.toString(), title: item.word },
-      });
+      if (isWordHistoryEntry(item)) {
+        router.push({
+          pathname: "/word/[id]",
+          params: { id: item.wordId.toString(), title: item.word },
+        });
+      } else if (isKanjiHistoryEntry(item)) {
+        router.navigate({
+          pathname: "/word/kanji/[id]",
+          params: { id: item.kanjiId.toString(), title: item.character },
+        });
+      }
     },
     [router]
   );
 
   // Determine what data to show
   const shouldShowRecentHistory =
-    searchMode === "word" &&
-    !search.trim().length &&
-    !results.length &&
-    !loading;
+    !search.trim().length && !results.length && !loading;
   const recentHistory = shouldShowRecentHistory
     ? history.list.slice(0, 10)
     : [];
@@ -236,6 +250,15 @@ export default function HomeScreen() {
           item={item}
           index={index}
           total={results?.length || 0}
+          onPress={() => {
+            // Add to history when kanji is pressed
+            history.addKanjiToHistory(item);
+            // Navigate to kanji detail
+            router.navigate({
+              pathname: "/word/kanji/[id]",
+              params: { id: item.id.toString(), title: item.character },
+            });
+          }}
         />
       );
     }
@@ -248,14 +271,6 @@ export default function HomeScreen() {
         index={index}
         total={results?.length || 0}
       />
-    );
-  };
-
-  const renderHeader = () => {
-    return (
-      <>
-        <TagsList items={tokens} onSelect={handleTokenSelect} />
-      </>
     );
   };
 
@@ -286,14 +301,14 @@ export default function HomeScreen() {
           headerSearchBarOptions: {
             placement: "automatic",
             placeholder:
-              searchMode === "word" ? "Search in Japanese..." : "Search kanji",
+              searchMode === "word" ? "Search by word..." : "Search by kanji...",
             onChangeText: (e) => handleChange(e.nativeEvent.text),
             ref: searchBarRef as React.RefObject<SearchBarCommands>,
             onCancelButtonPress: handleCancelButtonPress,
             hideWhenScrolling: false,
             autoCapitalize: searchMode === "kanji" ? "none" : "sentences",
           },
-          headerTitle: ({}) => <Text style={{ flex: 1 }} />,
+          headerTitle: () => <Text style={{ flex: 1 }} />,
           title: searchMode === "word" ? "Words" : "Kanji",
           headerRight: () => (
             <HapticButton
@@ -315,7 +330,9 @@ export default function HomeScreen() {
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
-        ListHeaderComponent={searchMode === "word" ? renderHeader() : null}
+        ListHeaderComponent={
+          <TagsList items={tokens} onSelect={handleTokenSelect} />
+        }
         ListEmptyComponent={renderEmptyContainer()}
         ListFooterComponent={
           loading ? (

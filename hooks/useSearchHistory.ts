@@ -5,7 +5,9 @@ import { useCallback, useState } from "react";
 import {
   getHistory,
   HistoryEntry,
-  removeHistoryById
+  removeHistoryById,
+  addKanjiToHistory,
+  KanjiEntry
 } from "@/services/database";
 
 const PAGE_SIZE = 20;
@@ -57,6 +59,16 @@ export function useSearchHistory() {
     }
   };
 
+  const handleAddKanjiToHistory = async (kanji: KanjiEntry) => {
+    try {
+      await addKanjiToHistory(db, kanji);
+      // Refresh history to show the new item
+      await loadHistory(0, false);
+    } catch (error) {
+      console.error("Failed to add kanji to history:", error);
+    }
+  };
+
   const loadMore = useCallback(() => {
     if (hasMore && !isLoading) {
       const nextPage = page + 1;
@@ -68,6 +80,7 @@ export function useSearchHistory() {
   return {
     list: historyItems,
     removeItem: handleRemoveHistoryItem,
+    addKanjiToHistory: handleAddKanjiToHistory,
     loadMore,
     hasMore,
     isLoading
