@@ -6,8 +6,7 @@ export const SETTINGS_KEYS = {
   SHOW_FURIGANA: "settings.showFurigana",
   API_AUTH_USERNAME: "settings.apiAuthUsername",
   API_AUTH_PASSWORD: "settings.apiAuthPassword",
-  AI_TYPE: "settings.aiType", // "local" | "remote"
-  USE_API_CREDENTIALS: "settings.useApiCredentials",
+  AI_PROVIDER_TYPE: "settings.aiProviderType",
   SEARCH_MODE: "settings.searchMode",
 };
 

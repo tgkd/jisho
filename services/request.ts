@@ -67,7 +67,7 @@ export async function getAiExamples(
 export async function getAiSound(
   prompt: string,
   provider: "cf" | "open" = "open"
-): Promise<string> {
+) {
   if (!prompt) {
     throw new Error("No prompt provided");
   }
@@ -85,14 +85,17 @@ export async function getAiSound(
       process.env.EXPO_PUBLIC_BASE_URL
     }/sound/${provider}?prompt=${encodeURIComponent(prompt)}`,
     new Directory(Paths.cache),
-    { headers }
+    {
+      headers,
+      idempotent: true,
+    }
   );
 
   if (!file.exists) {
     throw new Error("Failed to download audio" + file.uri);
   }
 
-  return file.uri;
+  return file;
 }
 
 function getDefaultOptions(): FetchRequestInit {
@@ -163,7 +166,7 @@ export function getAiExplanation(signal?: AbortSignal | null) {
 
 export function getAiChat(signal?: AbortSignal | null) {
   return function (
-    messages: { role: 'user' | 'assistant'; content: string }[],
+    messages: { role: "user" | "assistant"; content: string }[],
     provider: "cf" | "open" = "open"
   ) {
     if (!messages.length) {
@@ -177,15 +180,12 @@ export function getAiChat(signal?: AbortSignal | null) {
       "Cache-Control": "no-cache",
       Connection: "keep-alive",
     };
-    return fetch(
-      `${process.env.EXPO_PUBLIC_BASE_URL}/chat/${provider}`,
-      {
-        method: "POST",
-        signal: signal || undefined,
-        headers,
-        credentials: defaultOptions.credentials,
-        body: JSON.stringify({ messages }),
-      }
-    );
+    return fetch(`${process.env.EXPO_PUBLIC_BASE_URL}/chat/${provider}`, {
+      method: "POST",
+      signal: signal || undefined,
+      headers,
+      credentials: defaultOptions.credentials,
+      body: JSON.stringify({ messages }),
+    });
   };
 }

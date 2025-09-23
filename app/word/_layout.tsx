@@ -28,6 +28,7 @@ export default function WordLayout() {
         options={{
           title: "Details",
           headerTransparent: true,
+          presentation: "modal",
         }}
       />
       <Stack.Screen

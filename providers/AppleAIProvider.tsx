@@ -38,7 +38,7 @@ export interface AIProviderValue {
     onChunk: (text: string) => void,
     onComplete: (fullResponse: string, error?: string) => void
   ) => Promise<void>;
-  generateSpeech: (text: string) => Promise<void>;
+  generateSpeech: (text: string) => Promise<string | null>; // base64 audio data
   isReady: boolean;
   isGenerating: boolean;
   error: string | null;
@@ -60,9 +60,6 @@ export function AppleAIProvider({ children }: { children: ReactNode }) {
   const [abortController, setAbortController] =
     useState<AbortController | null>(null);
   const isReady = apple.isAvailable();
-  const audioPlayer = useAudioPlayer(undefined, {
-    keepAudioSessionActive: false,
-  });
 
   const generateExamples = useCallback(
     async (prompt: string, onComplete: (resp: AiExample[]) => void) => {
@@ -245,14 +242,13 @@ export function AppleAIProvider({ children }: { children: ReactNode }) {
           language: voice.language,
         });
 
-        await audioPlayer.replace(`data:audio/wav;base64,${data.audio.base64}`);
-        await audioPlayer.play();
+        return data?.audio?.base64 || null;
       } catch (error) {
         console.error("Apple AI speech synthesis failed:", error);
         throw error;
       }
     },
-    [isReady, audioPlayer]
+    [isReady]
   );
 
   const clearHistory = useCallback(() => {

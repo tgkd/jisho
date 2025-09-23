@@ -5,15 +5,16 @@ import {
   StyleSheet,
   Switch,
   TextInput,
-  View,
+  View
 } from "react-native";
-import { useMMKVBoolean, useMMKVString } from "react-native-mmkv";
+import { useMMKVString } from "react-native-mmkv";
 
 import { HapticTab } from "@/components/HapticTab";
 import { ThemedText } from "@/components/ThemedText";
 import { Card } from "@/components/ui/Card";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { Colors, getHighlightColorValue } from "@/constants/Colors";
+import { useUnifiedAI } from "@/providers/UnifiedAIProvider";
 import { clearHistory, resetDatabase } from "@/services/database";
 import { SETTINGS_KEYS } from "@/services/storage";
 
@@ -29,9 +30,7 @@ const highlightColorOptions: {
 
 export default function SettingsScreen() {
   const db = useSQLiteContext();
-  const [useApiCredentials, setUseApiCredentials] = useMMKVBoolean(
-    SETTINGS_KEYS.USE_API_CREDENTIALS
-  );
+  const ai = useUnifiedAI();
 
   const [highlightColorState, setHighlightColor] = useMMKVString(
     SETTINGS_KEYS.HIGHLIGHT_COLOR
@@ -105,8 +104,8 @@ export default function SettingsScreen() {
     );
   };
 
-  const handleToggleApiCredentials = (value: boolean) => {
-    setUseApiCredentials(value);
+  const handleToggleRemoteApi = (value: boolean) => {
+    ai.setCurrentProvider(value ? "remote" : "local");
   };
 
   return (
@@ -141,20 +140,24 @@ export default function SettingsScreen() {
 
         <View style={styles.settingItem}>
           <View style={styles.row}>
-            <ThemedText size="sm">{"Use AI API"}</ThemedText>
+            <ThemedText size="sm">{"Turn on remote API?"}</ThemedText>
             <Switch
-              value={useApiCredentials ?? false}
-              onValueChange={handleToggleApiCredentials}
+              value={ai.currentProvider === "remote"}
+              onValueChange={handleToggleRemoteApi}
               style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
             />
           </View>
-          <ThemedText size="xs">
-            {
-              "Enable external API for AI features (local AI works automatically)"
+          <ThemedText size="xs" style={styles.description}>
+            {ai.currentProvider === "remote"
+              ? "Using remote API (requires credentials below)"
+              : "Using local Apple Intelligence (requires iOS 18.1+)"
             }
           </ThemedText>
+          <ThemedText size="xs" style={styles.description}>
+            {"AI features: conversational chat, word explanations, example sentences, and text-to-speech"}
+          </ThemedText>
 
-          {useApiCredentials ? (
+          {ai.currentProvider === "remote" ? (
             <View>
               <View style={styles.settingItem}>
                 <TextInput

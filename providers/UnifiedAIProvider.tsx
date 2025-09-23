@@ -5,20 +5,23 @@ import React, {
   useCallback,
   useContext,
   useEffect,
-  useState
+  useState,
 } from "react";
-import { useMMKVBoolean, useMMKVString } from "react-native-mmkv";
+import { useMMKVString } from "react-native-mmkv";
 
 import {
   AiExample,
-  ExplainRequestType, getAiChat, getAiExamples,
-  getAiExplanation, getAiSound
+  ExplainRequestType,
+  getAiExamples,
+  getAiExplanation,
+  getAiSound,
 } from "@/services/request";
 import { SETTINGS_KEYS } from "@/services/storage";
 import { useAppleAI } from "./AppleAIProvider";
+import { useAudioPlayer } from "expo-audio";
+import { saveAudioFile } from "@/services/database";
 
-export type AIProviderType = "local" | "remote" | "none";
-export type AIProviderPreference = "local" | "remote" | "auto";
+export type AIProviderType = "local" | "remote";
 
 export interface StreamingResponse {
   onChunk: (chunk: string) => void;
@@ -36,34 +39,24 @@ export interface UnifiedAIContextValue {
     signal?: AbortSignal
   ) => Promise<void>;
   chatWithMessages: (
-    messages: { role: 'user' | 'assistant'; content: string }[],
+    messages: { role: "user" | "assistant"; content: string }[],
     streaming: StreamingResponse,
     signal?: AbortSignal
   ) => Promise<void>;
-  generateAudio: (text: string) => Promise<string | null>;
   generateSpeech: (
     text: string,
     options?: { language?: string; rate?: number }
-  ) => Promise<void>;
+  ) => Promise<string | undefined>;
 
   // State management
   isGenerating: boolean;
-  isAvailable: boolean;
   currentProvider: AIProviderType;
-  preferredProvider: AIProviderPreference;
 
   // Configuration
-  setPreferredProvider: (provider: AIProviderPreference) => void;
+  setCurrentProvider: (provider: AIProviderType) => void;
 
   // Utilities
   interrupt: () => void;
-  getProviderCapabilities: () => {
-    examples: boolean;
-    explanation: boolean;
-    audio: boolean;
-    speech: boolean;
-    streaming: boolean;
-  };
 }
 
 const UnifiedAIContext = createContext<UnifiedAIContextValue | undefined>(
@@ -72,32 +65,25 @@ const UnifiedAIContext = createContext<UnifiedAIContextValue | undefined>(
 
 export function UnifiedAIProvider({ children }: { children: ReactNode }) {
   const localAI = useAppleAI();
-  const [apiAuthUsername] = useMMKVString(SETTINGS_KEYS.API_AUTH_USERNAME);
-  const [useApiCredentials] = useMMKVBoolean(SETTINGS_KEYS.USE_API_CREDENTIALS);
-  const [preferredProvider, setPreferredProvider] =
-    useState<AIProviderPreference>("auto");
-  const [currentProvider, setCurrentProvider] =
-    useState<AIProviderType>("none");
+  const audioPlayer = useAudioPlayer(undefined, {
+    keepAudioSessionActive: false,
+  });
+  const [storedProvider, setStoredProvider] = useMMKVString(
+    SETTINGS_KEYS.AI_PROVIDER_TYPE
+  );
+  const [currentProvider, setCurrentProvider] = useState<AIProviderType>(
+    (storedProvider as AIProviderType) || "local"
+  );
   const [isGenerating, setIsGenerating] = useState(false);
-  const localAvailable = localAI.isReady;
-  const remoteAvailable = (useApiCredentials ?? false) && !!apiAuthUsername;
-  const isAvailable = localAvailable || remoteAvailable;
 
-  useEffect(() => {
-    if (preferredProvider === "auto") {
-      if (localAvailable) {
-        setCurrentProvider("local");
-      } else if (remoteAvailable) {
-        setCurrentProvider("remote");
-      } else {
-        setCurrentProvider("none");
-      }
-    } else if (preferredProvider === "local") {
-      setCurrentProvider(localAvailable ? "local" : "none");
-    } else if (preferredProvider === "remote") {
-      setCurrentProvider(remoteAvailable ? "remote" : "none");
-    }
-  }, [preferredProvider, localAvailable, remoteAvailable]);
+  // Update persistent storage when provider changes
+  const handleProviderChange = useCallback(
+    (provider: AIProviderType) => {
+      setCurrentProvider(provider);
+      setStoredProvider(provider);
+    },
+    [setStoredProvider]
+  );
 
   // Track generating state
   useEffect(() => {
@@ -106,43 +92,22 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
 
   const generateExamples = useCallback(
     async (prompt: string): Promise<AiExample[]> => {
-      if (currentProvider === "none") {
-        throw new Error(
-          "No AI provider available. Please configure API credentials in Settings or ensure Apple Intelligence is available."
-        );
-      }
-
-      try {
-        if (currentProvider === "local") {
-          return new Promise((resolve) => {
-            localAI.generateExamples(prompt, (examples) => {
-              resolve(examples);
-            });
+      if (currentProvider === "local") {
+        return new Promise((resolve) => {
+          localAI.generateExamples(prompt, (examples) => {
+            resolve(examples);
           });
-        } else {
-          setIsGenerating(true);
-          try {
-            return await getAiExamples(prompt, "open");
-          } finally {
-            setIsGenerating(false);
-          }
+        });
+      } else {
+        setIsGenerating(true);
+        try {
+          return await getAiExamples(prompt, "open");
+        } finally {
+          setIsGenerating(false);
         }
-      } catch (error) {
-        // Fallback logic
-        if (currentProvider === "local" && remoteAvailable) {
-          console.warn("Local AI failed, falling back to remote");
-          // Fallback to remote
-          setIsGenerating(true);
-          try {
-            return await getAiExamples(prompt, "open");
-          } finally {
-            setIsGenerating(false);
-          }
-        }
-        throw error;
       }
     },
-    [currentProvider, localAI, remoteAvailable]
+    [currentProvider, localAI]
   );
 
   const explainText = useCallback(
@@ -152,13 +117,6 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
       streaming: StreamingResponse,
       signal?: AbortSignal
     ): Promise<void> => {
-      if (currentProvider === "none") {
-        streaming.onError(
-          "No AI provider available. Please configure API credentials in Settings or ensure Apple Intelligence is available."
-        );
-        return;
-      }
-
       try {
         if (currentProvider === "local") {
           await localAI.explainText(
@@ -215,42 +173,20 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
           }
         }
       } catch (error) {
-        // Fallback logic
-        if (currentProvider === "local" && remoteAvailable) {
-          console.warn("Local AI failed, falling back to remote");
-          try {
-            const fetchFn = getAiExplanation(signal);
-            const response = await fetchFn(text, type);
-            // Handle remote streaming fallback...
-            const fullText = await response.text();
-            streaming.onChunk(fullText);
-            streaming.onComplete(fullText);
-          } catch (fallbackError) {
-            streaming.onError(`All providers failed: ${fallbackError}`);
-          }
-        } else {
-          streaming.onError(
-            error instanceof Error ? error.message : "Unknown error"
-          );
-        }
+        streaming.onError(
+          error instanceof Error ? error.message : "Unknown error"
+        );
       }
     },
-    [currentProvider, localAI, remoteAvailable]
+    [currentProvider, localAI]
   );
 
   const chatWithMessages = useCallback(
     async (
-      messages: { role: 'user' | 'assistant'; content: string }[],
+      messages: { role: "user" | "assistant"; content: string }[],
       streaming: StreamingResponse,
       signal?: AbortSignal
     ): Promise<void> => {
-      if (currentProvider === "none") {
-        streaming.onError(
-          "No AI provider available. Please configure API credentials in Settings or ensure Apple Intelligence is available."
-        );
-        return;
-      }
-
       try {
         if (currentProvider === "local") {
           await localAI.chatWithMessages(
@@ -265,9 +201,18 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
             }
           );
         } else {
-          // Remote provider with streaming
-          const fetchFn = getAiChat(signal);
-          const response = await fetchFn(messages);
+          // Remote provider - send only last user message, backend handles history
+          const lastUserMessage = messages[messages.length - 1];
+          if (!lastUserMessage || lastUserMessage.role !== "user") {
+            streaming.onError("Invalid message format for remote provider");
+            return;
+          }
+
+          const fetchFn = getAiExplanation(signal);
+          const response = await fetchFn(
+            lastUserMessage.content,
+            ExplainRequestType.V
+          );
 
           if (!response.ok) {
             throw new Error(`HTTP error: ${response.status}`);
@@ -306,79 +251,45 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
           }
         }
       } catch (error) {
-        // Fallback logic
-        if (currentProvider === "local" && remoteAvailable) {
-          console.warn("Local AI failed, falling back to remote");
-          try {
-            const fetchFn = getAiChat(signal);
-            const response = await fetchFn(messages);
-            // Handle remote streaming fallback...
-            const fullText = await response.text();
-            streaming.onChunk(fullText);
-            streaming.onComplete(fullText);
-          } catch (fallbackError) {
-            streaming.onError(`All providers failed: ${fallbackError}`);
-          }
-        } else {
-          streaming.onError(
-            error instanceof Error ? error.message : "Unknown error"
-          );
-        }
+        streaming.onError(
+          error instanceof Error ? error.message : "Unknown error"
+        );
       }
     },
-    [currentProvider, localAI, remoteAvailable]
-  );
-
-  const generateAudio = useCallback(
-    async (text: string): Promise<string | null> => {
-      if (currentProvider === "none" || currentProvider === "local") {
-        // Local AI doesn't support audio generation
-        return null;
-      }
-
-      try {
-        return await getAiSound(text, "open");
-      } catch (error) {
-        console.error("Audio generation failed:", error);
-        return null;
-      }
-    },
-    [currentProvider]
+    [currentProvider, localAI]
   );
 
   const generateSpeech = useCallback(
     async (
       text: string,
-      options: { language?: string; rate?: number } = {}
-    ): Promise<void> => {
-      if (currentProvider === "none") {
-        // Fallback to expo-speech when no AI provider available
-        Speech.speak(text, {
-          language: options.language || "ja",
-          rate: options.rate,
-        });
-        return;
-      }
-
+      options: {
+        language?: string;
+        rate?: number;
+      } = {}
+    ): Promise<string | undefined> => {
       try {
+        if (currentProvider === "remote") {
+          const file = await getAiSound(text, "open");
+          audioPlayer.replace(file.uri);
+          await audioPlayer.play();
+          return file.base64Sync();
+        }
+
         if (currentProvider === "local" && localAI.isReady) {
-          await localAI.generateSpeech(text);
-          return;
+          const b64 = localAI.generateSpeech(text);
+          await audioPlayer.replace(`data:audio/wav;base64,${b64}`);
+          await audioPlayer.play();
         }
       } catch (error) {
-        console.warn(
-          "Apple AI speech failed, falling back to expo-speech:",
-          error
-        );
+        console.warn("Speech failed, falling back to expo-speech:", error);
       }
 
-      // Universal fallback to expo-speech
       Speech.speak(text, {
         language: options.language || "ja",
         rate: options.rate,
       });
     },
-    [currentProvider, localAI]
+    [currentProvider, localAI, audioPlayer]
   );
 
   const interrupt = useCallback(() => {
@@ -388,29 +299,15 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
     // Note: Remote interruption would need AbortController support
   }, [currentProvider, localAI]);
 
-  const getProviderCapabilities = useCallback(() => {
-    return {
-      examples: isAvailable,
-      explanation: isAvailable,
-      audio: currentProvider === "remote",
-      speech: true, // Always available through fallback
-      streaming: isAvailable,
-    };
-  }, [isAvailable, currentProvider]);
-
   const contextValue: UnifiedAIContextValue = {
     generateExamples,
     explainText,
     chatWithMessages,
-    generateAudio,
     generateSpeech,
     isGenerating,
-    isAvailable,
     currentProvider,
-    preferredProvider,
-    setPreferredProvider,
+    setCurrentProvider: handleProviderChange,
     interrupt,
-    getProviderCapabilities,
   };
 
   return (

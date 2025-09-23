@@ -185,8 +185,7 @@ function ExamplesView({
 }) {
   const db = useSQLiteContext();
   const ai = useUnifiedAI();
-  const aiAvailable = ai.isAvailable;
-  const generating = ai.isGenerating;
+  const aiAvailable = true;
   const [selectedExample, setSelectedExample] = useState<string[] | null>(null);
 
   const handleFetchExamples = async () => {
@@ -228,10 +227,14 @@ function ExamplesView({
       {aiAvailable && (
         <Pressable
           style={styles.examplesLoading}
-          disabled={generating}
+          disabled={ai.isGenerating}
           onPress={handleFetchExamples}
         >
-          <ThemedText>{generating ? "Loading..." : "✨🤖✨"}</ThemedText>
+          {ai.isGenerating ? (
+            <ActivityIndicator size="small" />
+          ) : (
+            <ThemedText>✨🤖✨</ThemedText>
+          )}
         </Pressable>
       )}
       <KanjiListView
@@ -257,9 +260,9 @@ function ExampleRow({
 }) {
   const tintColor = useThemeColor({}, "tint");
   const db = useSQLiteContext();
-  const player = useAudioPlayer();
+  const player = useAudioPlayer(undefined, { keepAudioSessionActive: false });
   const ai = useUnifiedAI();
-  const audioAvailable = ai.getProviderCapabilities().audio;
+  const audioAvailable = ai.currentProvider === "remote";
   const [loading, setLoading] = useState(false);
 
   const fallbackToSpeech = async () => {
@@ -286,16 +289,11 @@ function ExampleRow({
         return;
       }
 
-      const audioPath = await ai.generateAudio(
+      const fileBase64 = await ai.generateSpeech(
         cleanupJpReadings(e.japaneseText)
       );
-
-      if (audioPath) {
-        player.replace(audioPath);
-        player.play();
-        await saveAudioFile(db, wordId, e.id, audioPath);
-      } else {
-        await fallbackToSpeech();
+      if (fileBase64) {
+        await saveAudioFile(db, wordId, e.id, fileBase64);
       }
     } catch (error) {
       console.error("Failed to play text:", error);

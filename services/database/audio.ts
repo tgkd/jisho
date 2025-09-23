@@ -1,24 +1,21 @@
-import * as FileSystem from "expo-file-system/legacy";
+import { Directory, File, Paths } from "expo-file-system";
 import { SQLiteDatabase } from "expo-sqlite";
-import { DBAudio, AudioFile } from "./types";
+import { AudioFile, DBAudio } from "./types";
 
 async function audioFileBlobToFileUrl(
   audioFile: AudioFile
 ): Promise<string | null> {
   try {
-    const tempDir = FileSystem.cacheDirectory + "audio/";
-    const tempPath = tempDir + `audio-${audioFile.id}.mp3`;
-    await FileSystem.makeDirectoryAsync(tempDir, { intermediates: true }).catch(
-      () => {}
-    );
-    const fileInfo = await FileSystem.getInfoAsync(tempPath);
-    if (!fileInfo.exists) {
-      await FileSystem.writeAsStringAsync(tempPath, audioFile.audioData, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
+    const audioDir = new Directory(Paths.cache, "audio");
+    audioDir.create();
+
+    const audioFile_file = new File(audioDir, `audio-${audioFile.id}.mp3`);
+
+    if (!audioFile_file.exists) {
+      audioFile_file.write(audioFile.audioData);
     }
 
-    return tempPath;
+    return audioFile_file.uri;
   } catch (error) {
     console.error("Failed to convert audio file blob to URL:", error);
     return null;
@@ -32,9 +29,8 @@ export async function saveAudioFile(
   filePath: string
 ): Promise<number | null> {
   try {
-    const fileBlob = await FileSystem.readAsStringAsync(filePath, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
+    const file = new File(filePath);
+    const fileBlob = await file.text();
 
     const result = await db.runAsync(
       "INSERT INTO audio_blobs (file_path, word_id, example_id, audio_data, created_at) VALUES (?, ?, ?, ?, ?)",

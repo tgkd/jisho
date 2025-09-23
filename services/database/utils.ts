@@ -1,4 +1,4 @@
-import * as FileSystem from "expo-file-system/legacy";
+import { Directory, File, Paths } from "expo-file-system";
 import { SQLiteDatabase } from "expo-sqlite";
 import { Alert } from "react-native";
 import * as wanakana from "wanakana";
@@ -153,25 +153,22 @@ export async function resetDatabase(db: SQLiteDatabase): Promise<void> {
     await db.execAsync(`PRAGMA user_version = 0`);
     await db.closeAsync();
 
-    const dbDirectory = FileSystem.documentDirectory + "SQLite/";
-    const dbPath = dbDirectory + "jisho_2.db";
-    const walPath = dbPath + "-wal";
-    const shmPath = dbPath + "-shm";
+    const sqliteDir = new Directory(Paths.document, "SQLite");
+    const dbFile = new File(sqliteDir, "jisho_2.db");
+    const walFile = new File(sqliteDir, "jisho_2.db-wal");
+    const shmFile = new File(sqliteDir, "jisho_2.db-shm");
 
-    const fileExists = await FileSystem.getInfoAsync(dbPath);
-    if (fileExists.exists) {
+    if (dbFile.exists) {
       console.log("Deleting database file...");
-      await FileSystem.deleteAsync(dbPath, { idempotent: true });
+      dbFile.delete();
     }
 
-    const walExists = await FileSystem.getInfoAsync(walPath);
-    if (walExists.exists) {
-      await FileSystem.deleteAsync(walPath, { idempotent: true });
+    if (walFile.exists) {
+      walFile.delete();
     }
 
-    const shmExists = await FileSystem.getInfoAsync(shmPath);
-    if (shmExists.exists) {
-      await FileSystem.deleteAsync(shmPath, { idempotent: true });
+    if (shmFile.exists) {
+      shmFile.delete();
     }
 
     console.log(
