@@ -11,6 +11,7 @@ Jisho is a cross-platform Japanese dictionary mobile app built with Expo and Rea
 - `yarn start` - Start Expo development server
 - `yarn ios` - Run on iOS simulator
 - `yarn android` - Run on Android emulator
+- `yarn web` - Run on web browser
 - `yarn lint` - Run ESLint
 - `yarn test` - Run Jest tests (with watch mode)
 - `yarn test:ci` - Run tests without watch mode
@@ -23,6 +24,7 @@ Jisho is a cross-platform Japanese dictionary mobile app built with Expo and Rea
 - `yarn initkanji` - Initialize kanji database
 - `yarn db:create` - Create new database schema
 - `yarn db:import` - Import dictionary data
+- `yarn db:import:words` - Import words data specifically
 - `yarn db:reset` - Reset database to clean state
 - `yarn db:stats` - Show database statistics
 - `yarn db:verify` - Verify database integrity
@@ -37,7 +39,7 @@ Jisho is a cross-platform Japanese dictionary mobile app built with Expo and Rea
 - `yarn test:db` - Run all database tests
 
 ### Build System
-- Uses **Yarn 4.9.4** as package manager
+- Uses **Yarn 4.10.2** as package manager
 - **Expo (v54)** with file-based routing via `expo-router`
 - **EAS Build** for production builds
 - **TypeScript** for type safety
@@ -92,7 +94,7 @@ The app supports both local and cloud AI:
 - Use functional components with TypeScript
 - Define props interface at component top
 - Use explicit named exports
-- Follow JSDoc documentation standards
+- NEVER write inline explanation comments (only JSDoc for functions/components)
 
 ### Performance
 - Memoize expensive calculations with useMemo/useCallback
@@ -105,6 +107,12 @@ The app supports both local and cloud AI:
 - Text segmentation via tiny-segmenter
 - Furigana support for reading annotations
 - Text normalization in `normal-jp-main/` directory
+
+### Documentation
+- Use JSDoc format for all functions and components
+- Document parameters and return values
+- Avoid inline explanations within function bodies
+- Update comments when code changes
 
 ## Testing
 - Jest with expo preset for React Native components

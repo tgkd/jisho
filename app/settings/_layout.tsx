@@ -12,6 +12,15 @@ export default function SettingsLayout() {
           headerTransparent: true,
         }}
       />
+      <Stack.Screen
+        name="about"
+        options={{
+          title: "About",
+          presentation: "modal",
+          headerTransparent: true,
+          headerLargeTitle: true,
+        }}
+      />
     </Stack>
   );
 }

@@ -15,13 +15,8 @@ import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
 import {
   DictionaryEntry,
-  HistoryEntry,
-  WordHistoryEntry,
-  KanjiHistoryEntry,
-  KanjiEntry,
-  searchDictionary,
-  searchKanji,
-  WordMeaning,
+  HistoryEntry, KanjiEntry, KanjiHistoryEntry, searchDictionary,
+  searchKanji, WordHistoryEntry, WordMeaning
 } from "@/services/database";
 import { getJpTokens } from "@/services/parse";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
@@ -170,14 +165,23 @@ export default function HomeScreen() {
   const toggleSearchMode = useCallback(() => {
     const newMode = searchMode === "word" ? "kanji" : "word";
     setSearchMode(newMode);
-    setSearch("");
-    setResults([]);
-    setTokens([]);
-    setMeaningsMap(new Map());
-    searchBarRef.current?.setText("");
 
-    // No automatic loading of random kanji - show placeholder instead
-  }, [searchMode]);
+    // Keep the current search value and restart search in new mode
+    const currentSearch = search;
+    if (currentSearch.trim().length > 0) {
+      setLoading(true);
+      // Clear previous results but keep search value
+      setResults([]);
+      setTokens([]);
+      setMeaningsMap(new Map());
+      // Trigger search with current value in new mode
+      handleSearch(currentSearch);
+    } else {
+      setResults([]);
+      setTokens([]);
+      setMeaningsMap(new Map());
+    }
+  }, [searchMode, search, handleSearch]);
 
   const handleHistoryItemPress = useCallback(
     (item: HistoryEntry) => {

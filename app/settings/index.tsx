@@ -5,7 +5,7 @@ import {
   StyleSheet,
   Switch,
   TextInput,
-  View
+  View,
 } from "react-native";
 import { useMMKVString } from "react-native-mmkv";
 
@@ -17,6 +17,7 @@ import { Colors, getHighlightColorValue } from "@/constants/Colors";
 import { useUnifiedAI } from "@/providers/UnifiedAIProvider";
 import { clearHistory, resetDatabase } from "@/services/database";
 import { SETTINGS_KEYS } from "@/services/storage";
+import { useRouter } from "expo-router";
 
 const highlightColorOptions: {
   label: string;
@@ -29,6 +30,7 @@ const highlightColorOptions: {
 ];
 
 export default function SettingsScreen() {
+  const router = useRouter();
   const db = useSQLiteContext();
   const ai = useUnifiedAI();
 
@@ -150,11 +152,12 @@ export default function SettingsScreen() {
           <ThemedText size="xs" style={styles.description}>
             {ai.currentProvider === "remote"
               ? "Using remote API (requires credentials below)"
-              : "Using local Apple Intelligence (requires iOS 18.1+)"
-            }
+              : "Using local Apple Intelligence (requires iOS 18.1+)"}
           </ThemedText>
           <ThemedText size="xs" style={styles.description}>
-            {"AI features: conversational chat, word explanations, example sentences, and text-to-speech"}
+            {
+              "AI features: conversational chat, word explanations, example sentences, and text-to-speech"
+            }
           </ThemedText>
 
           {ai.currentProvider === "remote" ? (
@@ -202,6 +205,15 @@ export default function SettingsScreen() {
           <ThemedText style={styles.warn}>{"Reset Database"}</ThemedText>
         </HapticTab>
       </Card>
+
+      <HapticTab
+        onPress={() => router.push("/settings/about")}
+        style={styles.aboutBtn}
+      >
+        <ThemedText size="sm" type="secondary">
+          {"About"}
+        </ThemedText>
+      </HapticTab>
     </ScrollView>
   );
 }
@@ -256,6 +268,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 8,
     gap: 8,
+  },
+  aboutBtn: {
+    justifyContent: "center",
+    alignItems: "center",
   },
   textInput: {
     borderWidth: StyleSheet.hairlineWidth,
