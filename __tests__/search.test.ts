@@ -1,5 +1,10 @@
 import sqlite3 from 'sqlite3';
 import path from 'path';
+import Database from 'better-sqlite3';
+import type { SQLiteDatabase } from 'expo-sqlite';
+import { searchDictionary } from '../services/database/search';
+
+jest.mock('expo-sqlite', () => ({}), { virtual: true });
 
 // Types matching our database structure
 interface DBDictEntry {
@@ -51,21 +56,50 @@ const mockWanakana = {
   isKatakana: (text: string) => /^[\u30A0-\u30FF]+$/.test(text),
   isHiragana: (text: string) => /^[\u3040-\u309F]+$/.test(text),
   isJapanese: (text: string) => /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(text),
-  toHiragana: (text: string) => text.replace(/[\u30A0-\u30FF]/g, (char) => 
+  toHiragana: (text: string) => text.replace(/[\u30A0-\u30FF]/g, (char) =>
     String.fromCharCode(char.charCodeAt(0) - 0x60)),
-  toKatakana: (text: string) => text.replace(/[\u3040-\u309F]/g, (char) => 
+  toKatakana: (text: string) => text.replace(/[\u3040-\u309F]/g, (char) =>
     String.fromCharCode(char.charCodeAt(0) + 0x60))
 };
 
 function processSearchQuery(query: string): SearchQuery {
   return {
     original: query,
-    hiragana: mockWanakana.isRomaji(query) ? mockWanakana.toHiragana(query) : 
+    hiragana: mockWanakana.isRomaji(query) ? mockWanakana.toHiragana(query) :
              mockWanakana.isKatakana(query) ? mockWanakana.toHiragana(query) : query,
     katakana: mockWanakana.toKatakana(query),
     romaji: query
   };
 }
+
+const MATCH_RANK = {
+  EXACT: 1,
+  PREFIX: 2,
+  CONTAINS: 3,
+  FALLBACK: 4,
+} as const;
+
+const SUB_RANK = {
+  EXACT: {
+    HIRAGANA: 1,
+    READING: 2,
+    WORD: 3,
+    KANJI: 4,
+  },
+  PREFIX: {
+    HIRAGANA: 6,
+    READING: 7,
+    WORD: 8,
+    KANJI: 9,
+  },
+  CONTAINS: {
+    HIRAGANA: 11,
+    READING: 12,
+    WORD: 13,
+    KANJI: 14,
+  },
+  DEFAULT: 99,
+} as const;
 
 // Implement EXACT same search logic as search.ts
 async function testSearchByTiers(
@@ -83,72 +117,124 @@ async function testSearchByTiers(
 
   if (searchTerms.length === 0) return [];
 
-  // Use UNION ALL for better performance than complex CTE
-  const queries: string[] = [];
-  const params: string[] = [];
+  const termsCte = searchTerms
+    .map((_, index) => (index === 0 ? 'SELECT ? AS term' : 'SELECT ?'))
+    .join(' UNION ALL ');
 
-  // Tier 1: Exact matches with sub-ranking
-  searchTerms.forEach(term => {
-    queries.push(`
-      SELECT DISTINCT *, 1 as match_rank, length(word) as word_length,
-        CASE 
-          WHEN reading_hiragana = ? THEN 1
-          WHEN reading = ? THEN 2
-          WHEN word = ? THEN 3
-          WHEN kanji = ? THEN 4
-          ELSE 5
-        END as sub_rank
-      FROM words 
-      WHERE word = ? OR reading = ? OR reading_hiragana = ? OR kanji = ?
-    `);
-    params.push(term, term, term, term, term, term, term, term);
-  });
-
-  // Tier 2: Prefix matches with sub-ranking
-  searchTerms.forEach(term => {
-    queries.push(`
-      SELECT DISTINCT *, 2 as match_rank, length(word) as word_length,
-        CASE 
-          WHEN reading_hiragana LIKE ? THEN 1
-          WHEN reading LIKE ? THEN 2
-          WHEN word LIKE ? THEN 3
-          WHEN kanji LIKE ? THEN 4
-          ELSE 5
-        END as sub_rank
-      FROM words 
-      WHERE (word LIKE ? OR reading LIKE ? OR reading_hiragana LIKE ? OR kanji LIKE ?)
-      AND NOT (word = ? OR reading = ? OR reading_hiragana = ? OR kanji = ?)
-    `);
-    params.push(`${term}%`, `${term}%`, `${term}%`, `${term}%`, `${term}%`, `${term}%`, `${term}%`, `${term}%`, term, term, term, term);
-  });
-
-  // Tier 3: Contains matches with sub-ranking
-  searchTerms.forEach(term => {
-    queries.push(`
-      SELECT DISTINCT *, 3 as match_rank, length(word) as word_length,
-        CASE 
-          WHEN reading_hiragana LIKE ? THEN 1
-          WHEN reading LIKE ? THEN 2
-          WHEN word LIKE ? THEN 3
-          WHEN kanji LIKE ? THEN 4
-          ELSE 5
-        END as sub_rank
-      FROM words 
-      WHERE (word LIKE ? OR reading LIKE ? OR reading_hiragana LIKE ? OR kanji LIKE ?)
-      AND NOT (word LIKE ? OR reading LIKE ? OR reading_hiragana LIKE ? OR kanji LIKE ?)
-    `);
-    params.push(`%${term}%`, `%${term}%`, `%${term}%`, `%${term}%`, `%${term}%`, `%${term}%`, `%${term}%`, `%${term}%`, `${term}%`, `${term}%`, `${term}%`, `${term}%`);
-  });
-
-  const finalQuery = `
+  const tieredQuery = `
+    WITH search_terms(term) AS (
+      ${termsCte}
+    ),
+    candidate_matches AS (
+      SELECT
+        w.id,
+        w.word,
+        w.reading,
+        w.reading_hiragana,
+        w.kanji,
+        w.position,
+        CASE
+          WHEN w.word = st.term OR w.reading = st.term OR w.reading_hiragana = st.term OR w.kanji = st.term THEN ${MATCH_RANK.EXACT}
+          WHEN w.word LIKE st.term || '%' OR w.reading LIKE st.term || '%' OR w.reading_hiragana LIKE st.term || '%' OR w.kanji LIKE st.term || '%' THEN ${MATCH_RANK.PREFIX}
+          ELSE ${MATCH_RANK.CONTAINS}
+        END AS match_rank,
+        CASE
+          WHEN w.reading_hiragana = st.term THEN ${SUB_RANK.EXACT.HIRAGANA}
+          WHEN w.reading = st.term THEN ${SUB_RANK.EXACT.READING}
+          WHEN w.word = st.term THEN ${SUB_RANK.EXACT.WORD}
+          WHEN w.kanji = st.term THEN ${SUB_RANK.EXACT.KANJI}
+          WHEN w.reading_hiragana LIKE st.term || '%' THEN ${SUB_RANK.PREFIX.HIRAGANA}
+          WHEN w.reading LIKE st.term || '%' THEN ${SUB_RANK.PREFIX.READING}
+          WHEN w.word LIKE st.term || '%' THEN ${SUB_RANK.PREFIX.WORD}
+          WHEN w.kanji LIKE st.term || '%' THEN ${SUB_RANK.PREFIX.KANJI}
+          WHEN w.reading_hiragana LIKE '%' || st.term || '%' THEN ${SUB_RANK.CONTAINS.HIRAGANA}
+          WHEN w.reading LIKE '%' || st.term || '%' THEN ${SUB_RANK.CONTAINS.READING}
+          WHEN w.word LIKE '%' || st.term || '%' THEN ${SUB_RANK.CONTAINS.WORD}
+          WHEN w.kanji LIKE '%' || st.term || '%' THEN ${SUB_RANK.CONTAINS.KANJI}
+          ELSE ${SUB_RANK.DEFAULT}
+        END AS sub_rank,
+        length(w.word) AS word_length
+      FROM words w
+      JOIN search_terms st
+      WHERE
+        w.word = st.term OR w.reading = st.term OR w.reading_hiragana = st.term OR w.kanji = st.term OR
+        w.word LIKE st.term || '%' OR w.reading LIKE st.term || '%' OR w.reading_hiragana LIKE st.term || '%' OR w.kanji LIKE st.term || '%' OR
+        w.word LIKE '%' || st.term || '%' OR w.reading LIKE '%' || st.term || '%' OR w.reading_hiragana LIKE '%' || st.term || '%' OR w.kanji LIKE '%' || st.term || '%'
+    ),
+    deduped AS (
+      SELECT
+        *,
+        ROW_NUMBER() OVER (
+          PARTITION BY id
+          ORDER BY match_rank, sub_rank, word_length, position
+        ) AS row_num
+      FROM candidate_matches
+    )
     SELECT id, word, reading, reading_hiragana, kanji, position
-    FROM (${queries.join(' UNION ALL ')})
-    GROUP BY id
-    ORDER BY MIN(match_rank), MIN(sub_rank), MIN(word_length), position
+    FROM deduped
+    WHERE row_num = 1
+    ORDER BY match_rank, sub_rank, word_length, position
     LIMIT ?
   `;
 
-  return await db.all(finalQuery, [...params, limit]);
+  return await db.all(tieredQuery, [...searchTerms, limit]);
+}
+
+async function testSearchByEnglish(
+  db: TestDatabase,
+  query: string,
+  limit: number = 10
+): Promise<DBDictEntry[]> {
+  const normalizedQuery = query.toLowerCase().trim();
+  if (normalizedQuery.length === 0) return [];
+
+  return await db.all(
+    `
+    WITH english_matches AS (
+      SELECT DISTINCT
+        w.*,
+        CASE
+          WHEN LOWER(m.meaning) = ? THEN ${MATCH_RANK.EXACT}
+          WHEN LOWER(m.meaning) LIKE ? THEN ${MATCH_RANK.PREFIX}
+          WHEN LOWER(m.meaning) LIKE ? THEN ${MATCH_RANK.CONTAINS}
+          ELSE ${MATCH_RANK.FALLBACK}
+        END as match_rank,
+        length(w.word) as word_length
+      FROM words w
+      JOIN meanings m ON w.id = m.word_id
+      WHERE LOWER(m.meaning) LIKE ?
+    ),
+    deduped AS (
+      SELECT
+        w.*,
+        m.match_rank,
+        m.word_length,
+        ROW_NUMBER() OVER (
+          PARTITION BY w.word, w.reading
+          ORDER BY
+            m.match_rank,
+            m.word_length,
+            w.position
+        ) as row_num
+      FROM words w
+      JOIN english_matches m ON w.id = m.id
+    )
+    SELECT * FROM deduped
+    WHERE row_num = 1
+    ORDER BY
+      match_rank,
+      word_length,
+      position
+    LIMIT ?
+    `,
+    [
+      normalizedQuery,
+      `${normalizedQuery}%`,
+      `%${normalizedQuery}%`,
+      `%${normalizedQuery}%`,
+      limit,
+    ]
+  );
 }
 
 describe('Real Database Search Tests', () => {
@@ -173,7 +259,7 @@ describe('Real Database Search Tests', () => {
     // Check columns
     const columns = await db.all("PRAGMA table_info(words)");
     const columnNames = columns.map((col: any) => col.name);
-    
+
     console.log('Database columns:', columnNames);
     expect(columnNames).toContain('reading_hiragana');
     expect(columnNames).toContain('word');
@@ -183,15 +269,15 @@ describe('Real Database Search Tests', () => {
 
   test('find 角 entries with かど reading', async () => {
     const results = await db.all(`
-      SELECT word, reading, reading_hiragana, kanji 
-      FROM words 
+      SELECT word, reading, reading_hiragana, kanji
+      FROM words
       WHERE (word = '角' OR kanji = '角') AND (reading_hiragana = 'かど' OR reading = 'かど')
       LIMIT 10
     `);
-    
+
     console.log('角 entries with かど reading:', results);
     expect(results.length).toBeGreaterThan(0);
-    
+
     const kadoEntry = results.find((r: any) => r.reading_hiragana === 'かど');
     if (kadoEntry) {
       console.log('Found perfect match:', kadoEntry);
@@ -201,34 +287,34 @@ describe('Real Database Search Tests', () => {
   test('search ranking for かど query - comprehensive tiers test', async () => {
     const query = 'かど';
     const processedQuery = processSearchQuery(query);
-    
+
     console.log('Processed query:', processedQuery);
-    
+
     const results = await testSearchByTiers(db, processedQuery, 15);
-    
+
     console.log('\\nSearch results for "かど" (all tiers):');
     results.slice(0, 10).forEach((word: any, index: number) => {
       console.log(`${index + 1}. ${word.word} (${word.reading}) - hiragana: ${word.reading_hiragana} - kanji: ${word.kanji}`);
     });
 
     expect(results.length).toBeGreaterThan(0);
-    
+
     // Find 角 in results
     const kadoEntry = results.find(w => w.word === '角' || w.kanji === '角');
-    
+
     if (kadoEntry) {
       const kadoIndex = results.indexOf(kadoEntry);
       console.log(`\\n角 appears at position: ${kadoIndex + 1}`);
       console.log('角 entry details:', kadoEntry);
-      
+
       // 角 should be first due to exact reading_hiragana match (tier 1, sub_rank 1)
       expect(kadoIndex).toBeLessThan(3);
     } else {
       console.log('角 not found in results - checking if it exists in database...');
-      
+
       const checkResult = await db.all(`
-        SELECT * FROM words 
-        WHERE word LIKE '%角%' OR kanji LIKE '%角%' OR reading LIKE '%かど%' 
+        SELECT * FROM words
+        WHERE word LIKE '%角%' OR kanji LIKE '%角%' OR reading LIKE '%かど%'
         LIMIT 5
       `);
       console.log('角-related entries:', checkResult);
@@ -237,18 +323,18 @@ describe('Real Database Search Tests', () => {
 
   test('test individual search tiers', async () => {
     const query = 'か';
-    
+
     // Test Tier 1 only (exact matches)
     const tier1Results = await db.all(`
       SELECT DISTINCT *, 1 as match_rank, length(word) as word_length,
-        CASE 
+        CASE
           WHEN reading_hiragana = ? THEN 1
           WHEN reading = ? THEN 2
           WHEN word = ? THEN 3
           WHEN kanji = ? THEN 4
           ELSE 5
         END as sub_rank
-      FROM words 
+      FROM words
       WHERE word = ? OR reading = ? OR reading_hiragana = ? OR kanji = ?
       ORDER BY sub_rank, word_length
       LIMIT 5
@@ -262,14 +348,14 @@ describe('Real Database Search Tests', () => {
     // Test Tier 2 only (prefix matches, excluding exact)
     const tier2Results = await db.all(`
       SELECT DISTINCT *, 2 as match_rank, length(word) as word_length,
-        CASE 
+        CASE
           WHEN reading_hiragana LIKE ? THEN 1
           WHEN reading LIKE ? THEN 2
           WHEN word LIKE ? THEN 3
           WHEN kanji LIKE ? THEN 4
           ELSE 5
         END as sub_rank
-      FROM words 
+      FROM words
       WHERE (word LIKE ? OR reading LIKE ? OR reading_hiragana LIKE ? OR kanji LIKE ?)
       AND NOT (word = ? OR reading = ? OR reading_hiragana = ? OR kanji = ?)
       ORDER BY sub_rank, word_length
@@ -283,20 +369,36 @@ describe('Real Database Search Tests', () => {
 
     expect(tier1Results.length).toBeGreaterThan(0);
     expect(tier2Results.length).toBeGreaterThan(0);
-    
+
     // Verify tier 1 has higher priority than tier 2
     if (tier1Results.length > 0 && tier2Results.length > 0) {
       console.log('\\nTier priority verification: Tier 1 should come before Tier 2');
     }
   });
 
+  test('romaji query "Shinkansen" resolves via english fallback or tiered search', async () => {
+    const query = 'Shinkansen';
+    const processedQuery = processSearchQuery(query);
+
+    const englishResults = await testSearchByEnglish(db, query, 10);
+    const combinedResults = englishResults.length > 0
+      ? englishResults
+      : await testSearchByTiers(db, processedQuery, 10);
+
+    expect(combinedResults.length).toBeGreaterThan(0);
+    const includesShinkansen = combinedResults.some((entry) =>
+      entry.reading_hiragana === 'しんかんせん' || entry.word === '新幹線'
+    );
+    expect(includesShinkansen).toBe(true);
+  });
+
   test('sub-ranking effectiveness test', async () => {
     const query = 'かど';
-    
+
     // Test exact same SQL as search.ts would generate
     const processedQuery = processSearchQuery(query);
     const fullResults = await testSearchByTiers(db, processedQuery, 10);
-    
+
     console.log('\\nFull search results with sub-ranking:');
     fullResults.forEach((word: any, index: number) => {
       const matchType = word.reading_hiragana === query ? 'reading_hiragana' :
@@ -305,17 +407,17 @@ describe('Real Database Search Tests', () => {
                        word.kanji === query ? 'kanji' : 'other';
       console.log(`${index + 1}. ${word.word} (${word.reading}) - match: ${matchType}`);
     });
-    
+
     // Verify reading matches come first
     const firstResult = fullResults[0];
     if (firstResult) {
       console.log('\\nFirst result analysis:');
       console.log(`Word: ${firstResult.word}, Reading: ${firstResult.reading}, Hiragana: ${firstResult.reading_hiragana}`);
-      
+
       // Should prioritize reading_hiragana match
       const isReadingMatch = firstResult.reading_hiragana === query || firstResult.reading === query;
       console.log(`Is reading match: ${isReadingMatch}`);
-      
+
       if (isReadingMatch) {
         console.log('✅ Sub-ranking working: Reading match appears first');
       }
@@ -326,12 +428,12 @@ describe('Real Database Search Tests', () => {
 
   test('test FTS search path specifically', async () => {
     const query = 'かど';
-    
+
     // Test if FTS table exists and works
     try {
       const ftsCheck = await db.all("SELECT name FROM sqlite_master WHERE type='table' AND name='words_fts'");
       console.log('\\nFTS table exists:', ftsCheck.length > 0);
-      
+
       if (ftsCheck.length > 0) {
         // Test FTS search directly
         const ftsResults = await db.all(`
@@ -339,8 +441,8 @@ describe('Real Database Search Tests', () => {
           FROM words_fts f
           JOIN words w ON w.id = f.rowid
           WHERE f.words_fts MATCH ?
-          ORDER BY 
-            CASE 
+          ORDER BY
+            CASE
               WHEN w.reading_hiragana = ? THEN 1
               WHEN w.reading = ? THEN 2
               WHEN w.word = ? THEN 3
@@ -350,12 +452,12 @@ describe('Real Database Search Tests', () => {
             bm25(words_fts)
           LIMIT 10
         `, [query, query, query, query, query]);
-        
+
         console.log('\\nFTS search results for "かど":');
         ftsResults.forEach((word: any, index: number) => {
           console.log(`${index + 1}. ${word.word} (${word.reading}) - hiragana: ${word.reading_hiragana}`);
         });
-        
+
         // Check if 角 appears in FTS results
         const kadoInFts = ftsResults.find((w: any) => w.word === '角' || w.kanji === '角');
         if (kadoInFts) {
@@ -375,16 +477,16 @@ describe('Real Database Search Tests', () => {
 
   test('compare old vs new ranking with detailed analysis', async () => {
     const query = 'かど';
-    
+
     // Old ranking (no sub-ranking)
     const oldResults = await db.all(`
       SELECT word, reading, reading_hiragana, kanji,
-        CASE 
+        CASE
           WHEN word = ? OR reading = ? OR reading_hiragana = ? OR kanji = ? THEN 1
           ELSE 2
         END as match_rank,
         length(word) as word_length
-      FROM words 
+      FROM words
       WHERE word = ? OR reading = ? OR reading_hiragana = ? OR kanji = ?
       ORDER BY match_rank, word_length, id
       LIMIT 8
@@ -413,11 +515,11 @@ describe('Real Database Search Tests', () => {
     // Analyze if sub-ranking improved ordering
     const oldFirstIsReading = oldResults[0] && (oldResults[0].reading_hiragana === query || oldResults[0].reading === query);
     const newFirstIsReading = newResults[0] && (newResults[0].reading_hiragana === query || newResults[0].reading === query);
-    
+
     console.log('\\nRanking effectiveness:');
     console.log(`Old first result is reading match: ${oldFirstIsReading}`);
     console.log(`New first result is reading match: ${newFirstIsReading}`);
-    
+
     expect(newResults.length).toBeGreaterThan(0);
     expect(oldResults.length).toBeGreaterThan(0);
   });

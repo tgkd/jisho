@@ -145,7 +145,7 @@ export default function HomeScreen() {
       }
       isSearchingRef.current = false;
     }
-  }, 300);
+  }, 100);
 
   const handleChange = (text: string) => {
     // Only set loading if we're actually going to search

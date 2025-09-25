@@ -2,17 +2,185 @@ import { SQLiteDatabase } from "expo-sqlite";
 import * as wanakana from "wanakana";
 import {
   DBDictEntry,
-  DBWordMeaning, SearchDictionaryOptions,
-  SearchDictionaryResult, SearchQuery, WordMeaning
+  DBWordMeaning,
+  SearchDictionaryOptions,
+  SearchDictionaryResult,
+  SearchQuery,
+  WordMeaning,
 } from "./types";
 import {
-  buildFtsMatchExpression, createEmptyResult,
+  buildFtsMatchExpression,
+  createEmptyResult,
   formatSearchResults,
-  isSingleKanjiCharacter, processSearchQuery,
-  tokenizeJp
+  isSingleKanjiCharacter,
+  processSearchQuery,
 } from "./utils";
 
-// Retry helper for database operations
+const SEARCH_CACHE_TTL_MS = 30_000;
+const SEARCH_CACHE_MAX_ENTRIES = 100;
+const MAX_QUERY_LENGTH = 64;
+const MAX_QUERY_TOKENS = 8;
+
+type CachedSearchEntry = {
+  timestamp: number;
+  result: SearchDictionaryResult;
+};
+
+const searchResultCache = new Map<string, CachedSearchEntry>();
+
+const MATCH_RANK = Object.freeze({
+  EXACT: 1,
+  PREFIX: 2,
+  CONTAINS: 3,
+  FALLBACK: 4,
+});
+
+const SUB_RANK = Object.freeze({
+  EXACT: Object.freeze({
+    HIRAGANA: 1,
+    READING: 2,
+    WORD: 3,
+    KANJI: 4,
+    FALLBACK: 5,
+  }),
+  PREFIX: Object.freeze({
+    HIRAGANA: 6,
+    READING: 7,
+    WORD: 8,
+    KANJI: 9,
+    FALLBACK: 10,
+  }),
+  CONTAINS: Object.freeze({
+    HIRAGANA: 11,
+    READING: 12,
+    WORD: 13,
+    KANJI: 14,
+    FALLBACK: 15,
+  }),
+  DEFAULT: 99,
+});
+
+const SECONDARY_ORDER = Object.freeze({
+  HIRAGANA: 1,
+  READING: 2,
+  WORD: 3,
+  KANJI: 4,
+  FALLBACK: 5,
+});
+
+const FTS_RANK_OFFSET = MATCH_RANK.CONTAINS;
+
+/**
+ * Creates a deterministic cache key for search results.
+ * @param query - Original user query string
+ * @param limit - Maximum number of results requested
+ * @param withMeanings - Whether meanings should be included in the response
+ */
+function buildSearchCacheKey(
+  query: string,
+  limit: number,
+  withMeanings: boolean
+): string {
+  return `${query}::${limit}::${withMeanings ? "1" : "0"}`;
+}
+
+/**
+ * Produces a deep copy of a search dictionary result for safe reuse.
+ * @param result - Cached search dictionary result to clone
+ */
+function cloneSearchResult(
+  result: SearchDictionaryResult
+): SearchDictionaryResult {
+  const clonedWords = result.words.map((word) => ({ ...word }));
+  const clonedMeanings = new Map<number, WordMeaning[]>();
+
+  result.meanings.forEach((meanings, wordId) => {
+    clonedMeanings.set(
+      wordId,
+      meanings.map((meaning) => ({ ...meaning }))
+    );
+  });
+
+  return {
+    words: clonedWords,
+    meanings: clonedMeanings,
+    error: result.error,
+  };
+}
+
+/**
+ * Retrieves a cached search result if present and not expired.
+ * @param cacheKey - Unique cache key for the search request
+ */
+function getCachedSearchResult(
+  cacheKey: string
+): SearchDictionaryResult | undefined {
+  const cached = searchResultCache.get(cacheKey);
+  if (!cached) {
+    return undefined;
+  }
+
+  if (Date.now() - cached.timestamp > SEARCH_CACHE_TTL_MS) {
+    searchResultCache.delete(cacheKey);
+    return undefined;
+  }
+
+  return cloneSearchResult(cached.result);
+}
+
+/**
+ * Stores a search result in the cache, pruning old entries if necessary.
+ * @param cacheKey - Unique cache key for the search request
+ * @param result - Search result to cache
+ */
+function setCachedSearchResult(
+  cacheKey: string,
+  result: SearchDictionaryResult
+): void {
+  if (searchResultCache.size >= SEARCH_CACHE_MAX_ENTRIES) {
+    let oldestKey: string | undefined;
+    let oldestTimestamp = Number.POSITIVE_INFINITY;
+
+    for (const [key, entry] of searchResultCache.entries()) {
+      if (entry.timestamp < oldestTimestamp) {
+        oldestTimestamp = entry.timestamp;
+        oldestKey = key;
+      }
+    }
+
+    if (oldestKey) {
+      searchResultCache.delete(oldestKey);
+    }
+  }
+
+  searchResultCache.set(cacheKey, {
+    timestamp: Date.now(),
+    result: cloneSearchResult(result),
+  });
+}
+
+/**
+ * Determines whether the provided query exceeds predefined complexity limits.
+ * @param query - Query string with whitespace preserved
+ */
+function isQueryTooComplex(query: string): boolean {
+  const normalized = query.trim();
+  if (normalized.length > MAX_QUERY_LENGTH) {
+    return true;
+  }
+
+  const tokenCount = normalized.split(/\s+/).filter(Boolean).length;
+  return tokenCount > MAX_QUERY_TOKENS;
+}
+
+/**
+ * Executes a database operation with retry support for SQLITE_BUSY contention.
+ * @param operation - Asynchronous callback performing the database request
+ * @param maxRetries - Maximum number of retry attempts before failing
+ * @param delay - Initial backoff delay in milliseconds between retries
+ * @returns Promise that resolves with the operation result
+ * @throws Error when the retry limit is exceeded or a non-retryable error occurs
+ */
 async function retryDatabaseOperation<T>(
   operation: () => Promise<T>,
   maxRetries: number = 3,
@@ -23,183 +191,65 @@ async function retryDatabaseOperation<T>(
       return await operation();
     } catch (error) {
       const isLastAttempt = i === maxRetries - 1;
-      const isDatabaseLocked = error instanceof Error && 
-        (error.message.includes('database is locked') || 
-         error.message.includes('SQLITE_BUSY'));
-      
+      const isDatabaseLocked =
+        error instanceof Error &&
+        (error.message.includes("database is locked") ||
+          error.message.includes("SQLITE_BUSY"));
+
       if (isLastAttempt || !isDatabaseLocked) {
         throw error;
       }
-      
+
       // Wait with exponential backoff
-      await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, i)));
+      await new Promise((resolve) =>
+        setTimeout(resolve, delay * Math.pow(2, i))
+      );
     }
   }
-  throw new Error('Retry limit exceeded');
+  throw new Error("Retry limit exceeded");
 }
 
-async function searchByTokensDeduped(
-  db: SQLiteDatabase,
-  query: string,
-  limit: number = 30
-): Promise<DBDictEntry[]> {
-  const tokens = tokenizeJp(query);
-  if (tokens.length === 0) return [];
-
-  const tokenWhereClauses: string[] = [];
-  const tokenParams: string[] = [];
-
-  // Add direct query match for the full input
-  const queryVariations = [query];
-  if (wanakana.isRomaji(query)) {
-    queryVariations.push(wanakana.toHiragana(query));
-    queryVariations.push(wanakana.toKatakana(query));
-  } else if (wanakana.isHiragana(query)) {
-    queryVariations.push(wanakana.toKatakana(query));
-  } else if (wanakana.isKatakana(query)) {
-    queryVariations.push(wanakana.toHiragana(query));
-  } else if (wanakana.isJapanese(query)) {
-    const hiragana = wanakana.toHiragana(query);
-    const katakana = wanakana.toKatakana(query);
-    if (hiragana !== query) queryVariations.push(hiragana);
-    if (katakana !== query) queryVariations.push(katakana);
-  }
-
-  const fullQueryMatches = queryVariations.map(
-    () => `(
-    word LIKE ? OR
-    reading LIKE ? OR
-    reading_hiragana LIKE ? OR
-    kanji LIKE ?
-  )`
-  );
-
-  tokenWhereClauses.push(`(${fullQueryMatches.join(" OR ")})`);
-  queryVariations.forEach((v) => {
-    tokenParams.push(`%${v}%`, `%${v}%`, `%${v}%`, `%${v}%`);
-  });
-
-  for (const token of tokens) {
-    if (token.length < 1) continue;
-
-    const variations = [token];
-    if (wanakana.isRomaji(token)) {
-      variations.push(wanakana.toHiragana(token));
-      variations.push(wanakana.toKatakana(token));
-    } else if (wanakana.isHiragana(token)) {
-      variations.push(wanakana.toKatakana(token));
-    } else if (wanakana.isKatakana(token)) {
-      variations.push(wanakana.toHiragana(token));
-    }
-
-    const tokenMatches = variations.map(
-      () => `(
-      word LIKE ? OR
-      reading LIKE ? OR
-      reading_hiragana LIKE ? OR
-      kanji LIKE ?
-    )`
-    );
-
-    tokenWhereClauses.push(`(${tokenMatches.join(" OR ")})`);
-
-    variations.forEach((v) => {
-      tokenParams.push(`%${v}%`, `%${v}%`, `%${v}%`, `%${v}%`);
-    });
-  }
-
-  if (tokenWhereClauses.length === 0) return [];
-
-  return await db.getAllAsync<DBDictEntry>(
-    `
-    WITH matches AS (
-      SELECT
-        w.*,
-        MIN(
-          CASE
-            WHEN w.word = ? OR w.kanji = ? THEN 1
-            WHEN w.reading = ? OR w.reading_hiragana = ? THEN 2
-            WHEN w.word LIKE ? OR w.kanji LIKE ? THEN 3
-            WHEN w.reading LIKE ? OR w.reading_hiragana LIKE ? THEN 4
-            ELSE 5
-          END
-        ) as match_rank,
-        MIN(length(w.word)) as word_length
-      FROM words w
-      WHERE ${tokenWhereClauses.join(" OR ")}
-      GROUP BY w.id
-    ),
-    deduped AS (
-      SELECT
-        w.*,
-        m.match_rank,
-        m.word_length,
-        ROW_NUMBER() OVER (
-          PARTITION BY w.word, w.reading
-          ORDER BY
-            m.match_rank,
-            m.word_length,
-            w.position
-        ) as row_num
-      FROM words w
-      JOIN matches m ON w.id = m.id
-    )
-    SELECT * FROM deduped
-    WHERE row_num = 1
-    ORDER BY
-      match_rank,
-      word_length,
-      position
-    LIMIT ?
-    `,
-    [
-      query,
-      query,
-      query,
-      query,
-      `${query}%`,
-      `${query}%`,
-      `${query}%`,
-      `${query}%`,
-      ...tokenParams,
-      limit,
-    ]
-  );
-}
-
+/**
+ * Batches meaning lookups for dictionary entries, respecting cancellation requests.
+ * @param db - SQLite database connection instance
+ * @param words - Dictionary entries requiring meanings
+ * @param signal - Optional abort signal for cooperative cancellation
+ * @returns Map keyed by word identifier containing associated meanings
+ * @throws Error when the fetch is cancelled or database retries are exhausted
+ */
 async function fetchMeanings(
   db: SQLiteDatabase,
   words: DBDictEntry[],
   signal?: AbortSignal
 ): Promise<Map<number, WordMeaning[]>> {
   const meaningsMap = new Map<number, WordMeaning[]>();
-  
+
   if (words.length === 0) return meaningsMap;
 
   // Check for cancellation
   if (signal?.aborted) {
-    throw new Error('Fetch cancelled');
+    throw new Error("Fetch cancelled");
   }
 
   // Single batched query instead of N individual queries
-  const wordIds = words.map(w => w.id);
-  const placeholders = wordIds.map(() => '?').join(',');
-  
-  const meanings = await retryDatabaseOperation(() => 
+  const wordIds = words.map((w) => w.id);
+  const placeholders = wordIds.map(() => "?").join(",");
+
+  const meanings = await retryDatabaseOperation(() =>
     db.getAllAsync<DBWordMeaning>(
-    `
+      `
     SELECT id, word_id, meaning, part_of_speech, field, misc, info
     FROM meanings
     WHERE word_id IN (${placeholders})
     ORDER BY word_id
     `,
-    wordIds
+      wordIds
     )
   );
 
   // Check for cancellation after query
   if (signal?.aborted) {
-    throw new Error('Fetch cancelled');
+    throw new Error("Fetch cancelled");
   }
 
   // Group meanings by word_id
@@ -221,21 +271,29 @@ async function fetchMeanings(
   return meaningsMap;
 }
 
+/**
+ * Searches for entries corresponding to a single kanji character.
+ * @param db - SQLite database connection instance
+ * @param kanji - Kanji character to search for
+ * @param options - Search options including maximum number of rows
+ * @returns Array of dictionary entries ordered by relevance
+ */
 async function searchBySingleKanji(
   db: SQLiteDatabase,
   kanji: string,
   options: { limit: number }
 ): Promise<DBDictEntry[]> {
-  return await retryDatabaseOperation(() => 
-    db.getAllAsync<DBDictEntry>(`
+  return await retryDatabaseOperation(() =>
+    db.getAllAsync<DBDictEntry>(
+      `
       WITH matched_words AS (
       SELECT
         w.*,
         CASE
-          WHEN w.word = ? THEN 1
-          WHEN w.kanji = ? THEN 2
-          WHEN w.kanji LIKE ? THEN 3
-          ELSE 4
+          WHEN w.word = ? THEN ${MATCH_RANK.EXACT}
+          WHEN w.kanji = ? THEN ${MATCH_RANK.PREFIX}
+          WHEN w.kanji LIKE ? THEN ${MATCH_RANK.CONTAINS}
+          ELSE ${MATCH_RANK.FALLBACK}
         END as match_rank,
         length(w.word) as word_length
       FROM words w
@@ -254,17 +312,19 @@ async function searchBySingleKanji(
     WHERE row_num = 1
     ORDER BY match_rank, word_length
     LIMIT ?
-  `, [
-    kanji,
-    kanji,
-    `%${kanji}%`,
-    `%${kanji}%`,
-    kanji,
-    options.limit
-    ])
+  `,
+      [kanji, kanji, `%${kanji}%`, `%${kanji}%`, kanji, options.limit]
+    )
   );
 }
 
+/**
+ * Performs an FTS-based dictionary search prioritising exact and prefix matches.
+ * @param db - SQLite database connection instance
+ * @param query - Normalised search query forms
+ * @param options - Search options including maximum number of rows
+ * @returns Ranked dictionary entries matching the FTS expression
+ */
 async function searchByFTS(
   db: SQLiteDatabase,
   query: SearchQuery,
@@ -275,13 +335,17 @@ async function searchByFTS(
     const originalQuery = query.original;
     const hiraganaQuery = query.hiragana || originalQuery;
 
-    return await retryDatabaseOperation(() => 
+    return await retryDatabaseOperation(() =>
       db.getAllAsync<DBDictEntry>(
         `
-        WITH matches AS (
+        WITH match_params AS (
+      SELECT ? AS original
+    ),
+    matches AS (
       SELECT w.*, bm25(words_fts) as rank
       FROM words_fts f
       JOIN words w ON w.id = f.rowid
+      CROSS JOIN match_params mp
       WHERE f.words_fts MATCH ?
       ORDER BY rank
     ),
@@ -293,58 +357,45 @@ async function searchByFTS(
           PARTITION BY w.word, w.reading
           ORDER BY
             CASE
-              WHEN w.word = ? OR w.reading = ? OR w.reading_hiragana = ? OR w.kanji = ? THEN 1
-              WHEN w.word LIKE ? OR w.reading LIKE ? OR w.reading_hiragana LIKE ? OR w.kanji LIKE ? THEN 2
-              ELSE m.rank + 3
+              WHEN w.word = mp.original OR w.reading = mp.original OR w.reading_hiragana = mp.original OR w.kanji = mp.original THEN ${
+                MATCH_RANK.EXACT
+              }
+              WHEN w.word LIKE mp.original || '%' OR w.reading LIKE mp.original || '%' OR w.reading_hiragana LIKE mp.original || '%' OR w.kanji LIKE mp.original || '%' THEN ${
+                MATCH_RANK.PREFIX
+              }
+              ELSE m.rank + ${FTS_RANK_OFFSET}
             END,
             length(w.word)
         ) as row_num
       FROM words w
       JOIN matches m ON w.id = m.id
+      CROSS JOIN match_params mp
       WHERE length(w.word) >= ${Math.min(originalQuery.length, 2)}
     )
     SELECT * FROM deduped
+    CROSS JOIN match_params mp
     WHERE row_num = 1
     ORDER BY
       CASE
-        WHEN word = ? OR reading = ? OR reading_hiragana = ? OR kanji = ? THEN 1
-        WHEN word LIKE ? OR reading LIKE ? OR reading_hiragana LIKE ? OR kanji LIKE ? THEN 2
-        ELSE rank + 3
+        WHEN word = mp.original OR reading = mp.original OR reading_hiragana = mp.original OR kanji = mp.original THEN ${
+          MATCH_RANK.EXACT
+        }
+        WHEN word LIKE mp.original || '%' OR reading LIKE mp.original || '%' OR reading_hiragana LIKE mp.original || '%' OR kanji LIKE mp.original || '%' THEN ${
+          MATCH_RANK.PREFIX
+        }
+        ELSE rank + ${FTS_RANK_OFFSET}
       END,
-      CASE 
-        WHEN reading_hiragana = ? THEN 1
-        WHEN reading = ? THEN 2
-        WHEN word = ? THEN 3
-        WHEN kanji = ? THEN 4
-        ELSE 5
+      CASE
+        WHEN reading_hiragana = mp.original THEN ${SECONDARY_ORDER.HIRAGANA}
+        WHEN reading = mp.original THEN ${SECONDARY_ORDER.READING}
+        WHEN word = mp.original THEN ${SECONDARY_ORDER.WORD}
+        WHEN kanji = mp.original THEN ${SECONDARY_ORDER.KANJI}
+        ELSE ${SECONDARY_ORDER.FALLBACK}
       END,
       length(word)
     LIMIT ?
     `,
-    [
-      matchExpression,
-      hiraganaQuery,
-      hiraganaQuery,
-      hiraganaQuery,
-      hiraganaQuery,
-      `${hiraganaQuery}%`,
-      `${hiraganaQuery}%`,
-      `${hiraganaQuery}%`,
-      `${hiraganaQuery}%`,
-      hiraganaQuery,
-      hiraganaQuery,
-      hiraganaQuery,
-      hiraganaQuery,
-      `${hiraganaQuery}%`,
-      `${hiraganaQuery}%`,
-      `${hiraganaQuery}%`,
-      `${hiraganaQuery}%`,
-      hiraganaQuery,
-      hiraganaQuery,
-      hiraganaQuery,
-      hiraganaQuery,
-      options.limit
-      ]
+        [hiraganaQuery, matchExpression, options.limit]
       )
     );
   } catch (error) {
@@ -353,26 +404,33 @@ async function searchByFTS(
   }
 }
 
+/**
+ * Searches dictionary meanings using English text heuristics.
+ * @param db - SQLite database connection instance
+ * @param query - Raw English query string
+ * @param limit - Maximum number of results to return
+ * @returns Array of dictionary entries sorted by match strength
+ */
 async function searchByEnglish(
   db: SQLiteDatabase,
   query: string,
   limit: number
 ): Promise<DBDictEntry[]> {
   const normalizedQuery = query.toLowerCase().trim();
-  
+
   if (normalizedQuery.length === 0) return [];
 
-  return await retryDatabaseOperation(() => 
+  return await retryDatabaseOperation(() =>
     db.getAllAsync<DBDictEntry>(
-    `
+      `
     WITH english_matches AS (
       SELECT DISTINCT
         w.*,
         CASE
-          WHEN LOWER(m.meaning) = ? THEN 1
-          WHEN LOWER(m.meaning) LIKE ? THEN 2
-          WHEN LOWER(m.meaning) LIKE ? THEN 3
-          ELSE 4
+          WHEN LOWER(m.meaning) = ? THEN ${MATCH_RANK.EXACT}
+          WHEN LOWER(m.meaning) LIKE ? THEN ${MATCH_RANK.PREFIX}
+          WHEN LOWER(m.meaning) LIKE ? THEN ${MATCH_RANK.CONTAINS}
+          ELSE ${MATCH_RANK.FALLBACK}
         END as match_rank,
         length(w.word) as word_length
       FROM words w
@@ -402,17 +460,24 @@ async function searchByEnglish(
       position
     LIMIT ?
     `,
-    [
-      normalizedQuery,           // Exact match
-      `${normalizedQuery}%`,     // Starts with
-      `%${normalizedQuery}%`,    // Contains
-      `%${normalizedQuery}%`,    // General filter
-      limit
-    ]
+      [
+        normalizedQuery, // Exact match
+        `${normalizedQuery}%`, // Starts with
+        `%${normalizedQuery}%`, // Contains
+        `%${normalizedQuery}%`, // General filter
+        limit,
+      ]
     )
   );
 }
 
+/**
+ * Executes tiered fallback searches for Japanese queries using exact, prefix, and contains logic.
+ * @param db - SQLite database connection instance
+ * @param processedQuery - Search query with script variations
+ * @param limit - Maximum number of results to return
+ * @returns Array of dictionary entries ordered by match tier and sub-ranking
+ */
 async function searchByTiers(
   db: SQLiteDatabase,
   processedQuery: SearchQuery,
@@ -420,158 +485,215 @@ async function searchByTiers(
 ): Promise<DBDictEntry[]> {
   // Build search conditions for all query variations
   const searchTerms: string[] = [];
-  [processedQuery.original, processedQuery.hiragana, processedQuery.katakana, processedQuery.romaji].forEach(term => {
+  [
+    processedQuery.original,
+    processedQuery.hiragana,
+    processedQuery.katakana,
+    processedQuery.romaji,
+  ].forEach((term) => {
     if (term && !searchTerms.includes(term)) {
       searchTerms.push(term);
     }
   });
 
+  /**
+   * Orchestrates the dictionary search workflow with caching, fallbacks, and cancellation support.
+   * @param db - SQLite database connection instance
+   * @param query - Raw user input string
+   * @param options - Search behaviour flags and execution controls
+   * @returns Search result containing matched entries and optional meanings
+   * @throws Error with name `AbortError` when the search is cancelled
+   */
   if (searchTerms.length === 0) return [];
 
-  // Use UNION ALL for better performance than complex CTE
-  const queries: string[] = [];
-  const params: string[] = [];
+  const termsCte = searchTerms
+    .map((_, index) => (index === 0 ? "SELECT ? AS term" : "SELECT ?"))
+    .join(" UNION ALL ");
 
-  // Tier 1: Exact matches with sub-ranking
-  searchTerms.forEach(term => {
-    queries.push(`
-      SELECT DISTINCT *, 1 as match_rank, length(word) as word_length,
-        CASE 
-          WHEN reading_hiragana = ? THEN 1
-          WHEN reading = ? THEN 2
-          WHEN word = ? THEN 3
-          WHEN kanji = ? THEN 4
-          ELSE 5
-        END as sub_rank
-      FROM words 
-      WHERE word = ? OR reading = ? OR reading_hiragana = ? OR kanji = ?
-    `);
-    params.push(term, term, term, term, term, term, term, term);
-  });
-
-  // Tier 2: Prefix matches with sub-ranking
-  searchTerms.forEach(term => {
-    queries.push(`
-      SELECT DISTINCT *, 2 as match_rank, length(word) as word_length,
-        CASE 
-          WHEN reading_hiragana LIKE ? THEN 1
-          WHEN reading LIKE ? THEN 2
-          WHEN word LIKE ? THEN 3
-          WHEN kanji LIKE ? THEN 4
-          ELSE 5
-        END as sub_rank
-      FROM words 
-      WHERE (word LIKE ? OR reading LIKE ? OR reading_hiragana LIKE ? OR kanji LIKE ?)
-      AND NOT (word = ? OR reading = ? OR reading_hiragana = ? OR kanji = ?)
-    `);
-    params.push(`${term}%`, `${term}%`, `${term}%`, `${term}%`, `${term}%`, `${term}%`, `${term}%`, `${term}%`, term, term, term, term);
-  });
-
-  // Tier 3: Contains matches with sub-ranking
-  searchTerms.forEach(term => {
-    queries.push(`
-      SELECT DISTINCT *, 3 as match_rank, length(word) as word_length,
-        CASE 
-          WHEN reading_hiragana LIKE ? THEN 1
-          WHEN reading LIKE ? THEN 2
-          WHEN word LIKE ? THEN 3
-          WHEN kanji LIKE ? THEN 4
-          ELSE 5
-        END as sub_rank
-      FROM words 
-      WHERE (word LIKE ? OR reading LIKE ? OR reading_hiragana LIKE ? OR kanji LIKE ?)
-      AND NOT (word LIKE ? OR reading LIKE ? OR reading_hiragana LIKE ? OR kanji LIKE ?)
-    `);
-    params.push(`%${term}%`, `%${term}%`, `%${term}%`, `%${term}%`, `%${term}%`, `%${term}%`, `%${term}%`, `%${term}%`, `${term}%`, `${term}%`, `${term}%`, `${term}%`);
-  });
-
-  return await retryDatabaseOperation(() => 
-    db.getAllAsync<DBDictEntry>(
-      `
-      SELECT id, word, reading, reading_hiragana, kanji, position
-    FROM (${queries.join(' UNION ALL ')})
-    GROUP BY id
-    ORDER BY MIN(match_rank), MIN(sub_rank), MIN(word_length), position
-    LIMIT ?
-    `,
-    [...params, limit]
+  const tieredQuery = `
+    WITH search_terms(term) AS (
+      ${termsCte}
+    ),
+    candidate_matches AS (
+      SELECT
+        w.id,
+        w.word,
+        w.reading,
+        w.reading_hiragana,
+        w.kanji,
+        w.position,
+        CASE
+          WHEN w.word = st.term OR w.reading = st.term OR w.reading_hiragana = st.term OR w.kanji = st.term THEN ${MATCH_RANK.EXACT}
+          WHEN w.word LIKE st.term || '%' OR w.reading LIKE st.term || '%' OR w.reading_hiragana LIKE st.term || '%' OR w.kanji LIKE st.term || '%' THEN ${MATCH_RANK.PREFIX}
+          ELSE ${MATCH_RANK.CONTAINS}
+        END AS match_rank,
+        CASE
+          WHEN w.reading_hiragana = st.term THEN ${SUB_RANK.EXACT.HIRAGANA}
+          WHEN w.reading = st.term THEN ${SUB_RANK.EXACT.READING}
+          WHEN w.word = st.term THEN ${SUB_RANK.EXACT.WORD}
+          WHEN w.kanji = st.term THEN ${SUB_RANK.EXACT.KANJI}
+          WHEN w.reading_hiragana LIKE st.term || '%' THEN ${SUB_RANK.PREFIX.HIRAGANA}
+          WHEN w.reading LIKE st.term || '%' THEN ${SUB_RANK.PREFIX.READING}
+          WHEN w.word LIKE st.term || '%' THEN ${SUB_RANK.PREFIX.WORD}
+          WHEN w.kanji LIKE st.term || '%' THEN ${SUB_RANK.PREFIX.KANJI}
+          WHEN w.reading_hiragana LIKE '%' || st.term || '%' THEN ${SUB_RANK.CONTAINS.HIRAGANA}
+          WHEN w.reading LIKE '%' || st.term || '%' THEN ${SUB_RANK.CONTAINS.READING}
+          WHEN w.word LIKE '%' || st.term || '%' THEN ${SUB_RANK.CONTAINS.WORD}
+          WHEN w.kanji LIKE '%' || st.term || '%' THEN ${SUB_RANK.CONTAINS.KANJI}
+          ELSE ${SUB_RANK.DEFAULT}
+        END AS sub_rank,
+        length(w.word) AS word_length
+      FROM words w
+      JOIN search_terms st
+      WHERE
+        w.word = st.term OR w.reading = st.term OR w.reading_hiragana = st.term OR w.kanji = st.term OR
+        w.word LIKE st.term || '%' OR w.reading LIKE st.term || '%' OR w.reading_hiragana LIKE st.term || '%' OR w.kanji LIKE st.term || '%' OR
+        w.word LIKE '%' || st.term || '%' OR w.reading LIKE '%' || st.term || '%' OR w.reading_hiragana LIKE '%' || st.term || '%' OR w.kanji LIKE '%' || st.term || '%'
+    ),
+    deduped AS (
+      SELECT
+        *,
+        ROW_NUMBER() OVER (
+          PARTITION BY id
+          ORDER BY match_rank, sub_rank, word_length, position
+        ) AS row_num
+      FROM candidate_matches
     )
+    SELECT id, word, reading, reading_hiragana, kanji, position
+    FROM deduped
+    WHERE row_num = 1
+    ORDER BY match_rank, sub_rank, word_length, position
+    LIMIT ?
+  `;
+
+  return await retryDatabaseOperation(() =>
+    db.getAllAsync<DBDictEntry>(tieredQuery, [...searchTerms, limit])
   );
 }
-
 
 export async function searchDictionary(
   db: SQLiteDatabase,
   query: string,
   options: SearchDictionaryOptions = {}
 ): Promise<SearchDictionaryResult> {
-  const { withMeanings = true, limit = 50, minQueryLength = 1, signal } = options;
+  const {
+    withMeanings = true,
+    limit = 50,
+    minQueryLength = 1,
+    signal,
+  } = options;
 
   try {
     if (!query || query.trim().length < minQueryLength) {
-      return createEmptyResult(`Query must be at least ${minQueryLength} character(s) long`);
+      return createEmptyResult(
+        `Query must be at least ${minQueryLength} character(s) long`
+      );
     }
 
     // Check for cancellation
     if (signal?.aborted) {
-      throw new Error('Search cancelled');
+      throw new Error("Search cancelled");
     }
 
     const trimmedQuery = query.trim();
     const processedQuery = processSearchQuery(trimmedQuery);
+    const cacheKey = buildSearchCacheKey(trimmedQuery, limit, withMeanings);
+
+    if (signal?.aborted) {
+      throw new Error("Search cancelled");
+    }
+
+    if (isQueryTooComplex(trimmedQuery)) {
+      return createEmptyResult("Query is too long or complex to process");
+    }
+
+    const cached = getCachedSearchResult(cacheKey);
+    if (cached) {
+      return cached;
+    }
 
     // For Latin text (no Japanese characters), try English search first, then Japanese as fallback
-    const isLatinText = !wanakana.isJapanese(trimmedQuery) && 
-                       /^[a-zA-Z\s\-'.,!?]+$/.test(trimmedQuery);
+    const isLatinText =
+      !wanakana.isJapanese(trimmedQuery) &&
+      /^[a-zA-Z\s\-'.,!?]+$/.test(trimmedQuery);
 
     if (isLatinText) {
-      if (signal?.aborted) throw new Error('Search cancelled');
+      if (signal?.aborted) throw new Error("Search cancelled");
       const englishResults = await searchByEnglish(db, trimmedQuery, limit);
-      
+
       // If English search found results, return them
       if (englishResults.length > 0) {
-        if (signal?.aborted) throw new Error('Search cancelled');
-        const meanings = withMeanings ? await fetchMeanings(db, englishResults, signal) : new Map();
-        return formatSearchResults(englishResults, meanings);
+        if (signal?.aborted) throw new Error("Search cancelled");
+        const meanings = withMeanings
+          ? await fetchMeanings(db, englishResults, signal)
+          : new Map();
+        const result = formatSearchResults(englishResults, meanings);
+        if (!result.error) {
+          setCachedSearchResult(cacheKey, result);
+        }
+        return result;
       }
-      
+
       // If no English results, continue to Japanese search (treat as potential romaji)
     }
 
     // Fast path for single kanji
     if (isSingleKanjiCharacter(trimmedQuery)) {
-      if (signal?.aborted) throw new Error('Search cancelled');
+      if (signal?.aborted) throw new Error("Search cancelled");
       const results = await searchBySingleKanji(db, trimmedQuery, { limit });
-      if (signal?.aborted) throw new Error('Search cancelled');
-      const meanings = withMeanings ? await fetchMeanings(db, results, signal) : new Map();
-      return formatSearchResults(results, meanings);
+      if (signal?.aborted) throw new Error("Search cancelled");
+      const meanings = withMeanings
+        ? await fetchMeanings(db, results, signal)
+        : new Map();
+      const result = formatSearchResults(results, meanings);
+      if (!result.error) {
+        setCachedSearchResult(cacheKey, result);
+      }
+      return result;
     }
 
     // Try FTS first if available (but skip for short queries where reading matches are important)
     if (trimmedQuery.length > 2) {
-      if (signal?.aborted) throw new Error('Search cancelled');
+      if (signal?.aborted) throw new Error("Search cancelled");
       const ftsResults = await searchByFTS(db, processedQuery, { limit });
       if (ftsResults.length > 0) {
-        if (signal?.aborted) throw new Error('Search cancelled');
-        const meanings = withMeanings ? await fetchMeanings(db, ftsResults, signal) : new Map();
-        return formatSearchResults(ftsResults, meanings);
+        if (signal?.aborted) throw new Error("Search cancelled");
+        const meanings = withMeanings
+          ? await fetchMeanings(db, ftsResults, signal)
+          : new Map();
+        const result = formatSearchResults(ftsResults, meanings);
+        if (!result.error) {
+          setCachedSearchResult(cacheKey, result);
+        }
+        return result;
       }
     }
 
     // Use optimized tiered search
-    if (signal?.aborted) throw new Error('Search cancelled');
+    if (signal?.aborted) throw new Error("Search cancelled");
     const results = await searchByTiers(db, processedQuery, limit);
-    if (signal?.aborted) throw new Error('Search cancelled');
-    const meanings = withMeanings ? await fetchMeanings(db, results, signal) : new Map();
+    if (signal?.aborted) throw new Error("Search cancelled");
+    const meanings = withMeanings
+      ? await fetchMeanings(db, results, signal)
+      : new Map();
+    const result = formatSearchResults(results, meanings);
+    if (!result.error) {
+      setCachedSearchResult(cacheKey, result);
+    }
 
-    return formatSearchResults(results, meanings);
+    return result;
   } catch (error) {
-    if (error instanceof Error && (error.message === 'Search cancelled' || signal?.aborted)) {
-      const abortError = new Error('Search cancelled');
-      abortError.name = 'AbortError';
+    if (
+      error instanceof Error &&
+      (error.message === "Search cancelled" || signal?.aborted)
+    ) {
+      const abortError = new Error("Search cancelled");
+      abortError.name = "AbortError";
       throw abortError;
     }
     console.error("Search error:", error);
-    return createEmptyResult("An error occurred while searching the dictionary");
+    return createEmptyResult(
+      "An error occurred while searching the dictionary"
+    );
   }
 }

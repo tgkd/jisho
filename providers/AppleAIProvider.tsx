@@ -1,10 +1,9 @@
 import { apple, AppleSpeech } from "@react-native-ai/apple";
 import {
-  experimental_generateSpeech as speech,
   generateObject,
+  experimental_generateSpeech as speech,
   streamText,
 } from "ai";
-import { useAudioPlayer } from "expo-audio";
 import type { ReactNode } from "react";
 import React, { createContext, useCallback, useContext, useState } from "react";
 
