@@ -1,4 +1,4 @@
-import { Stack, useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
@@ -59,35 +59,31 @@ export default function KanjiDetailScreen() {
   }
 
   return (
-    <>
-      <Stack.Screen
-        options={{
-          title: params.title || entry.character,
-        }}
-      />
-      <ScrollView
-        contentContainerStyle={styles.content}
-        contentInsetAdjustmentBehavior="automatic"
-      >
-        {entry.meanings?.length ? (
-          <>
-            <ThemedText type="title" style={styles.sectionTitle}>
-              {"Meanings"}
-            </ThemedText>
-            <Card variant="grouped">
-              {entry.meanings.map((meaning, idx) => (
-                <View key={idx} style={styles.row}>
-                  <IconSymbol name="circle.fill" size={6} color={markColor} />
-                  <ThemedText size="md">{meaning}</ThemedText>
-                </View>
-              ))}
-            </Card>
-          </>
-        ) : null}
+    <ScrollView
+      contentContainerStyle={styles.content}
+      contentInsetAdjustmentBehavior="automatic"
+    >
+      <ThemedView style={styles.headerSection}>
+        <ThemedText type="title">{entry.character}</ThemedText>
+      </ThemedView>
+      {entry.meanings?.length ? (
+        <>
+          <ThemedText type="title" style={styles.sectionTitle}>
+            {"Meanings"}
+          </ThemedText>
+          <Card variant="grouped">
+            {entry.meanings.map((meaning, idx) => (
+              <View key={idx} style={styles.row}>
+                <IconSymbol name="circle.fill" size={6} color={markColor} />
+                <ThemedText size="md">{meaning}</ThemedText>
+              </View>
+            ))}
+          </Card>
+        </>
+      ) : null}
 
-        <ReadingsSection entry={entry} />
-      </ScrollView>
-    </>
+      <ReadingsSection entry={entry} />
+    </ScrollView>
   );
 }
 
@@ -97,7 +93,7 @@ function ReadingsSection({ entry }: { entry: KanjiEntry }) {
 
   const handleSpeech = async (reading: string) => {
     try {
-      await ai.generateSpeech(reading, { language: "ja", rate: 0.75 });
+      await ai.generateSpeech(reading);
     } catch (error) {
       console.error("Speech generation failed:", error);
     }
@@ -200,6 +196,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    gap: 8,
+  },
+  headerSection: {
+    alignItems: "center",
+    paddingTop: 16,
     gap: 8,
   },
 });

@@ -66,6 +66,8 @@ export function ThemedText({
         return styles.sm;
       case "xs":
         return styles.xs;
+      case "lg":
+        return styles.title;
       default:
         return styles.default;
     }
@@ -129,5 +131,9 @@ const styles = StyleSheet.create({
   xs: {
     fontSize: 11,
     lineHeight: 16,
+  },
+  lg: {
+    fontSize: 20,
+    lineHeight: 25,
   },
 });

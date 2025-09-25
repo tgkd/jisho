@@ -17,9 +17,8 @@ import {
   getAiSound,
 } from "@/services/request";
 import { SETTINGS_KEYS } from "@/services/storage";
-import { useAppleAI } from "./AppleAIProvider";
 import { useAudioPlayer } from "expo-audio";
-import { saveAudioFile } from "@/services/database";
+import { useAppleAI } from "./AppleAIProvider";
 
 export type AIProviderType = "local" | "remote";
 
@@ -50,6 +49,7 @@ export interface UnifiedAIContextValue {
 
   // State management
   isGenerating: boolean;
+  isAvailable: boolean;
   currentProvider: AIProviderType;
 
   // Configuration
@@ -71,10 +71,13 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
   const [storedProvider, setStoredProvider] = useMMKVString(
     SETTINGS_KEYS.AI_PROVIDER_TYPE
   );
+  const [remoteUser] = useMMKVString(SETTINGS_KEYS.API_AUTH_USERNAME);
   const [currentProvider, setCurrentProvider] = useState<AIProviderType>(
     (storedProvider as AIProviderType) || "local"
   );
   const [isGenerating, setIsGenerating] = useState(false);
+  const isAvailable =
+    localAI.isReady || (Boolean(remoteUser) && currentProvider === "remote");
 
   // Update persistent storage when provider changes
   const handleProviderChange = useCallback(
@@ -265,7 +268,10 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
       options: {
         language?: string;
         rate?: number;
-      } = {}
+      } = {
+        language: "ja",
+        rate: 0.8,
+      }
     ): Promise<string | undefined> => {
       try {
         if (currentProvider === "remote") {
@@ -305,6 +311,7 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
     chatWithMessages,
     generateSpeech,
     isGenerating,
+    isAvailable,
     currentProvider,
     setCurrentProvider: handleProviderChange,
     interrupt,

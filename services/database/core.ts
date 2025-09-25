@@ -1,7 +1,7 @@
 import { SQLiteDatabase } from "expo-sqlite";
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
-  const DATABASE_VERSION = 11;
+  const DATABASE_VERSION = 12;
 
   try {
     // Test if database is corrupted by trying a simple query

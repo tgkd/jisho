@@ -3,9 +3,11 @@ import { Stack, useRouter } from "expo-router";
 import * as React from "react";
 
 import { HapticButton } from "@/components/HapticTab";
+import { useUnifiedAI } from "@/providers/UnifiedAIProvider";
 
 export default function WordLayout() {
   const router = useRouter();
+  const ai = useUnifiedAI();
 
   return (
     <Stack>
@@ -14,13 +16,13 @@ export default function WordLayout() {
         options={{
           headerLargeTitle: true,
           headerTransparent: true,
-          headerLeft: () => apple.isAvailable()
-          ? (
-            <HapticButton
-              systemImage={"message"}
-              onPress={() => router.push({ pathname: "/word/chat" })}
-            />
-          ) : undefined,
+          headerLeft: () =>
+            ai.isAvailable ? (
+              <HapticButton
+                systemImage={"message"}
+                onPress={() => router.push({ pathname: "/word/chat" })}
+              />
+            ) : undefined,
         }}
       />
       <Stack.Screen
@@ -37,7 +39,6 @@ export default function WordLayout() {
           title: "Kanji",
           presentation: "modal",
           headerTransparent: true,
-          headerLargeTitle: true,
         }}
       />
       <Stack.Screen

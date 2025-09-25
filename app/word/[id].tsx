@@ -90,7 +90,7 @@ export default function WordDetailScreen() {
   const handleSpeech = async () => {
     if (entry) {
       try {
-        await ai.generateSpeech(entry.word.word, { language: "ja" });
+        await ai.generateSpeech(entry.word.word);
       } catch (error) {
         console.error("Speech generation failed:", error);
       }
@@ -118,36 +118,34 @@ export default function WordDetailScreen() {
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <ScrollView
-        contentContainerStyle={styles.content}
-        contentInsetAdjustmentBehavior="automatic"
-      >
-        <ThemedView style={styles.headerSection}>
-          <HapticTab onPress={handleSpeech}>
-            <ThemedText type="title" style={styles.word}>
-              {entry.word.word}
-            </ThemedText>
-          </HapticTab>
-          <ThemedText type="secondary">
-            {formatJp(entry.word.reading, true)}
+    <ScrollView
+      contentContainerStyle={styles.content}
+      contentInsetAdjustmentBehavior="automatic"
+    >
+      <ThemedView style={styles.headerSection}>
+        <HapticTab onPress={handleSpeech}>
+          <ThemedText type="title" style={styles.word}>
+            {entry.word.word}
           </ThemedText>
-        </ThemedView>
+        </HapticTab>
+        <ThemedText type="secondary">
+          {formatJp(entry.word.reading, true)}
+        </ThemedText>
+      </ThemedView>
 
-        <Card variant="grouped">
-          {details.map((m, idx) => (
-            <View key={idx} style={styles.row}>
-              <IconSymbol name="circle.fill" size={6} color={markColor} />
-              <ThemedText size="md">{m}</ThemedText>
-            </View>
-          ))}
-        </Card>
+      <Card variant="grouped">
+        {details.map((m, idx) => (
+          <View key={idx} style={styles.row}>
+            <IconSymbol name="circle.fill" size={6} color={markColor} />
+            <ThemedText size="md">{m}</ThemedText>
+          </View>
+        ))}
+      </Card>
 
-        <WordKanjiSection word={entry.word.word} />
+      <WordKanjiSection word={entry.word.word} />
 
-        <ExamplesView entry={entry} refreshExamples={handleRefreshExamples} />
-      </ScrollView>
-    </ThemedView>
+      <ExamplesView entry={entry} refreshExamples={handleRefreshExamples} />
+    </ScrollView>
   );
 }
 
@@ -185,7 +183,6 @@ function ExamplesView({
 }) {
   const db = useSQLiteContext();
   const ai = useUnifiedAI();
-  const aiAvailable = true;
   const [selectedExample, setSelectedExample] = useState<string[] | null>(null);
 
   const handleFetchExamples = async () => {
@@ -224,7 +221,7 @@ function ExamplesView({
           <ThemedText type="secondary">{"No examples found"}</ThemedText>
         ) : null}
       </Card>
-      {aiAvailable && (
+      {ai.isAvailable ? (
         <Pressable
           style={styles.examplesLoading}
           disabled={ai.isGenerating}
@@ -236,7 +233,7 @@ function ExamplesView({
             <ThemedText>✨🤖✨</ThemedText>
           )}
         </Pressable>
-      )}
+      ) : null}
       <KanjiListView
         kanjiChars={selectedExample}
         handleClose={() => setSelectedExample(null)}
@@ -267,7 +264,7 @@ function ExampleRow({
 
   const fallbackToSpeech = async () => {
     try {
-      await ai.generateSpeech(e.japaneseText, { language: "ja" });
+      await ai.generateSpeech(e.japaneseText);
     } catch (error) {
       console.error("Speech generation failed:", error);
     }
