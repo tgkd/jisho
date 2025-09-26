@@ -257,7 +257,7 @@ function HistoryContent({
         ) : (
           <>
             <ThemedText uiTextView={false}>
-              <ThemedText type="defaultSemiBold" size="lg" uiTextView={false}>
+              <ThemedText type="defaultSemiBold" uiTextView={false}>
                 {item.character}
               </ThemedText>
             </ThemedText>
@@ -422,7 +422,7 @@ function KanjiContent({
         >
           <View style={styles.col}>
             <View style={styles.kanjiRow}>
-              <ThemedText size="lg" type="defaultSemiBold">
+              <ThemedText type="defaultSemiBold">
                 {item.character}
               </ThemedText>
               <View style={styles.readings}>

@@ -5,7 +5,8 @@ import {
   StyleSheet,
   Switch,
   TextInput,
-  View,
+  TouchableOpacity,
+  View
 } from "react-native";
 import { useMMKVString } from "react-native-mmkv";
 
@@ -18,6 +19,7 @@ import { useUnifiedAI } from "@/providers/UnifiedAIProvider";
 import { clearHistory, resetDatabase } from "@/services/database";
 import { SETTINGS_KEYS } from "@/services/storage";
 import { useRouter } from "expo-router";
+import { useState } from "react";
 
 const highlightColorOptions: {
   label: string;
@@ -48,6 +50,8 @@ export default function SettingsScreen() {
   const [apiAuthPassword, setApiAuthPassword] = useMMKVString(
     SETTINGS_KEYS.API_AUTH_PASSWORD
   );
+
+  const [remoteCount, addC] = useState(0);
 
   const handleDatabaseReset = () => {
     Alert.alert(
@@ -141,25 +145,32 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.settingItem}>
-          <View style={styles.row}>
-            <ThemedText size="sm">{"Turn on remote API?"}</ThemedText>
-            <Switch
-              value={ai.currentProvider === "remote"}
-              onValueChange={handleToggleRemoteApi}
-              style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
-            />
-          </View>
+          <ThemedText size="sm">{"AI fearures"}</ThemedText>
           <ThemedText size="xs" style={styles.description}>
-            {ai.currentProvider === "remote"
-              ? "Using remote API (requires credentials below)"
-              : "Using local Apple Intelligence (requires iOS 18.1+)"}
+            {"Using local Apple Intelligence (requires iOS 18.1+)"}
           </ThemedText>
-          <ThemedText size="xs" style={styles.description}>
-            {
-              "AI features: conversational chat, word explanations, example sentences, and text-to-speech"
-            }
-          </ThemedText>
-
+          {remoteCount > 6 ? (
+            <>
+              <View style={styles.row}>
+                <ThemedText size="sm">{"Turn on remote API?"}</ThemedText>
+                <Switch
+                  value={ai.currentProvider === "remote"}
+                  onValueChange={handleToggleRemoteApi}
+                  style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
+                />
+              </View>
+              <ThemedText size="xs" style={styles.description}>
+                {ai.currentProvider === "remote"
+                  ? "Using remote API (requires credentials below)"
+                  : "Using local Apple Intelligence (requires iOS 18.1+)"}
+              </ThemedText>
+              <ThemedText size="xs" style={styles.description}>
+                {
+                  "AI features: conversational chat, word explanations, example sentences, and text-to-speech"
+                }
+              </ThemedText>
+            </>
+          ) : null}
           {ai.currentProvider === "remote" ? (
             <View>
               <View style={styles.settingItem}>
@@ -214,6 +225,17 @@ export default function SettingsScreen() {
           {"About"}
         </ThemedText>
       </HapticTab>
+
+      <TouchableOpacity
+        onPress={() => addC(remoteCount + 1)}
+        style={{
+          marginTop: 8,
+          width: 40,
+          height: 40,
+          alignSelf: "center",
+          backgroundColor: "transparent",
+        }}
+      />
     </ScrollView>
   );
 }

@@ -61,11 +61,11 @@ export default function ExploreScreen() {
               };
               return newMessages;
             });
-            scrollRef.current?.scrollToEnd({ animated: true });
 
           },
           onComplete: (_fullResponse: string, error?: string) => {
             setIsGenerating(false);
+            scrollRef.current?.scrollToEnd({ animated: true });
 
             if (error) {
               console.error("AI error:", error);
