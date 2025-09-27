@@ -69,9 +69,9 @@ const mockWanakana = {
   isKatakana: (text: string) => /^[\u30A0-\u30FF]+$/.test(text),
   isHiragana: (text: string) => /^[\u3040-\u309F]+$/.test(text),
   isJapanese: (text: string) => /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(text),
-  toHiragana: (text: string) => text.replace(/[\u30A0-\u30FF]/g, (char) => 
+  toHiragana: (text: string) => text.replace(/[\u30A0-\u30FF]/g, (char) =>
     String.fromCharCode(char.charCodeAt(0) - 0x60)),
-  toKatakana: (text: string) => text.replace(/[\u3040-\u309F]/g, (char) => 
+  toKatakana: (text: string) => text.replace(/[\u3040-\u309F]/g, (char) =>
     String.fromCharCode(char.charCodeAt(0) + 0x60)),
   toRomaji: (text: string) => text // Simplified - would need proper romaji conversion
 };
@@ -110,7 +110,7 @@ function testProcessSearchQuery(query: string): SearchQuery {
 
 function testTokenizeJp(text: string): string[] {
   if (!text || text.trim().length === 0) return [];
-  
+
   return mockSegmenter(text)
     .filter(token => token.length > 0 && mockWanakana.isJapanese(token))
     .slice(0, 10); // Limit to prevent excessive tokens
@@ -118,11 +118,11 @@ function testTokenizeJp(text: string): string[] {
 
 function testBuildFtsMatchExpression(query: SearchQuery): string {
   const terms: string[] = [];
-  
+
   if (query.original) terms.push(`"${query.original}"`);
   if (query.hiragana && query.hiragana !== query.original) terms.push(`"${query.hiragana}"`);
   if (query.katakana && query.katakana !== query.original) terms.push(`"${query.katakana}"`);
-  
+
   return terms.join(' OR ');
 }
 
@@ -167,7 +167,7 @@ function testFormatSearchResults(words: DBDictEntry[], meanings: Map<number, any
 
 describe('Database Utilities', () => {
   let db: TestDatabase;
-  const dbPath = path.join(__dirname, '../assets/db/dict_2.db');
+  const dbPath = path.join(__dirname, '../assets/db/db_3.db');
 
   beforeAll(async () => {
     db = new TestDatabase(dbPath);
@@ -182,45 +182,45 @@ describe('Database Utilities', () => {
   describe('processSearchQuery', () => {
     test('processes romaji input', () => {
       const result = testProcessSearchQuery('kado');
-      
+
       expect(result.original).toBe('kado');
       expect(result.romaji).toBe('kado');
       expect(result.hiragana).toBeTruthy();
       expect(result.katakana).toBeTruthy();
-      
+
       console.log('Romaji processing:', result);
     });
 
     test('processes hiragana input', () => {
       const result = testProcessSearchQuery('かど');
-      
+
       expect(result.original).toBe('かど');
       expect(result.hiragana).toBe('かど');
       expect(result.katakana).toBeTruthy();
       expect(result.romaji).toBeTruthy();
-      
+
       console.log('Hiragana processing:', result);
     });
 
     test('processes katakana input', () => {
       const result = testProcessSearchQuery('カド');
-      
+
       expect(result.original).toBe('カド');
       expect(result.katakana).toBe('カド');
       expect(result.hiragana).toBeTruthy();
       expect(result.romaji).toBeTruthy();
-      
+
       console.log('Katakana processing:', result);
     });
 
     test('processes kanji input', () => {
       const result = testProcessSearchQuery('角');
-      
+
       expect(result.original).toBe('角');
       expect(result.hiragana).toBe('角');
       expect(result.katakana).toBe('角');
       expect(result.romaji).toBe('角');
-      
+
       console.log('Kanji processing:', result);
     });
 
@@ -234,26 +234,26 @@ describe('Database Utilities', () => {
   describe('tokenizeJp', () => {
     test('tokenizes Japanese text', () => {
       const tokens = testTokenizeJp('これは日本語です');
-      
+
       expect(Array.isArray(tokens)).toBe(true);
       expect(tokens.length).toBeGreaterThan(0);
-      
+
       // All tokens should be Japanese characters
       tokens.forEach(token => {
         expect(mockWanakana.isJapanese(token)).toBe(true);
       });
-      
+
       console.log('Japanese tokenization:', tokens);
     });
 
     test('filters out non-Japanese text', () => {
       const tokens = testTokenizeJp('Hello これは test 日本語 です');
-      
+
       // Should only contain Japanese characters
       tokens.forEach(token => {
         expect(mockWanakana.isJapanese(token)).toBe(true);
       });
-      
+
       console.log('Mixed text tokenization:', tokens);
     });
 
@@ -265,7 +265,7 @@ describe('Database Utilities', () => {
     test('limits token count', () => {
       const longText = 'あ'.repeat(20);
       const tokens = testTokenizeJp(longText);
-      
+
       expect(tokens.length).toBeLessThanOrEqual(10);
     });
   });
@@ -278,15 +278,15 @@ describe('Database Utilities', () => {
         katakana: 'カド',
         romaji: 'kado'
       };
-      
+
       const expression = testBuildFtsMatchExpression(query);
-      
+
       expect(expression).toBeTruthy();
       expect(expression).toContain('"kado"');
       expect(expression).toContain('"かど"');
       expect(expression).toContain('"カド"');
       expect(expression).toContain(' OR ');
-      
+
       console.log('FTS expression:', expression);
     });
 
@@ -296,13 +296,13 @@ describe('Database Utilities', () => {
         hiragana: 'かど',
         katakana: 'カド'
       };
-      
+
       const expression = testBuildFtsMatchExpression(query);
-      
+
       // Should not duplicate the original term
       const kadoCount = (expression.match(/"かど"/g) || []).length;
       expect(kadoCount).toBe(1);
-      
+
       console.log('FTS expression with duplicates:', expression);
     });
 
@@ -310,9 +310,9 @@ describe('Database Utilities', () => {
       const query: SearchQuery = {
         original: 'test'
       };
-      
+
       const expression = testBuildFtsMatchExpression(query);
-      
+
       expect(expression).toBe('"test"');
     });
   });
@@ -327,16 +327,16 @@ describe('Database Utilities', () => {
         kanji: '角',
         position: 1
       };
-      
+
       const dictEntry = testDbWordToDictEntry(dbWord);
-      
+
       expect(dictEntry.id).toBe(1);
       expect(dictEntry.word).toBe('角');
       expect(dictEntry.reading).toBe('かど');
       expect(dictEntry.readingHiragana).toBe('かど');
       expect(dictEntry.kanji).toBe('角');
       expect(dictEntry.position).toBe(1);
-      
+
       console.log('Dictionary entry conversion:', dictEntry);
     });
 
@@ -349,9 +349,9 @@ describe('Database Utilities', () => {
         kanji: null,
         position: 1
       };
-      
+
       const dictEntry = testDbWordToDictEntry(dbWord);
-      
+
       expect(dictEntry.readingHiragana).toBeNull();
       expect(dictEntry.kanji).toBeNull();
     });
@@ -386,7 +386,7 @@ describe('Database Utilities', () => {
   describe('createEmptyResult', () => {
     test('creates empty result with default message', () => {
       const result = testCreateEmptyResult();
-      
+
       expect(result.words).toEqual([]);
       expect(result.total).toBe(0);
       expect(result.hasMore).toBe(false);
@@ -396,7 +396,7 @@ describe('Database Utilities', () => {
     test('creates empty result with custom message', () => {
       const customMessage = 'Custom error message';
       const result = testCreateEmptyResult(customMessage);
-      
+
       expect(result.words).toEqual([]);
       expect(result.total).toBe(0);
       expect(result.hasMore).toBe(false);
@@ -409,10 +409,10 @@ describe('Database Utilities', () => {
       // Get sample words from database
       const sampleWords = await db.all(`
         SELECT id, word, reading, reading_hiragana, kanji, position
-        FROM words 
+        FROM words
         LIMIT 2
       `);
-      
+
       if (sampleWords.length === 0) {
         console.log('No sample words found - skipping test');
         return;
@@ -423,21 +423,21 @@ describe('Database Utilities', () => {
         { id: 1, meaning: 'test meaning 1', wordId: sampleWords[0].id },
         { id: 2, meaning: 'test meaning 2', wordId: sampleWords[0].id }
       ]);
-      
+
       const result = testFormatSearchResults(sampleWords, meanings);
-      
+
       expect(result.words).toBeDefined();
       expect(result.total).toBe(sampleWords.length);
       expect(result.hasMore).toBe(false);
       expect(result.words.length).toBe(sampleWords.length);
-      
+
       // First word should have meanings
       expect(result.words[0].meanings).toBeDefined();
       expect(result.words[0].meanings.length).toBe(2);
-      
+
       // Second word should have empty meanings
       expect(result.words[1].meanings).toEqual([]);
-      
+
       console.log('Formatted search results:', {
         total: result.total,
         firstWordMeanings: result.words[0].meanings.length
@@ -447,10 +447,10 @@ describe('Database Utilities', () => {
     test('formats search results without meanings', async () => {
       const sampleWords = await db.all(`
         SELECT id, word, reading, reading_hiragana, kanji, position
-        FROM words 
+        FROM words
         LIMIT 1
       `);
-      
+
       if (sampleWords.length === 0) {
         console.log('No sample words found - skipping test');
         return;
@@ -458,13 +458,13 @@ describe('Database Utilities', () => {
 
       const emptyMeanings = new Map();
       const result = testFormatSearchResults(sampleWords, emptyMeanings);
-      
+
       expect(result.words[0].meanings).toEqual([]);
     });
 
     test('handles empty word list', () => {
       const result = testFormatSearchResults([], new Map());
-      
+
       expect(result.words).toEqual([]);
       expect(result.total).toBe(0);
       expect(result.hasMore).toBe(false);
@@ -476,10 +476,10 @@ describe('Database Utilities', () => {
       const originalQuery = 'kado';
       const processedQuery = testProcessSearchQuery(originalQuery);
       const ftsExpression = testBuildFtsMatchExpression(processedQuery);
-      
+
       expect(ftsExpression).toBeTruthy();
       expect(ftsExpression).toContain(originalQuery);
-      
+
       console.log('Query pipeline:', {
         original: originalQuery,
         processed: processedQuery,
@@ -490,10 +490,10 @@ describe('Database Utilities', () => {
     test('database word to formatted result pipeline', async () => {
       const sampleWord = await db.get(`
         SELECT id, word, reading, reading_hiragana, kanji, position
-        FROM words 
+        FROM words
         LIMIT 1
       `);
-      
+
       if (!sampleWord) {
         console.log('No sample word found - skipping test');
         return;
@@ -502,9 +502,9 @@ describe('Database Utilities', () => {
       const dictEntry = testDbWordToDictEntry(sampleWord);
       const meanings = new Map();
       const formattedResult = testFormatSearchResults([sampleWord], meanings);
-      
+
       expect(formattedResult.words[0]).toMatchObject(dictEntry);
-      
+
       console.log('Word formatting pipeline:', {
         database: sampleWord,
         dictionary: dictEntry,
@@ -517,7 +517,7 @@ describe('Database Utilities', () => {
     test('handles very long text input', () => {
       const longText = 'あ'.repeat(1000);
       const tokens = testTokenizeJp(longText);
-      
+
       // Should be limited and not crash
       expect(tokens.length).toBeLessThanOrEqual(10);
       expect(Array.isArray(tokens)).toBe(true);
@@ -526,7 +526,7 @@ describe('Database Utilities', () => {
     test('handles special characters', () => {
       const specialChars = '！？。、・「」';
       const tokens = testTokenizeJp(specialChars);
-      
+
       // Should filter out punctuation
       expect(Array.isArray(tokens)).toBe(true);
       console.log('Special characters tokenization:', tokens);
@@ -536,18 +536,18 @@ describe('Database Utilities', () => {
       const testData = [
         'かど', 'kado', 'カド', '角', 'water', 'これは日本語です'
       ];
-      
+
       const startTime = Date.now();
-      
+
       testData.forEach(text => {
         const processed = testProcessSearchQuery(text);
-        const tokens = testTokenizeJp(text);
-        const fts = testBuildFtsMatchExpression(processed);
-        const isKanji = testIsSingleKanjiCharacter(text);
+        testTokenizeJp(text);
+        testBuildFtsMatchExpression(processed);
+        testIsSingleKanjiCharacter(text);
       });
-      
+
       const duration = Date.now() - startTime;
-      
+
       console.log(`Utility functions performance: ${duration}ms for ${testData.length} operations`);
       expect(duration).toBeLessThan(100);
     });

@@ -1,3 +1,13 @@
+## Generate a fresh database bundle
+
+Run the timestamped build to produce a new SQLite file under `assets/db/` without touching existing bundles:
+
+```bash
+yarn db:build
+```
+
+The script wraps the migration pipeline, creating a file named `db_<timestamp>.db`. You can point the app to the new asset or keep multiple builds side-by-side for comparison.
+
    ```bash
    npm i
    ```

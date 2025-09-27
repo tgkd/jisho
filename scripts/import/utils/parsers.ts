@@ -19,7 +19,7 @@ export interface WordSense {
 }
 
 export interface KanjiEntry {
-  character: string;  
+  character: string;
   jisCode?: string;
   unicode?: string;
   grade?: number;
@@ -41,10 +41,59 @@ export interface ExampleEntry {
 export interface FuriganaEntry {
   text: string;
   reading: string;
-  ruby: Array<{
+  ruby: {
     ruby: string;
     rt?: string;
-  }>;
+  }[];
+}
+
+/**
+ * Parse a raw furigana JSON entry
+ */
+export function parseFuriganaJson(value: unknown, index?: number): FuriganaEntry | null {
+  if (!value || typeof value !== 'object') {
+    console.warn(`Furigana entry${index !== undefined ? ` #${index}` : ''} is not an object`);
+    return null;
+  }
+
+  const cast = value as Record<string, unknown>;
+  const text = typeof cast.text === 'string' ? cast.text.trim() : '';
+  const reading = typeof cast.reading === 'string' ? cast.reading.trim() : '';
+  const furigana = Array.isArray(cast.furigana) ? cast.furigana : [];
+
+  if (!text || !reading || furigana.length === 0) {
+    console.warn(`Furigana entry${index !== undefined ? ` #${index}` : ''} missing required fields`);
+    return null;
+  }
+
+  const ruby: { ruby: string; rt?: string }[] = [];
+
+  for (const segment of furigana) {
+    if (!segment || typeof segment !== 'object') {
+      continue;
+    }
+
+    const seg = segment as Record<string, unknown>;
+    const rubyText = typeof seg.ruby === 'string' ? seg.ruby : null;
+    const rtText = typeof seg.rt === 'string' ? seg.rt : undefined;
+
+    if (!rubyText) {
+      continue;
+    }
+
+    ruby.push({ ruby: rubyText, rt: rtText });
+  }
+
+  if (ruby.length === 0) {
+    console.warn(`Furigana entry${index !== undefined ? ` #${index}` : ''} missing ruby segments`);
+    return null;
+  }
+
+  return {
+    text,
+    reading,
+    ruby
+  };
 }
 
 /**
@@ -53,7 +102,7 @@ export interface FuriganaEntry {
 export function parseWordsLJson(line: string, lineNumber: number): WordEntry | null {
   try {
     const data = JSON.parse(line.trim());
-    
+
     if (!data.r || !Array.isArray(data.r)) {
       console.warn(`Line ${lineNumber}: Missing or invalid readings`);
       return null;
@@ -114,6 +163,10 @@ export function parseKanjidicLine(line: string): KanjiEntry | null {
 
     let currentMeaning = '';
     let inMeaning = false;
+    let inNanoriSection = false;
+
+    const katakanaRegex = /^[\u30A0-\u30FF・ーヽヾヵヶ]+$/u;
+    const hiraganaRegex = /^[\-\.・\u3040-\u309Fー]+$/u;
 
     for (let i = 1; i < parts.length; i++) {
       const part = parts[i];
@@ -142,6 +195,11 @@ export function parseKanjidicLine(line: string): KanjiEntry | null {
         continue;
       }
 
+      if (/^T\d+/.test(part)) {
+        inNanoriSection = true;
+        continue;
+      }
+
       // Parse coded information
       if (part.startsWith('U')) {
         entry.unicode = part;
@@ -153,9 +211,15 @@ export function parseKanjidicLine(line: string): KanjiEntry | null {
         entry.frequency = parseInt(part.substring(1));
       } else if (/^\d+$/.test(part) && !entry.jisCode) {
         entry.jisCode = part;
+      } else if (katakanaRegex.test(part) && /[\u30A0-\u30FF]/.test(part)) {
+        entry.onReadings.push(part);
+      } else if (hiraganaRegex.test(part) && /[\u3040-\u309F]/.test(part)) {
+        if (inNanoriSection) {
+          entry.nanoriReadings.push(part);
+        } else {
+          entry.kunReadings.push(part);
+        }
       }
-      // Note: Reading parsing would need more sophisticated logic
-      // to distinguish between kun/on/nanori readings
     }
 
     return entry;
@@ -166,20 +230,20 @@ export function parseKanjidicLine(line: string): KanjiEntry | null {
 }
 
 /**
- * Parse examples.utf format  
+ * Parse examples.utf format
  */
 export function parseExamples(content: string): ExampleEntry[] {
   const lines = content.split('\n');
   const examples: ExampleEntry[] = [];
-  
+
   let currentExample: Partial<ExampleEntry> = {};
-  
+
   for (const line of lines) {
     if (line.startsWith('A: ')) {
       // English line
       const content = line.substring(3);
       const [english, idPart] = content.split('#ID=');
-      
+
       currentExample = {
         english: english.trim(),
         id: idPart?.trim()
@@ -188,14 +252,14 @@ export function parseExamples(content: string): ExampleEntry[] {
       // Japanese line
       currentExample.japanese = line.substring(3).trim();
       currentExample.japaneseParsed = line.substring(3).trim();
-      
+
       if (currentExample.english && currentExample.japanese) {
         examples.push(currentExample as ExampleEntry);
       }
       currentExample = {};
     }
   }
-  
+
   return examples;
 }
 
@@ -205,17 +269,17 @@ export function parseExamples(content: string): ExampleEntry[] {
 export function parseCSV(content: string): string[][] {
   const lines = content.split('\n');
   const result: string[][] = [];
-  
+
   for (const line of lines) {
     if (line.trim().length === 0) continue;
-    
+
     const row: string[] = [];
     let current = '';
     let inQuotes = false;
-    
+
     for (let i = 0; i < line.length; i++) {
       const char = line[i];
-      
+
       if (char === '"') {
         if (inQuotes && line[i + 1] === '"') {
           // Escaped quote
@@ -233,12 +297,12 @@ export function parseCSV(content: string): string[][] {
         current += char;
       }
     }
-    
+
     // Add last field
     row.push(current.trim());
     result.push(row);
   }
-  
+
   return result;
 }
 
@@ -268,7 +332,7 @@ export function hiraganaToRomaji(hiragana: string): string {
   let result = '';
   for (let i = 0; i < hiragana.length; i++) {
     const char = hiragana[i];
-    
+
     // Handle small tsu (っ) - doubles next consonant
     if (char === 'っ' && i < hiragana.length - 1) {
       const nextChar = hiragana[i + 1];
@@ -278,10 +342,10 @@ export function hiraganaToRomaji(hiragana: string): string {
       }
       continue;
     }
-    
+
     result += hiraganaToRomajiMap[char] || char;
   }
-  
+
   return result;
 }
 
@@ -301,23 +365,23 @@ export function normalizeJapanese(text: string): string {
  */
 export function validateWordEntry(entry: WordEntry, lineNumber?: number): boolean {
   const prefix = lineNumber ? `Line ${lineNumber}: ` : '';
-  
+
   if (!entry.readings || entry.readings.length === 0) {
     console.warn(`${prefix}Entry missing readings`);
     return false;
   }
-  
+
   if (!entry.senses || entry.senses.length === 0) {
     console.warn(`${prefix}Entry missing senses`);
     return false;
   }
-  
+
   for (const sense of entry.senses) {
     if (!sense.glosses || sense.glosses.length === 0) {
       console.warn(`${prefix}Sense missing glosses`);
       return false;
     }
   }
-  
+
   return true;
 }

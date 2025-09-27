@@ -7,17 +7,14 @@ import { createReadStream } from 'fs';
 import { join } from 'path';
 import { createInterface } from 'readline';
 import { DatabaseManager } from './utils/database';
-import { hiraganaToRomaji, parseWordsLJson, validateWordEntry } from './utils/parsers';
+import { parseWordsLJson, validateWordEntry } from './utils/parsers';
 import { ProgressTracker } from './utils/progress';
 
 interface ImportStats {
   totalLines: number;
   validEntries: number;
   insertedWords: number;
-  insertedKanji: number;
-  insertedReadings: number;
-  insertedSenses: number;
-  insertedGlosses: number;
+  insertedMeanings: number;
   errors: number;
 }
 
@@ -27,19 +24,13 @@ export class WordsImporter {
     totalLines: 0,
     validEntries: 0,
     insertedWords: 0,
-    insertedKanji: 0,
-    insertedReadings: 0,
-    insertedSenses: 0,
-    insertedGlosses: 0,
+    insertedMeanings: 0,
     errors: 0
   };
 
   // Prepared statements for performance
   private insertWordStmt: any;
-  private insertKanjiStmt: any;
-  private insertReadingStmt: any;
-  private insertSenseStmt: any;
-  private insertGlossStmt: any;
+  private insertMeaningStmt: any;
 
   constructor(dbPath: string) {
     this.db = new DatabaseManager({ path: dbPath, verbose: false });
@@ -48,30 +39,15 @@ export class WordsImporter {
 
   private prepareStatements(): void {
     const conn = this.db.getConnection();
-    
+
     this.insertWordStmt = conn.prepare(`
-      INSERT INTO words (entry_id, sequence, created_at, updated_at)
-      VALUES (?, ?, datetime('now'), datetime('now'))
-    `);
-
-    this.insertKanjiStmt = conn.prepare(`
-      INSERT INTO word_kanji (word_id, kanji, info_tags, priorities)
-      VALUES (?, ?, ?, ?)
-    `);
-
-    this.insertReadingStmt = conn.prepare(`
-      INSERT INTO word_readings (word_id, reading, romaji, info_tags, priorities, restrict_kanji)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `);
-
-    this.insertSenseStmt = conn.prepare(`
-      INSERT INTO word_senses (word_id, sense_order, parts_of_speech, field_tags, misc_tags, dialect_tags, info)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    this.insertGlossStmt = conn.prepare(`
-      INSERT INTO word_glosses (sense_id, gloss, gloss_type, gender, gloss_order)
+      INSERT INTO words (word, reading, reading_hiragana, kanji, position)
       VALUES (?, ?, ?, ?, ?)
+    `);
+
+    this.insertMeaningStmt = conn.prepare(`
+      INSERT INTO meanings (word_id, meaning, part_of_speech, field, misc, info)
+      VALUES (?, ?, ?, ?, ?, ?)
     `);
   }
 
@@ -135,55 +111,38 @@ export class WordsImporter {
         this.stats.validEntries++;
 
         try {
+          // Prepare word data from entry
+          const primaryWord = entry.kanji?.[0] || entry.readings[0];
+          const primaryReading = entry.readings[0];
+          const kanjiForm = entry.kanji?.[0] || null;
+
           // Insert word entry
-          const wordResult = this.insertWordStmt.run(lineNumber, lineNumber);
+          const wordResult = this.insertWordStmt.run(
+            primaryWord,
+            primaryReading,
+            primaryReading, // reading_hiragana is same as reading for now
+            kanjiForm,
+            lineNumber // position for search ordering
+          );
           const wordId = wordResult.lastInsertRowid as number;
           this.stats.insertedWords++;
 
-          // Insert kanji forms
-          if (entry.kanji) {
-            for (const kanji of entry.kanji) {
-              this.insertKanjiStmt.run(wordId, kanji, null, null);
-              this.stats.insertedKanji++;
-            }
-          }
+          // Insert meanings from all senses
+          for (const sense of entry.senses) {
+            const meaningText = sense.glosses.join('; ');
+            const partsOfSpeech = sense.partsOfSpeech.join(', ');
+            const fieldTags = sense.fieldTags?.join(', ') || '';
+            const miscTags = sense.miscTags?.join(', ') || '';
 
-          // Insert readings
-          for (const reading of entry.readings) {
-            const romaji = hiraganaToRomaji(reading);
-            this.insertReadingStmt.run(wordId, reading, romaji, null, null, null);
-            this.stats.insertedReadings++;
-          }
-
-          // Insert senses and glosses
-          for (let senseIndex = 0; senseIndex < entry.senses.length; senseIndex++) {
-            const sense = entry.senses[senseIndex];
-            
-            const senseResult = this.insertSenseStmt.run(
+            this.insertMeaningStmt.run(
               wordId,
-              senseIndex + 1,
-              JSON.stringify(sense.partsOfSpeech),
-              JSON.stringify(sense.fieldTags || []),
-              JSON.stringify(sense.miscTags || []),
-              null, // dialect_tags
-              sense.info
+              meaningText,
+              partsOfSpeech,
+              fieldTags,
+              miscTags,
+              sense.info || null
             );
-            
-            const senseId = senseResult.lastInsertRowid as number;
-            this.stats.insertedSenses++;
-
-            // Insert glosses
-            for (let glossIndex = 0; glossIndex < sense.glosses.length; glossIndex++) {
-              const gloss = sense.glosses[glossIndex];
-              this.insertGlossStmt.run(
-                senseId,
-                gloss,
-                sense.glossType?.toString(),
-                null, // gender
-                glossIndex + 1
-              );
-              this.stats.insertedGlosses++;
-            }
+            this.stats.insertedMeanings++;
           }
 
         } catch (error) {
@@ -219,12 +178,9 @@ export class WordsImporter {
     console.log(`   Total lines processed: ${this.stats.totalLines.toLocaleString()}`);
     console.log(`   Valid entries: ${this.stats.validEntries.toLocaleString()}`);
     console.log(`   Inserted words: ${this.stats.insertedWords.toLocaleString()}`);
-    console.log(`   Inserted kanji forms: ${this.stats.insertedKanji.toLocaleString()}`);
-    console.log(`   Inserted readings: ${this.stats.insertedReadings.toLocaleString()}`);
-    console.log(`   Inserted senses: ${this.stats.insertedSenses.toLocaleString()}`);
-    console.log(`   Inserted glosses: ${this.stats.insertedGlosses.toLocaleString()}`);
+    console.log(`   Inserted meanings: ${this.stats.insertedMeanings.toLocaleString()}`);
     console.log(`   Errors: ${this.stats.errors.toLocaleString()}`);
-    
+
     if (this.stats.errors > 0) {
       const errorRate = (this.stats.errors / this.stats.totalLines * 100).toFixed(2);
       console.log(`   Error rate: ${errorRate}%`);

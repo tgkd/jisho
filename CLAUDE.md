@@ -32,7 +32,6 @@ Jisho is a cross-platform Japanese dictionary mobile app built with Expo and Rea
 ### Testing Commands
 - `yarn test:search` - Test search functionality
 - `yarn test:dictionary` - Test dictionary operations
-- `yarn test:bookmarks` - Test bookmark features
 - `yarn test:history` - Test history functionality
 - `yarn test:kanji` - Test kanji operations
 - `yarn test:utils` - Test database utilities
@@ -80,7 +79,7 @@ hooks/           # Custom hooks
 - `meanings` - Word definitions and parts of speech
 - `examples` - Example sentences with translations
 - `kanji` - Kanji character data
-- `bookmarks`, `history`, `chats` - User data
+- `history` - User search history
 
 ### AI Integration
 The app supports both local and cloud AI:

@@ -1,8 +1,5 @@
 import sqlite3 from 'sqlite3';
 import path from 'path';
-import Database from 'better-sqlite3';
-import type { SQLiteDatabase } from 'expo-sqlite';
-import { searchDictionary } from '../services/database/search';
 
 jest.mock('expo-sqlite', () => ({}), { virtual: true });
 
@@ -239,7 +236,7 @@ async function testSearchByEnglish(
 
 describe('Real Database Search Tests', () => {
   let db: TestDatabase;
-  const dbPath = path.join(__dirname, '../assets/db/dict_2.db');
+  const dbPath = path.join(__dirname, '../assets/db/db_3.db');
 
   beforeAll(async () => {
     db = new TestDatabase(dbPath);

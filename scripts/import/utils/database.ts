@@ -235,17 +235,30 @@ export class DatabaseManager {
    */
   createIndexes(): void {
     const indexes = [
-      'CREATE INDEX IF NOT EXISTS idx_words_entry_id ON words(entry_id)',
-      'CREATE INDEX IF NOT EXISTS idx_word_kanji_kanji ON word_kanji(kanji)',
-      'CREATE INDEX IF NOT EXISTS idx_word_readings_reading ON word_readings(reading)',
-      'CREATE INDEX IF NOT EXISTS idx_word_glosses_gloss ON word_glosses(gloss)',
+      'CREATE INDEX IF NOT EXISTS idx_words_word ON words(word)',
+      'CREATE INDEX IF NOT EXISTS idx_words_reading ON words(reading)',
+      'CREATE INDEX IF NOT EXISTS idx_words_kanji ON words(kanji)',
+      'CREATE INDEX IF NOT EXISTS idx_meanings_word_id ON meanings(word_id)',
+      'CREATE INDEX IF NOT EXISTS idx_meanings_meaning ON meanings(meaning)',
       'CREATE INDEX IF NOT EXISTS idx_kanji_character ON kanji(character)',
-      'CREATE INDEX IF NOT EXISTS idx_examples_japanese ON examples(japanese)',
+      'CREATE INDEX IF NOT EXISTS idx_examples_japanese ON examples(japanese_text)',
+      'CREATE INDEX IF NOT EXISTS idx_examples_word_id ON examples(word_id)',
+      'CREATE INDEX IF NOT EXISTS idx_furigana_text ON furigana(text)',
+      'CREATE INDEX IF NOT EXISTS idx_furigana_reading ON furigana(reading)',
+      'CREATE UNIQUE INDEX IF NOT EXISTS idx_furigana_text_reading ON furigana(text, reading)',
+      'CREATE INDEX IF NOT EXISTS idx_history_entry_type ON history(entry_type)',
+      'CREATE INDEX IF NOT EXISTS idx_history_word_id ON history(word_id)',
+      'CREATE INDEX IF NOT EXISTS idx_history_kanji_id ON history(kanji_id)',
+      'CREATE INDEX IF NOT EXISTS idx_history_created_at ON history(created_at)',
     ];
 
     this.db.transaction(() => {
       for (const indexSql of indexes) {
-        this.db.exec(indexSql);
+        try {
+          this.db.exec(indexSql);
+        } catch (error) {
+          console.warn(`⚠️  Index creation failed: ${error}`);
+        }
       }
     })();
 
@@ -258,60 +271,34 @@ export class DatabaseManager {
   updateFTSTables(): void {
     console.log('🔄 Updating FTS tables...');
 
-    // Clear existing FTS data
-    this.db.exec('DELETE FROM words_fts_en');
-    this.db.exec('DELETE FROM words_fts_jp');
-    this.db.exec('DELETE FROM examples_fts');
+    try {
+      // Clear existing FTS data
+      this.db.exec('DELETE FROM words_fts');
 
-    // Populate English FTS
-    this.db.exec(`
-      INSERT INTO words_fts_en(word_id, kanji, reading, romaji, gloss, pos)
-      SELECT
-        w.id,
-        group_concat(wk.kanji, ' '),
-        group_concat(wr.reading, ' '),
-        group_concat(wr.romaji, ' '),
-        wg.gloss,
-        ws.parts_of_speech
-      FROM words w
-      LEFT JOIN word_kanji wk ON w.id = wk.word_id
-      LEFT JOIN word_readings wr ON w.id = wr.word_id
-      LEFT JOIN word_senses ws ON w.id = ws.word_id
-      LEFT JOIN word_glosses wg ON ws.id = wg.sense_id
-      WHERE wg.gloss IS NOT NULL
-      GROUP BY w.id, wg.id, ws.parts_of_speech
-    `);
+      // Populate words FTS with production schema
+      this.db.exec(`
+        INSERT INTO words_fts(word, reading, kanji, meaning)
+        SELECT
+          w.word,
+          w.reading,
+          w.kanji,
+          group_concat(m.meaning, ' ')
+        FROM words w
+        LEFT JOIN meanings m ON w.id = m.word_id
+        GROUP BY w.id, w.word, w.reading, w.kanji
+      `);
 
-    // Populate Japanese FTS
-    this.db.exec(`
-      INSERT INTO words_fts_jp(word_id, kanji, reading, reading_normalized)
-      SELECT
-        w.id,
-        group_concat(wk.kanji, ' '),
-        wr.reading,
-        wr.reading
-      FROM words w
-      LEFT JOIN word_kanji wk ON w.id = wk.word_id
-      LEFT JOIN word_readings wr ON w.id = wr.word_id
-      WHERE wr.reading IS NOT NULL
-      GROUP BY w.id, wr.reading
-    `);
-
-    // Populate Examples FTS
-    this.db.exec(`
-      INSERT INTO examples_fts(example_id, japanese, english)
-      SELECT id, japanese, english
-      FROM examples
-    `);
-
-    console.log('✅ FTS tables updated');
+      console.log('✅ FTS tables updated');
+    } catch (error) {
+      console.warn('⚠️  FTS update failed (may not be implemented yet):', error);
+    }
   }
 
   /**
    * Get database statistics
    */
   getStats(): Record<string, number> {
-    const tables = ['words', 'word_kanji', 'word_readings', 'word_senses', 'word_glosses', 'kanji', 'examples', 'furigana'];
+  const tables = ['words', 'meanings', 'furigana', 'kanji', 'examples', 'history', 'audio_blobs'];
     const stats: Record<string, number> = {};
 
     for (const table of tables) {

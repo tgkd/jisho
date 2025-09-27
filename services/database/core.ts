@@ -133,10 +133,18 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
     }
 
     if (currentDbVersion < 5) {
-      await db.execAsync(`
-        ALTER TABLE examples ADD COLUMN word_id INTEGER;
-        CREATE INDEX IF NOT EXISTS idx_example_word_id ON examples(word_id);
-      `);
+      const exampleColumns = await db.getAllAsync<{ name: string }>(
+        "PRAGMA table_info(examples)"
+      );
+      const hasWordIdColumn = exampleColumns?.some(
+        (column) => column.name === "word_id"
+      );
+
+      if (!hasWordIdColumn) {
+        await db.execAsync(`ALTER TABLE examples ADD COLUMN word_id INTEGER`);
+      }
+
+      await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_example_word_id ON examples(word_id)`);
 
       await db.execAsync(`PRAGMA user_version = 5`);
       currentDbVersion = 5;
