@@ -68,7 +68,6 @@ export default function RootLayout() {
                   databaseName={dbname}
                   assetSource={{
                     assetId: require(DATABASE_PATH),
-                    forceOverwrite: true
                   }}
                   onInit={migrateDbIfNeeded}
                   useSuspense

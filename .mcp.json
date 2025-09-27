@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "sqlite": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@executeautomation/database-server",
+        "assets/db/db_20250927_130743.db"
+      ]
+    }
+  }
+}
