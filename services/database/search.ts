@@ -1,19 +1,20 @@
 import { SQLiteDatabase } from "expo-sqlite";
 import * as wanakana from "wanakana";
+import { searchFuriganaByPartialReading, searchTextsByReading } from "./furigana";
 import {
   DBDictEntry,
   DBWordMeaning,
   SearchDictionaryOptions,
   SearchDictionaryResult,
   SearchQuery,
-  WordMeaning,
+  WordMeaning
 } from "./types";
 import {
   buildFtsMatchExpression,
   createEmptyResult,
   formatSearchResults,
   isSingleKanjiCharacter,
-  processSearchQuery,
+  processSearchQuery
 } from "./utils";
 
 const SEARCH_CACHE_TTL_MS = 30_000;
@@ -405,6 +406,48 @@ async function searchByFTS(
 }
 
 /**
+ * Searches dictionary entries by furigana readings.
+ * @param db - SQLite database connection instance
+ * @param query - Reading query (hiragana/katakana)
+ * @param limit - Maximum number of results to return
+ * @returns Array of dictionary entries with furigana-based matches
+ */
+async function searchByFuriganaReading(
+  db: SQLiteDatabase,
+  query: string,
+  limit: number
+): Promise<DBDictEntry[]> {
+  const furiganaEntries = await searchTextsByReading(db, query, Math.min(limit * 2, 100));
+
+  if (furiganaEntries.length === 0) {
+    const partialEntries = await searchFuriganaByPartialReading(db, query, Math.min(limit * 2, 100));
+    if (partialEntries.length === 0) return [];
+    furiganaEntries.push(...partialEntries);
+  }
+
+  const texts = furiganaEntries.map(entry => entry.text);
+  if (texts.length === 0) return [];
+
+  const placeholders = texts.map(() => '?').join(',');
+
+  try {
+    return await db.getAllAsync<DBDictEntry>(
+      `
+      SELECT DISTINCT w.*
+      FROM words w
+      WHERE w.word IN (${placeholders}) OR w.kanji IN (${placeholders})
+      ORDER BY length(w.word)
+      LIMIT ?
+      `,
+      [...texts, ...texts, limit]
+    );
+  } catch (error) {
+    console.error('Failed to search by furigana reading:', error);
+    return [];
+  }
+}
+
+/**
  * Searches dictionary meanings using English text heuristics.
  * @param db - SQLite database connection instance
  * @param query - Raw English query string
@@ -668,6 +711,23 @@ export async function searchDictionary(
         return result;
       }
     }
+
+    // // Try furigana reading search for Japanese text
+    // if (wanakana.isJapanese(trimmedQuery) && (wanakana.isHiragana(trimmedQuery) || wanakana.isKatakana(trimmedQuery))) {
+    //   if (signal?.aborted) throw new Error("Search cancelled");
+    //   const furiganaResults = await searchByFuriganaReading(db, trimmedQuery, limit);
+    //   if (furiganaResults.length > 0) {
+    //     if (signal?.aborted) throw new Error("Search cancelled");
+    //     const meanings = withMeanings
+    //       ? await fetchMeanings(db, furiganaResults, signal)
+    //       : new Map();
+    //     const result = formatSearchResults(furiganaResults, meanings);
+    //     if (!result.error) {
+    //       setCachedSearchResult(cacheKey, result);
+    //     }
+    //     return result;
+    //   }
+    // }
 
     // Use optimized tiered search
     if (signal?.aborted) throw new Error("Search cancelled");

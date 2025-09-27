@@ -6,9 +6,9 @@ import {
   Switch,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
-import { useMMKVString } from "react-native-mmkv";
+import { useMMKVBoolean, useMMKVString } from "react-native-mmkv";
 
 import { HapticTab } from "@/components/HapticTab";
 import { ThemedText } from "@/components/ThemedText";
@@ -20,6 +20,7 @@ import { clearHistory, resetDatabase } from "@/services/database";
 import { SETTINGS_KEYS } from "@/services/storage";
 import { useRouter } from "expo-router";
 import { useState } from "react";
+import { FuriganaText } from "@/components/FuriganaText";
 
 const highlightColorOptions: {
   label: string;
@@ -49,6 +50,9 @@ export default function SettingsScreen() {
   );
   const [apiAuthPassword, setApiAuthPassword] = useMMKVString(
     SETTINGS_KEYS.API_AUTH_PASSWORD
+  );
+  const [showFurigana, setShowFurigana] = useMMKVBoolean(
+    SETTINGS_KEYS.SHOW_FURIGANA
   );
 
   const [remoteCount, addC] = useState(0);
@@ -114,6 +118,10 @@ export default function SettingsScreen() {
     ai.setCurrentProvider(value ? "remote" : "local");
   };
 
+  const handleToggleFurigana = (value: boolean) => {
+    setShowFurigana(value);
+  };
+
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
@@ -145,6 +153,28 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.settingItem}>
+          <View style={styles.row}>
+            <ThemedText size="sm">{"Show Furigana"}</ThemedText>
+            <Switch value={showFurigana} onValueChange={handleToggleFurigana} />
+          </View>
+          <View
+            style={[
+              styles.furiganaExample,
+              { backgroundColor: getHighlightColorValue(highlightColor.value) },
+            ]}
+          >
+            <FuriganaText
+              word="食べ物"
+              segments={[
+                { ruby: "食", rt: "た" },
+                { ruby: "べ", rt: "" },
+                { ruby: "物", rt: "もの" },
+              ]}
+              reading="たべもの"
+            />
+          </View>
+        </View>
+        <View style={styles.settingItem}>
           <ThemedText size="sm">{"AI fearures"}</ThemedText>
           <ThemedText size="xs" style={styles.description}>
             {"Using local Apple Intelligence (requires iOS 18.1+)"}
@@ -156,7 +186,6 @@ export default function SettingsScreen() {
                 <Switch
                   value={ai.currentProvider === "remote"}
                   onValueChange={handleToggleRemoteApi}
-                  style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
                 />
               </View>
               <ThemedText size="xs" style={styles.description}>
@@ -259,8 +288,8 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   colorPreview: {
-    width: 40,
-    height: 24,
+    width: 48,
+    height: 32,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(0, 0, 0, 0.1)",
     borderRadius: 8,
@@ -303,5 +332,17 @@ const styles = StyleSheet.create({
   },
   warn: {
     color: Colors.light.error,
+  },
+  furiganaExample: {
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 8,
+    margin: "auto",
+    marginTop: 8,
+    minHeight: 80,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.light.separator,
+    borderRadius: 8,
+    width: "100%",
   },
 });
