@@ -89,13 +89,13 @@ async function testGetKanji(db: TestDatabase, character: string): Promise<Parsed
     FROM kanji
     WHERE character = ?
   `, [character]);
-  
+
   return result ? parseKanjiResult(result) : null;
 }
 
 async function testSearchKanji(
-  db: TestDatabase, 
-  query: string, 
+  db: TestDatabase,
+  query: string,
   limit: number = 20
 ): Promise<ParsedKanjiEntry[]> {
   const results = await db.all(`
@@ -103,7 +103,7 @@ async function testSearchKanji(
     FROM kanji
     WHERE character LIKE ? OR meanings LIKE ?
     ORDER BY
-      CASE 
+      CASE
         WHEN character = ? THEN 1
         WHEN character LIKE ? THEN 2
         ELSE 3
@@ -112,7 +112,7 @@ async function testSearchKanji(
       id ASC
     LIMIT ?
   `, [`%${query}%`, `%${query}%`, query, `${query}%`, limit]);
-  
+
   return results.map(parseKanjiResult);
 }
 
@@ -122,7 +122,7 @@ async function testGetKanjiByUnicode(db: TestDatabase, unicode: string): Promise
     FROM kanji
     WHERE unicode = ?
   `, [unicode]);
-  
+
   return result ? parseKanjiResult(result) : null;
 }
 
@@ -132,7 +132,7 @@ async function testGetKanjiById(db: TestDatabase, id: number): Promise<ParsedKan
     FROM kanji
     WHERE id = ?
   `, [id]);
-  
+
   return result ? parseKanjiResult(result) : null;
 }
 
@@ -143,13 +143,13 @@ async function testGetKanjiList(db: TestDatabase): Promise<ParsedKanjiEntry[]> {
     ORDER BY RANDOM()
     LIMIT 50
   `);
-  
+
   return results.map(parseKanjiResult);
 }
 
 describe('Kanji Database Operations', () => {
   let db: TestDatabase;
-  const dbPath = path.join(__dirname, '../assets/db/dict_2.db');
+  const dbPath = path.join(__dirname, '../assets/db/db_3.db');
 
   beforeAll(async () => {
     db = new TestDatabase(dbPath);
@@ -163,10 +163,10 @@ describe('Kanji Database Operations', () => {
 
   test('database has kanji table with correct structure', async () => {
     const tables = await db.all(`
-      SELECT name FROM sqlite_master 
+      SELECT name FROM sqlite_master
       WHERE type='table' AND name='kanji'
     `);
-    
+
     if (tables.length === 0) {
       console.log('Kanji table does not exist - skipping kanji tests');
       return;
@@ -174,7 +174,7 @@ describe('Kanji Database Operations', () => {
 
     const columns = await db.all("PRAGMA table_info(kanji)");
     const columnNames = columns.map((col: any) => col.name);
-    
+
     console.log('Kanji table columns:', columnNames);
     expect(columnNames).toContain('id');
     expect(columnNames).toContain('character');
@@ -189,7 +189,7 @@ describe('Kanji Database Operations', () => {
   test('get kanji by character', async () => {
     // Check if kanji table exists and has data
     const kanjiCount = await db.get('SELECT COUNT(*) as count FROM kanji');
-    
+
     if (kanjiCount.count === 0) {
       console.log('No kanji data found - skipping test');
       return;
@@ -197,16 +197,16 @@ describe('Kanji Database Operations', () => {
 
     // Get a sample kanji character
     const sampleKanji = await db.get(`
-      SELECT character FROM kanji 
-      WHERE character IS NOT NULL 
+      SELECT character FROM kanji
+      WHERE character IS NOT NULL
       LIMIT 1
     `);
-    
+
     expect(sampleKanji).toBeTruthy();
     console.log('Testing with kanji:', sampleKanji.character);
 
     const kanjiEntry = await testGetKanji(db, sampleKanji.character);
-    
+
     expect(kanjiEntry).toBeTruthy();
     expect(kanjiEntry!.character).toBe(sampleKanji.character);
     expect(kanjiEntry!.meanings).toBeDefined();
@@ -215,7 +215,7 @@ describe('Kanji Database Operations', () => {
     expect(Array.isArray(kanjiEntry!.onReadings)).toBe(true);
     expect(kanjiEntry!.kunReadings).toBeDefined();
     expect(Array.isArray(kanjiEntry!.kunReadings)).toBe(true);
-    
+
     console.log('Kanji entry:', {
       character: kanjiEntry!.character,
       meanings: kanjiEntry!.meanings,
@@ -233,7 +233,7 @@ describe('Kanji Database Operations', () => {
 
   test('search kanji by character', async () => {
     const kanjiCount = await db.get('SELECT COUNT(*) as count FROM kanji');
-    
+
     if (kanjiCount.count === 0) {
       console.log('No kanji data found - skipping test');
       return;
@@ -241,19 +241,19 @@ describe('Kanji Database Operations', () => {
 
     // Get a sample kanji for testing
     const sampleKanji = await db.get(`
-      SELECT character FROM kanji 
-      WHERE character IS NOT NULL 
+      SELECT character FROM kanji
+      WHERE character IS NOT NULL
       LIMIT 1
     `);
 
     const results = await testSearchKanji(db, sampleKanji.character, 10);
-    
+
     expect(Array.isArray(results)).toBe(true);
     expect(results.length).toBeGreaterThan(0);
-    
+
     // First result should be exact match
     expect(results[0].character).toBe(sampleKanji.character);
-    
+
     console.log('Search results for', sampleKanji.character, ':', results.map(k => ({
       character: k.character,
       meanings: k.meanings.slice(0, 3)
@@ -262,7 +262,7 @@ describe('Kanji Database Operations', () => {
 
   test('search kanji by meaning', async () => {
     const kanjiCount = await db.get('SELECT COUNT(*) as count FROM kanji');
-    
+
     if (kanjiCount.count === 0) {
       console.log('No kanji data found - skipping test');
       return;
@@ -274,17 +274,17 @@ describe('Kanji Database Operations', () => {
 
     for (const meaning of commonMeanings) {
       const results = await testSearchKanji(db, meaning, 5);
-      
+
       if (results.length > 0) {
-        console.log(`Found ${results.length} kanji for meaning "${meaning}":`, 
+        console.log(`Found ${results.length} kanji for meaning "${meaning}":`,
           results.map(k => k.character).join(', '));
-        
+
         // Verify each result contains the search term in meanings
         results.forEach(kanji => {
           const meaningsText = kanji.meanings.join(' ').toLowerCase();
           expect(meaningsText).toContain(meaning.toLowerCase());
         });
-        
+
         resultsFound = true;
         break;
       }
@@ -292,14 +292,14 @@ describe('Kanji Database Operations', () => {
 
     if (!resultsFound) {
       console.log('No kanji found for common meanings - checking data structure');
-      
+
       // Check sample meanings format
       const sampleKanji = await db.get(`
-        SELECT character, meanings FROM kanji 
+        SELECT character, meanings FROM kanji
         WHERE meanings IS NOT NULL AND meanings != '[]'
         LIMIT 1
       `);
-      
+
       if (sampleKanji) {
         console.log('Sample kanji meanings:', sampleKanji.character, sampleKanji.meanings);
       }
@@ -308,7 +308,7 @@ describe('Kanji Database Operations', () => {
 
   test('get kanji by unicode', async () => {
     const kanjiCount = await db.get('SELECT COUNT(*) as count FROM kanji');
-    
+
     if (kanjiCount.count === 0) {
       console.log('No kanji data found - skipping test');
       return;
@@ -316,20 +316,20 @@ describe('Kanji Database Operations', () => {
 
     // Get a sample kanji with unicode
     const sampleKanji = await db.get(`
-      SELECT character, unicode FROM kanji 
-      WHERE unicode IS NOT NULL 
+      SELECT character, unicode FROM kanji
+      WHERE unicode IS NOT NULL
       LIMIT 1
     `);
-    
+
     if (sampleKanji) {
       console.log('Testing with unicode:', sampleKanji.unicode);
 
       const kanjiEntry = await testGetKanjiByUnicode(db, sampleKanji.unicode);
-      
+
       expect(kanjiEntry).toBeTruthy();
       expect(kanjiEntry!.character).toBe(sampleKanji.character);
       expect(kanjiEntry!.unicode).toBe(sampleKanji.unicode);
-      
+
       console.log('Found kanji by unicode:', kanjiEntry!.character);
     } else {
       console.log('No kanji with unicode found');
@@ -338,7 +338,7 @@ describe('Kanji Database Operations', () => {
 
   test('get kanji by ID', async () => {
     const kanjiCount = await db.get('SELECT COUNT(*) as count FROM kanji');
-    
+
     if (kanjiCount.count === 0) {
       console.log('No kanji data found - skipping test');
       return;
@@ -346,16 +346,16 @@ describe('Kanji Database Operations', () => {
 
     // Get a sample kanji ID
     const sampleKanji = await db.get(`
-      SELECT id, character FROM kanji 
+      SELECT id, character FROM kanji
       LIMIT 1
     `);
-    
+
     const kanjiEntry = await testGetKanjiById(db, sampleKanji.id);
-    
+
     expect(kanjiEntry).toBeTruthy();
     expect(kanjiEntry!.id).toBe(sampleKanji.id);
     expect(kanjiEntry!.character).toBe(sampleKanji.character);
-    
+
     console.log('Found kanji by ID:', kanjiEntry!.character);
   });
 
@@ -366,18 +366,18 @@ describe('Kanji Database Operations', () => {
 
   test('get random kanji list', async () => {
     const kanjiCount = await db.get('SELECT COUNT(*) as count FROM kanji');
-    
+
     if (kanjiCount.count === 0) {
       console.log('No kanji data found - skipping test');
       return;
     }
 
     const kanjiList = await testGetKanjiList(db);
-    
+
     expect(Array.isArray(kanjiList)).toBe(true);
     expect(kanjiList.length).toBeGreaterThan(0);
     expect(kanjiList.length).toBeLessThanOrEqual(50);
-    
+
     // Verify each entry has required properties
     kanjiList.forEach(kanji => {
       expect(kanji).toHaveProperty('character');
@@ -388,14 +388,14 @@ describe('Kanji Database Operations', () => {
       expect(Array.isArray(kanji.onReadings)).toBe(true);
       expect(Array.isArray(kanji.kunReadings)).toBe(true);
     });
-    
-    console.log(`Retrieved ${kanjiList.length} random kanji:`, 
+
+    console.log(`Retrieved ${kanjiList.length} random kanji:`,
       kanjiList.slice(0, 10).map(k => k.character).join(', '));
   });
 
   test('JSON parsing of kanji data', async () => {
     const kanjiCount = await db.get('SELECT COUNT(*) as count FROM kanji');
-    
+
     if (kanjiCount.count === 0) {
       console.log('No kanji data found - skipping test');
       return;
@@ -404,13 +404,13 @@ describe('Kanji Database Operations', () => {
     // Get a kanji with JSON data
     const rawKanjiData = await db.get(`
       SELECT character, meanings, on_readings, kun_readings
-      FROM kanji 
-      WHERE meanings IS NOT NULL 
-        AND meanings != '[]' 
+      FROM kanji
+      WHERE meanings IS NOT NULL
+        AND meanings != '[]'
         AND meanings != 'null'
       LIMIT 1
     `);
-    
+
     if (rawKanjiData) {
       console.log('Raw kanji data:', {
         character: rawKanjiData.character,
@@ -421,16 +421,16 @@ describe('Kanji Database Operations', () => {
 
       // Test JSON parsing
       let parsedMeanings, parsedOnReadings, parsedKunReadings;
-      
+
       try {
         parsedMeanings = JSON.parse(rawKanjiData.meanings || '[]');
         parsedOnReadings = JSON.parse(rawKanjiData.on_readings || '[]');
         parsedKunReadings = JSON.parse(rawKanjiData.kun_readings || '[]');
-        
+
         expect(Array.isArray(parsedMeanings)).toBe(true);
         expect(Array.isArray(parsedOnReadings)).toBe(true);
         expect(Array.isArray(parsedKunReadings)).toBe(true);
-        
+
         console.log('Parsed kanji data:', {
           character: rawKanjiData.character,
           meanings: parsedMeanings,
@@ -453,7 +453,7 @@ describe('Kanji Database Operations', () => {
 
   test('kanji search ordering', async () => {
     const kanjiCount = await db.get('SELECT COUNT(*) as count FROM kanji');
-    
+
     if (kanjiCount.count === 0) {
       console.log('No kanji data found - skipping test');
       return;
@@ -461,18 +461,18 @@ describe('Kanji Database Operations', () => {
 
     // Get a kanji that might have partial matches
     const testChar = await db.get(`
-      SELECT character FROM kanji 
-      WHERE character IS NOT NULL 
+      SELECT character FROM kanji
+      WHERE character IS NOT NULL
       LIMIT 1
     `);
-    
+
     if (testChar) {
       const results = await testSearchKanji(db, testChar.character, 10);
-      
+
       if (results.length > 1) {
         // First result should be exact match
         expect(results[0].character).toBe(testChar.character);
-        
+
         console.log('Search ordering test:', results.map(k => ({
           character: k.character,
           jisCode: k.jisCode,
@@ -484,7 +484,7 @@ describe('Kanji Database Operations', () => {
 
   test('performance test - kanji operations', async () => {
     const kanjiCount = await db.get('SELECT COUNT(*) as count FROM kanji');
-    
+
     if (kanjiCount.count === 0) {
       console.log('No kanji data found - skipping test');
       return;
@@ -494,24 +494,24 @@ describe('Kanji Database Operations', () => {
     const startSearch = Date.now();
     const searchResults = await testSearchKanji(db, 'water', 20);
     const searchDuration = Date.now() - startSearch;
-    
+
     // Test list retrieval performance
     const startList = Date.now();
     const listResults = await testGetKanjiList(db);
     const listDuration = Date.now() - startList;
-    
+
     // Test individual lookup performance
     if (searchResults.length > 0) {
       const startLookup = Date.now();
       const lookupResult = await testGetKanji(db, searchResults[0].character);
       const lookupDuration = Date.now() - startLookup;
-      
+
       console.log('Kanji performance:', {
         search: `${searchDuration}ms for ${searchResults.length} results`,
         list: `${listDuration}ms for ${listResults.length} results`,
         lookup: `${lookupDuration}ms for single lookup`
       });
-      
+
       expect(lookupResult).toBeTruthy();
       expect(searchDuration).toBeLessThan(500);
       expect(listDuration).toBeLessThan(200);

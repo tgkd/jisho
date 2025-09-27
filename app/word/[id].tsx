@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 
+import { FuriganaText } from "@/components/FuriganaText";
 import { HapticTab } from "@/components/HapticTab";
 import { HighlightText } from "@/components/HighlightText";
 import { KanjiDetails, KanjiListView } from "@/components/KanjiList";
@@ -25,8 +26,10 @@ import {
   addToHistory,
   DictionaryEntry,
   ExampleSentence,
+  FuriganaEntry,
   getAudioFile,
   getDictionaryEntry,
+  getFuriganaForText,
   getWordExamples,
   saveAudioFile,
   WordMeaning,
@@ -35,8 +38,7 @@ import {
   cleanupJpReadings,
   deduplicateEn,
   findKanji,
-  formatEn,
-  formatJp,
+  formatEn
 } from "@/services/parse";
 import { createWordPrompt } from "@/services/request";
 
@@ -48,6 +50,7 @@ export default function WordDetailScreen() {
     meanings: WordMeaning[];
     examples: ExampleSentence[];
   } | null>(null);
+  const [furigana, setFurigana] = useState<FuriganaEntry | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const db = useSQLiteContext();
   const ai = useUnifiedAI();
@@ -67,6 +70,9 @@ export default function WordDetailScreen() {
       if (result) {
         setEntry(result);
         await addToHistory(db, result.word);
+
+        const furiganaData = await getFuriganaForText(db, result.word.word);
+        setFurigana(furiganaData);
       }
     } catch (error) {
       console.error("Failed to load dictionary entry:", error);
@@ -124,13 +130,13 @@ export default function WordDetailScreen() {
     >
       <ThemedView style={styles.headerSection}>
         <HapticTab onPress={handleSpeech}>
-          <ThemedText type="title" style={styles.word}>
-            {entry.word.word}
-          </ThemedText>
+          <FuriganaText
+            word={entry.word.word}
+            segments={furigana?.segments}
+            reading={entry.word.reading}
+            textStyle={styles.word}
+          />
         </HapticTab>
-        <ThemedText type="secondary">
-          {formatJp(entry.word.reading, true)}
-        </ThemedText>
       </ThemedView>
 
       <Card variant="grouped">

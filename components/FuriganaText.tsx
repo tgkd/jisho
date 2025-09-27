@@ -1,62 +1,113 @@
-import React, { useEffect, useState } from "react";
-import { StyleSheet, TextStyle, View } from "react-native";
+import React from "react";
+import { StyleSheet, TextStyle, View, type ViewStyle } from "react-native";
 import { useMMKVBoolean } from "react-native-mmkv";
 
+import type { FuriganaSegment } from "@/services/database";
 import { SETTINGS_KEYS } from "@/services/storage";
-import { combineFuri } from "../services/parse";
+import { formatJp } from "../services/parse";
 import { ThemedText } from "./ThemedText";
 
-type BaseProps = {
+type Props = {
   word: string;
+  reading: string;
   textStyle?: TextStyle;
-  [key: string]: any;
+  furiganaStyle?: TextStyle;
+  pairStyle?: ViewStyle;
+  style?: ViewStyle;
+  segments?: FuriganaSegment[];
 };
 
-type Props =
-  | (BaseProps & {
-      reading: string;
-    })
-  | (BaseProps & {
-      furi: string | Record<string, string>;
-    });
-
+/**
+ * Displays Japanese text with furigana annotations in React Native, mirroring HTML ruby layout.
+ *
+ * @param {Props} props - Component props including the word, optional furigana data, and styling.
+ * @returns {JSX.Element} Rendered furigana content.
+ */
 export function FuriganaText({
   word,
   reading,
-  furi,
   textStyle = {},
-  ...props
+  furiganaStyle,
+  pairStyle,
+  style,
+  segments = [],
 }: Props) {
-  const [showFurigana] = useMMKVBoolean(SETTINGS_KEYS.SHOW_FURIGANA);
+  const [showFurigana = true] = useMMKVBoolean(SETTINGS_KEYS.SHOW_FURIGANA);
+  const baseTextStyles = React.useMemo(() => {
+    const fontSize =
+      typeof textStyle?.fontSize === "number" ? textStyle.fontSize : undefined;
+    const lineHeight =
+      typeof textStyle?.lineHeight === "number"
+        ? textStyle.lineHeight
+        : fontSize
+        ? Math.round(fontSize * 1.2)
+        : undefined;
 
-  const pairs = React.useMemo(
-    () => combineFuri(word, reading, furi),
-    [word, reading, furi]
-  );
+    return [lineHeight ? { lineHeight } : null, textStyle];
+  }, [textStyle]);
+
+  const furiganaStyles = React.useMemo(() => {
+    const fontSize =
+      typeof furiganaStyle?.fontSize === "number"
+        ? furiganaStyle.fontSize
+        : undefined;
+    const lineHeight =
+      typeof furiganaStyle?.lineHeight === "number"
+        ? furiganaStyle.lineHeight
+        : fontSize
+        ? Math.round(fontSize * 1.2)
+        : 16;
+
+    return [styles.furigana, lineHeight ? { lineHeight } : null, furiganaStyle];
+  }, [furiganaStyle]);
+
+  const pairs = React.useMemo(() => {
+    return segments.map((segment): [string, string] => [
+      segment.rt || "",
+      segment.ruby,
+    ]);
+  }, [segments]);
+
+  if (pairs.length === 0) {
+    return <ThemedText style={baseTextStyles}>{word}</ThemedText>;
+  }
 
   return (
-    <ThemedText style={[textStyle, styles.wrapper]} {...props}>
-      {pairs.map(([ft, t], idx) => (
-        <View key={t + idx} style={styles.pair}>
-          {showFurigana ? (
-            <ThemedText size="xs" style={textStyle}>
-              {ft}
-            </ThemedText>
-          ) : null}
-          <ThemedText style={textStyle}>{t}</ThemedText>
-        </View>
-      ))}
-    </ThemedText>
+    <View style={styles.container}>
+      <View style={[styles.wrapper, style]}>
+        {pairs.map(([furigana, text], idx) => (
+          <View key={`${text}-${idx}`} style={[styles.pair, pairStyle]}>
+            {showFurigana && furigana ? (
+              <ThemedText size="xs" style={furiganaStyles}>
+                {furigana}
+              </ThemedText>
+            ) : null}
+            <ThemedText style={baseTextStyles}>{text}</ThemedText>
+          </View>
+        ))}
+      </View>
+      {!showFurigana && reading ? (
+        <ThemedText type="secondary">{formatJp(reading, true)}</ThemedText>
+      ) : null}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    alignItems: "center",
+  },
   wrapper: {
     flexDirection: "row",
     flexWrap: "wrap",
+    alignItems: "flex-end",
   },
   pair: {
     flexDirection: "column",
     alignItems: "center",
+    marginHorizontal: 1,
+  },
+  furigana: {
+    marginBottom: 2,
   },
 });

@@ -135,3 +135,23 @@ export interface SearchDictionaryResult {
   meanings: Map<number, WordMeaning[]>;
   error?: string;
 }
+
+export type FuriganaSegment = {
+  ruby: string;
+  rt?: string;
+};
+
+export type DBFuriganaEntry = {
+  id: number;
+  text: string;
+  reading: string;
+  reading_hiragana: string | null;
+  segments: string;
+  created_at: string;
+};
+
+export type FuriganaEntry = Omit<DBFuriganaEntry, 'reading_hiragana' | 'segments' | 'created_at'> & {
+  readingHiragana: string | null;
+  segments: FuriganaSegment[];
+  createdAt: string;
+};

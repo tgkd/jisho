@@ -38,20 +38,20 @@ class TestDatabase {
     this.db = new sqlite3.Database(dbPath);
   }
 
-  async all(sql: string, params: any[] = []): Promise<any[]> {
+  async all<T = any>(sql: string, params: any[] = []): Promise<T[]> {
     return new Promise((resolve, reject) => {
       this.db.all(sql, params, (err, rows) => {
         if (err) reject(err);
-        else resolve(rows);
+        else resolve(rows as T[]);
       });
     });
   }
 
-  async get(sql: string, params: any[] = []): Promise<any> {
+  async get<T = any>(sql: string, params: any[] = []): Promise<T | undefined> {
     return new Promise((resolve, reject) => {
       this.db.get(sql, params, (err, row) => {
         if (err) reject(err);
-        else resolve(row);
+        else resolve(row as T | undefined);
       });
     });
   }
@@ -82,7 +82,7 @@ async function testGetDictionaryEntry(
   withExamples: boolean = true
 ): Promise<any> {
   // Get the word entry
-  const word = await db.get(`
+  const word = await db.get<DBDictEntry>(`
     SELECT id, word, reading, reading_hiragana, kanji, position
     FROM words
     WHERE id = ?
@@ -91,7 +91,7 @@ async function testGetDictionaryEntry(
   if (!word) return null;
 
   // Get meanings
-  const meanings = await db.all(`
+  const meanings = await db.all<DBWordMeaning>(`
     SELECT id, word_id, meaning, part_of_speech, field, misc, info
     FROM meanings
     WHERE word_id = ?
@@ -101,7 +101,7 @@ async function testGetDictionaryEntry(
   // Get examples if requested
   let examples: any[] = [];
   if (withExamples) {
-    examples = await db.all(`
+    examples = await db.all<DBExample>(`
       SELECT id, japanese_text, english_text, word_id
       FROM examples
       WHERE word_id = ?
@@ -122,16 +122,16 @@ async function testGetWordExamples(
   word: string
 ): Promise<any[]> {
   // First try to find by word_id matching
-  const wordIds = await db.all(`
-    SELECT id FROM words 
+  const wordIds = await db.all<{ id: number }>(`
+    SELECT id FROM words
     WHERE word = ? OR reading = ? OR reading_hiragana = ? OR kanji = ?
   `, [word, word, word, word]);
 
   if (wordIds.length > 0) {
     const ids = wordIds.map(w => w.id);
     const placeholders = ids.map(() => '?').join(',');
-    
-    const examples = await db.all(`
+
+    const examples = await db.all<DBExample>(`
       SELECT id, word_id, japanese_text, english_text
       FROM examples
       WHERE word_id IN (${placeholders})
@@ -145,12 +145,12 @@ async function testGetWordExamples(
   }
 
   // Fallback to text matching
-  return await db.all(`
+  return await db.all<DBExample>(`
     SELECT id, word_id, japanese_text, english_text
     FROM examples
     WHERE japanese_text LIKE ? OR japanese_text LIKE ? OR japanese_text LIKE ?
-    ORDER BY 
-      CASE 
+    ORDER BY
+      CASE
         WHEN japanese_text LIKE ? THEN 1
         WHEN japanese_text LIKE ? THEN 2
         ELSE 3
@@ -162,7 +162,7 @@ async function testGetWordExamples(
 
 describe('Dictionary Database Operations', () => {
   let db: TestDatabase;
-  const dbPath = path.join(__dirname, '../assets/db/dict_2.db');
+  const dbPath = path.join(__dirname, '../assets/db/db_3.db');
 
   beforeAll(async () => {
     db = new TestDatabase(dbPath);
@@ -176,11 +176,11 @@ describe('Dictionary Database Operations', () => {
 
   test('database has required tables for dictionary operations', async () => {
     const tables = await db.all(`
-      SELECT name FROM sqlite_master 
+      SELECT name FROM sqlite_master
       WHERE type='table' AND name IN ('words', 'meanings', 'examples')
       ORDER BY name
     `);
-    
+
     console.log('Available tables:', tables.map(t => t.name));
     expect(tables.length).toBe(3);
     expect(tables.map(t => t.name)).toEqual(['examples', 'meanings', 'words']);
@@ -189,22 +189,22 @@ describe('Dictionary Database Operations', () => {
   test('get dictionary entry by ID with meanings', async () => {
     // First find a valid word ID
     const sampleWord = await db.get(`
-      SELECT id, word, reading FROM words 
-      WHERE word IS NOT NULL 
+      SELECT id, word, reading FROM words
+      WHERE word IS NOT NULL
       LIMIT 1
     `);
-    
+
     expect(sampleWord).toBeTruthy();
     console.log('Testing with word:', sampleWord);
 
     const entry = await testGetDictionaryEntry(db, sampleWord.id, false);
-    
+
     expect(entry).toBeTruthy();
     expect(entry.id).toBe(sampleWord.id);
     expect(entry.word).toBe(sampleWord.word);
     expect(entry.meanings).toBeDefined();
     expect(Array.isArray(entry.meanings)).toBe(true);
-    
+
     console.log('Dictionary entry:', {
       word: entry.word,
       reading: entry.reading,
@@ -233,20 +233,20 @@ describe('Dictionary Database Operations', () => {
       console.log('Testing examples with word:', wordWithExamples);
 
       const entry = await testGetDictionaryEntry(db, wordWithExamples.id, true);
-      
+
       expect(entry).toBeTruthy();
       expect(entry.examples).toBeDefined();
       expect(Array.isArray(entry.examples)).toBe(true);
       expect(entry.examples.length).toBeGreaterThan(0);
 
       console.log('Examples found:', entry.examples.length);
-      
+
       // Verify example structure
       const firstExample = entry.examples[0];
       expect(firstExample).toHaveProperty('japanese_text');
       expect(firstExample).toHaveProperty('english_text');
       expect(firstExample).toHaveProperty('word_id');
-      
+
       console.log('Sample example:', {
         japanese_text: firstExample.japanese_text.substring(0, 50) + '...',
         english_text: firstExample.english_text.substring(0, 50) + '...'
@@ -263,16 +263,16 @@ describe('Dictionary Database Operations', () => {
 
     for (const word of commonWords) {
       const examples = await testGetWordExamples(db, word);
-      
+
       if (examples.length > 0) {
         console.log(`Found ${examples.length} examples for word: ${word}`);
-        
+
         // Verify example structure
         const firstExample = examples[0];
         expect(firstExample).toHaveProperty('japanese_text');
         expect(firstExample).toHaveProperty('english_text');
         expect(firstExample.japanese_text).toContain(word);
-        
+
         console.log('Sample example text:', firstExample.japanese_text.substring(0, 100));
         examplesFound = true;
         break;
@@ -281,11 +281,11 @@ describe('Dictionary Database Operations', () => {
 
     if (!examplesFound) {
       console.log('No examples found for common words - checking database structure');
-      
+
       // Check if examples table has data
       const exampleCount = await db.get('SELECT COUNT(*) as count FROM examples');
       console.log('Total examples in database:', exampleCount.count);
-      
+
       // Get sample examples
       const sampleExamples = await db.all('SELECT japanese_text FROM examples LIMIT 5');
       console.log('Sample examples:', sampleExamples.map(e => e.japanese_text.substring(0, 50)));
@@ -311,7 +311,7 @@ describe('Dictionary Database Operations', () => {
       LEFT JOIN words w ON m.word_id = w.id
       WHERE w.id IS NULL
     `);
-    
+
     expect(orphanedMeanings[0].count).toBe(0);
     console.log('Referential integrity check passed');
 
@@ -321,18 +321,18 @@ describe('Dictionary Database Operations', () => {
       FROM words w
       JOIN meanings m ON w.id = m.word_id
     `);
-    
+
     console.log('Words with meanings:', wordsWithMeanings.count);
     expect(wordsWithMeanings.count).toBeGreaterThan(0);
   });
 
   test('performance test - batch dictionary lookups', async () => {
     const startTime = Date.now();
-    
+
     // Get first 10 word IDs
     const wordIds = await db.all(`
-      SELECT id FROM words 
-      ORDER BY id 
+      SELECT id FROM words
+      ORDER BY id
       LIMIT 10
     `);
 
@@ -344,10 +344,10 @@ describe('Dictionary Database Operations', () => {
 
     const endTime = Date.now();
     const duration = endTime - startTime;
-    
+
     console.log(`Retrieved ${entries.length} dictionary entries in ${duration}ms`);
     console.log(`Average: ${(duration / entries.length).toFixed(2)}ms per entry`);
-    
+
     expect(entries.length).toBe(wordIds.length);
     expect(duration).toBeLessThan(1000); // Should complete within 1 second
   });

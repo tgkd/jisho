@@ -25,6 +25,9 @@ Jisho is a cross-platform Japanese dictionary mobile app built with Expo and Rea
 - `yarn db:create` - Create new database schema
 - `yarn db:import` - Import dictionary data
 - `yarn db:import:words` - Import words data specifically
+- `yarn db:import:furigana` - Import furigana data
+- `yarn db:import:examples` - Import example sentences
+- `yarn db:build` - Build timestamped database bundle
 - `yarn db:reset` - Reset database to clean state
 - `yarn db:stats` - Show database statistics
 - `yarn db:verify` - Verify database integrity
@@ -32,7 +35,6 @@ Jisho is a cross-platform Japanese dictionary mobile app built with Expo and Rea
 ### Testing Commands
 - `yarn test:search` - Test search functionality
 - `yarn test:dictionary` - Test dictionary operations
-- `yarn test:bookmarks` - Test bookmark features
 - `yarn test:history` - Test history functionality
 - `yarn test:kanji` - Test kanji operations
 - `yarn test:utils` - Test database utilities
@@ -50,19 +52,21 @@ Jisho is a cross-platform Japanese dictionary mobile app built with Expo and Rea
 ### Core Directory Structure
 ```
 app/              # File-based routing screens
-├── _layout.tsx   # Root navigation layout
+├── _layout.tsx   # Root navigation layout with SQLiteProvider
 ├── index.tsx     # Search/home screen
-├── explore.tsx   # AI chat interface
+├── history/      # Search history screens
+├── settings/     # App settings screens
 └── word/[id].tsx # Dynamic word detail pages
 
 services/         # Business logic layer
-├── database.ts   # SQLite operations
+├── database/     # Database operations and search pipeline
 ├── request.ts    # AI integration & API calls
 ├── parse.ts      # Japanese text processing
-└── storage.ts    # Local storage (MMKV)
+├── storage.ts    # Local storage (MMKV)
+└── queryClient.ts # Global React Query client
 
 components/       # Reusable UI components
-providers/        # React context providers
+providers/        # React context providers (UnifiedAI, AppleAI)
 hooks/           # Custom hooks
 ```
 
@@ -80,13 +84,15 @@ hooks/           # Custom hooks
 - `meanings` - Word definitions and parts of speech
 - `examples` - Example sentences with translations
 - `kanji` - Kanji character data
-- `bookmarks`, `history`, `chats` - User data
+- `history` - User search history
 
 ### AI Integration
-The app supports both local and cloud AI:
-- **Local AI**: Qwen3-0.6B model for offline explanations
-- **Cloud AI**: External API for advanced features
+The app supports both local and cloud AI through `UnifiedAIProvider`:
+- **Local AI**: Apple Intelligence (`@react-native-ai/apple`) for offline explanations
+- **Cloud AI**: External API with streaming support for advanced features
+- Provider selection via `SETTINGS_KEYS.AI_PROVIDER_TYPE` in MMKV storage
 - AI prompts and responses are handled in `services/request.ts`
+- Audio playback hierarchy: cached remote → fresh remote (`getAiSound`) → local Apple synthesis → `expo-speech`
 
 ## Code Style (from .github/copilot-instructions.md)
 
@@ -132,4 +138,14 @@ The app supports both local and cloud AI:
 - Supports both iOS and Android
 - Offline-first architecture with local dictionary data
 - Comprehensive Japanese language data from JMdict and Kanjidic
+- Database migrations managed via `migrateDbIfNeeded` (target user_version 12)
+- WAL mode enforced for SQLite operations
+- Use `retryDatabaseOperation` wrapper for all raw SQL to handle SQLITE_BUSY
+- Pull database connection from `useSQLiteContext()` and pass to `services/database/` helpers
 - expo apis and libs docs here: https://docs.expo.dev/llms-full.txt
+
+# important-instruction-reminders
+Do what has been asked; nothing more, nothing less.
+NEVER create files unless they're absolutely necessary for achieving your goal.
+ALWAYS prefer editing an existing file to creating a new one.
+NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.

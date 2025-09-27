@@ -7,6 +7,7 @@ import {
   stripOkurigana,
   tokenize,
 } from "wanakana";
+import type { FuriganaSegment } from "./database/types";
 import segmenter from "./tsegmenter";
 
 type Marker = "numbered" | "bullet" | "dash" | "rows" | "none";
@@ -135,7 +136,7 @@ export function formatJp(
 
   return result;
 }
-
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const PARTS_OF_SPEECH: Record<string, string> = {
   n: "Noun",
   v1: "Ichidan verb",
@@ -382,6 +383,37 @@ export function processJpExampleText(text: string | undefined) {
 }
 
 /**
+ * Converts parsed reading tokens into furigana segments that match the ruby/rt shape
+ * used by {@link FuriganaText}.
+ *
+ * @param {ReadingToken[]} tokens - Structured reading tokens derived from {@link processJpExampleText}.
+ * @returns {FuriganaSegment[]} Array of furigana segments ready for rendering.
+ */
+export function buildFuriganaSegmentsFromTokens(
+  tokens: ReadingToken[]
+): FuriganaSegment[] {
+  return tokens
+    .map((token) => {
+      const surface = token.form ?? token.text;
+
+      if (!surface?.trim()) {
+        return null;
+      }
+
+      const segment: FuriganaSegment = {
+        ruby: surface,
+      };
+
+      if (token.reading && token.reading.trim()) {
+        segment.rt = token.reading.trim();
+      }
+
+      return segment;
+    })
+    .filter((segment): segment is FuriganaSegment => segment !== null);
+}
+
+/**
  * Combines elements from multiple arrays into arrays of corresponding elements.
  * Strings are treated as arrays of characters.
  * @param  {...Array|string} arrays - Arrays or strings to zip together
@@ -434,11 +466,11 @@ export function getJpTokens(text: string): string[] {
   if (tokenCache.has(text)) {
     return tokenCache.get(text)!;
   }
-  
+
   const tokens = segmenter(text)
     .map(removeJpSymbols)
     .filter((t) => t.length > 1 && isJapanese(t));
-  
+
   // Cache result (limit cache size to prevent memory leaks)
   if (tokenCache.size > 100) {
     const firstKey = tokenCache.keys().next().value;
@@ -447,7 +479,7 @@ export function getJpTokens(text: string): string[] {
     }
   }
   tokenCache.set(text, tokens);
-  
+
   return tokens;
 }
 

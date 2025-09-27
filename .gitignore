@@ -51,3 +51,4 @@ jm/
 # SQLite temporary files
 *.db-wal
 *.db-shm
+assets/db/dict_2のコピー.db

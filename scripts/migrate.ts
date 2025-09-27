@@ -14,6 +14,9 @@ import { existsSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { DatabaseManager } from './import/utils/database';
 import { WordsImporter } from './import/words-importer';
+import { FuriganaImporter } from './import/furigana-importer';
+import { KanjiImporter } from './import/kanji-importer';
+import { ExamplesImporter } from './import/examples-importer';
 
 interface MigrationConfig {
   dbPath: string;
@@ -74,11 +77,9 @@ class DatabaseMigrator {
 
     // Import in order of dependency
     await this.importWords();
-    // TODO: Add other importers
-    // await this.importKanji();
-    // await this.importExamples();
-    // await this.importFurigana();
-    // await this.importRadicals();
+  await this.importFurigana();
+    await this.importKanji();
+    await this.importExamples();
 
     await this.updateFTSTables();
 
@@ -100,6 +101,66 @@ class DatabaseMigrator {
 
     try {
       await importer.import(wordsPath);
+    } finally {
+      importer.close();
+    }
+  }
+
+  /**
+   * Import furigana data
+   */
+  async importFurigana(): Promise<void> {
+    const furiganaPath = join(this.config.dataDir, 'JmdictFurigana.json');
+
+    if (!existsSync(furiganaPath)) {
+      console.log(`⚠️  Furigana file not found: ${furiganaPath} - skipping`);
+      return;
+    }
+
+    const importer = new FuriganaImporter(this.config.dbPath);
+
+    try {
+      await importer.import(furiganaPath);
+    } finally {
+      importer.close();
+    }
+  }
+
+  /**
+   * Import kanji data
+   */
+  async importKanji(): Promise<void> {
+    const kanjiPath = join(this.config.dataDir, 'kanjidic_comb_utf8');
+
+    if (!existsSync(kanjiPath)) {
+      console.log(`⚠️  Kanji file not found: ${kanjiPath} - skipping`);
+      return;
+    }
+
+    const importer = new KanjiImporter(this.config.dbPath);
+
+    try {
+      await importer.import(kanjiPath);
+    } finally {
+      importer.close();
+    }
+  }
+
+  /**
+   * Import example sentences
+   */
+  async importExamples(): Promise<void> {
+    const examplesPath = join(this.config.dataDir, 'examples.utf');
+
+    if (!existsSync(examplesPath)) {
+      console.log(`⚠️  Examples file not found: ${examplesPath} - skipping`);
+      return;
+    }
+
+    const importer = new ExamplesImporter(this.config.dbPath);
+
+    try {
+      await importer.import(examplesPath);
     } finally {
       importer.close();
     }
@@ -137,13 +198,11 @@ class DatabaseMigrator {
       console.log('📊 Database Statistics:');
       console.log(`   Database file: ${this.config.dbPath}`);
       console.log(`   Words: ${stats.words?.toLocaleString() || 0}`);
-      console.log(`   Kanji forms: ${stats.word_kanji?.toLocaleString() || 0}`);
-      console.log(`   Readings: ${stats.word_readings?.toLocaleString() || 0}`);
-      console.log(`   Senses: ${stats.word_senses?.toLocaleString() || 0}`);
-      console.log(`   Glosses: ${stats.word_glosses?.toLocaleString() || 0}`);
+      console.log(`   Meanings: ${stats.meanings?.toLocaleString() || 0}`);
       console.log(`   Kanji: ${stats.kanji?.toLocaleString() || 0}`);
       console.log(`   Examples: ${stats.examples?.toLocaleString() || 0}`);
-      console.log(`   Furigana: ${stats.furigana?.toLocaleString() || 0}`);
+      console.log(`   History: ${stats.history?.toLocaleString() || 0}`);
+      console.log(`   Audio blobs: ${stats.audio_blobs?.toLocaleString() || 0}`);
 
       // Calculate file size
       const fs = await import('fs');
@@ -215,6 +274,14 @@ class DatabaseMigrator {
           await this.importWords();
           break;
 
+        case '--import-furigana':
+          await this.importFurigana();
+          break;
+
+        case '--import-examples':
+          await this.importExamples();
+          break;
+
         case '--reset':
           await this.resetDatabase();
           break;
@@ -260,6 +327,8 @@ Commands:
   --create        Create new database with schema
   --import        Import all data files (full import)
   --import-words  Import only words data
+  --import-furigana Import furigana mappings from JmdictFurigana.json
+  --import-examples Import example sentences from examples.utf
   --reset         Drop and recreate database
   --stats         Show database statistics
   --verify        Verify data file availability
@@ -278,7 +347,7 @@ Data files should be placed in the ./data directory:
   - JmdictFurigana.json (furigana data)
   - Kanji Radicals Reference - *.csv (radical data)
 
-Your existing database (assets/db/dict_2.db) will NOT be affected.
+Your existing database (assets/db/db_3.db) will NOT be affected.
 `);
   }
 }
