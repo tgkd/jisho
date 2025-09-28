@@ -30,7 +30,9 @@
     "test:ci": "jest --watchAll=false --verbose",
     "lint": "expo lint",
     "build": "eas build --platform ios",
-    "build:preview": "eas build -p ios --profile preview"
+    "build:preview": "eas build -p ios --profile preview",
+    "deploy": "tsx scripts/deploy-pages.ts",
+    "deploy:production": "tsx scripts/deploy-pages.ts --production"
   },
   "jest": {
     "preset": "jest-expo"
