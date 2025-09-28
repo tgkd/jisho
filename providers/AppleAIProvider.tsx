@@ -129,6 +129,7 @@ export function AppleAIProvider({ children }: { children: ReactNode }) {
           model: apple(),
           prompt: `${EXPLAIN_GRAMMAR}\n\nTarget: ${text}`,
           abortSignal: controller.signal,
+          maxOutputTokens: 600,
         });
 
         let fullResponse = "";
@@ -186,6 +187,7 @@ export function AppleAIProvider({ children }: { children: ReactNode }) {
             ...messages,
           ],
           abortSignal: controller.signal,
+          maxOutputTokens: 600,
         });
 
         let fullResponse = "";
