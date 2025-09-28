@@ -1,11 +1,13 @@
 import { FlashList, FlashListRef } from "@shopify/flash-list";
 import * as Clipboard from "expo-clipboard";
+import { Stack } from "expo-router";
 import { useCallback, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import Markdown from "react-native-markdown-display";
 
 import { ChatFooterView } from "@/components/ChatFooter";
+import { HapticButton } from "@/components/HapticTab";
 import { PopupMenu, PopupMenuItem } from "@/components/PopupMenu";
 import { ThemedText } from "@/components/ThemedText";
 import { Card } from "@/components/ui/Card";
@@ -14,7 +16,7 @@ import { useMdStyles } from "@/hooks/useMdStyles";
 import { useUnifiedAI } from "@/providers/UnifiedAIProvider";
 
 interface Message {
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
 }
 
@@ -41,8 +43,11 @@ export default function ExploreScreen() {
         setIsGenerating(true);
 
         // Add user message and placeholder assistant message to UI
-        const userMessage: Message = { role: 'user', content: text };
-        const placeholderAssistant: Message = { role: 'assistant', content: '' };
+        const userMessage: Message = { role: "user", content: text };
+        const placeholderAssistant: Message = {
+          role: "assistant",
+          content: "",
+        };
 
         const updatedUIMessages: Message[] = [
           ...messages,
@@ -54,7 +59,7 @@ export default function ExploreScreen() {
         // Send only messages up to the user message (no empty assistant message)
         const conversationMessages = [...messages, userMessage];
         const assistantMessageIndex = updatedUIMessages.length - 1;
-        let accumulatedContent = '';
+        let accumulatedContent = "";
 
         await ai.chatWithMessages(conversationMessages, {
           onChunk: (chunk: string) => {
@@ -62,12 +67,11 @@ export default function ExploreScreen() {
             setMessages((prev) => {
               const newMessages = [...prev];
               newMessages[assistantMessageIndex] = {
-                role: 'assistant',
+                role: "assistant",
                 content: accumulatedContent,
               };
               return newMessages;
             });
-
           },
           onComplete: (_fullResponse: string, error?: string) => {
             setIsGenerating(false);
@@ -78,14 +82,13 @@ export default function ExploreScreen() {
               setMessages((prev) => {
                 const newMessages = [...prev];
                 newMessages[assistantMessageIndex] = {
-                  role: 'assistant',
+                  role: "assistant",
                   content: `Error: ${error}`,
                 };
                 return newMessages;
               });
               return;
             }
-
           },
           onError: (error: string) => {
             console.error("AI error:", error);
@@ -93,7 +96,7 @@ export default function ExploreScreen() {
             setMessages((prev) => {
               const newMessages = [...prev];
               newMessages[assistantMessageIndex] = {
-                role: 'assistant',
+                role: "assistant",
                 content: `Error: ${error}`,
               };
               return newMessages;
@@ -112,8 +115,8 @@ export default function ExploreScreen() {
     ({ item }: { item: Message }) => {
       const menuItems: PopupMenuItem[] = [
         {
-          label: 'Copy',
-          icon: 'doc.on.doc',
+          label: "Copy",
+          icon: "doc.on.doc",
           onPress: () => copyMessage(item.content),
         },
       ];
@@ -124,24 +127,24 @@ export default function ExploreScreen() {
           buttonView={
             <Card
               lightColor={
-                item.role === 'user'
+                item.role === "user"
                   ? Colors.light.background
                   : Colors.light.secondaryBackground
               }
               darkColor={
-                item.role === 'user'
+                item.role === "user"
                   ? Colors.dark.background
                   : Colors.dark.secondaryBackground
               }
             >
               <View style={styles.chatItem}>
-                {item.role === 'user' ? (
+                {item.role === "user" ? (
                   <ThemedText type="defaultSemiBold" style={styles.userMessage}>
                     {item.content}
                   </ThemedText>
                 ) : (
                   <Markdown style={markdownStyles}>
-                    {item.content || '...'}
+                    {item.content || "..."}
                   </Markdown>
                 )}
               </View>
@@ -167,8 +170,29 @@ export default function ExploreScreen() {
     [messages]
   );
 
+  const clearMessages = () => {
+    if (isGenerating) {
+      return;
+    }
+    setMessages([]);
+  };
+
   return (
     <>
+      <Stack.Screen
+        options={{
+          headerTitle: ({ children }) => (
+            <ThemedText type="title" style={{ flex: 1 }}>{children}</ThemedText>
+          ),
+          headerRight: () => (
+            <HapticButton
+              systemImage={"trash"}
+              onPress={clearMessages}
+              disabled={isGenerating || messages.length === 0}
+            />
+          ),
+        }}
+      />
       <FlashList
         contentInsetAdjustmentBehavior="automatic"
         ref={scrollRef}

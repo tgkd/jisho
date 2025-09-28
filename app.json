@@ -2,31 +2,9 @@
   "expo": {
     "name": "jisho",
     "slug": "jisho",
-    "version": "1.0.1",
-    "orientation": "portrait",
+    "version": "1.0.0",
     "scheme": "myapp",
-    "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "ios": {
-      "buildNumber": "5",
-      "supportsTablet": false,
-      "bundleIdentifier": "app.jisho.loc",
-      "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
-      }
-    },
-    "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
-      "package": "app.jisho.loc"
-    },
-    "web": {
-      "bundler": "metro",
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
-    },
     "plugins": [
       "expo-router",
       "expo-splash-screen",
@@ -40,9 +18,6 @@
     "extra": {
       "router": {
         "origin": false
-      },
-      "eas": {
-        "projectId": "0b8551c1-ee23-4d53-83b4-3849b88863ce"
       }
     }
   }

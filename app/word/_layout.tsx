@@ -47,7 +47,6 @@ export default function WordLayout() {
           title: "Chat",
           presentation: "modal",
           headerTransparent: true,
-          headerLargeTitle: true,
         }}
       />
     </Stack>

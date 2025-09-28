@@ -127,9 +127,9 @@ export function AppleAIProvider({ children }: { children: ReactNode }) {
       try {
         const { textStream } = await streamText({
           model: apple(),
-          prompt: `${EXPLAIN_GRAMMAR}\n\nTarget: ${text}`,
+          prompt: `${JP_EXPLANATION_SYSTEM_PROMPT}\n\nExplain this Japanese text: ${text}`,
           abortSignal: controller.signal,
-          maxOutputTokens: 600,
+          maxOutputTokens: MAX_TOKENS,
         });
 
         let fullResponse = "";
@@ -183,11 +183,12 @@ export function AppleAIProvider({ children }: { children: ReactNode }) {
         const { textStream } = await streamText({
           model: apple(),
           messages: [
-            { role: "system", content: CHAT_SYSTEM_PROMPT },
+            { role: "system", content: JP_EXPLANATION_SYSTEM_PROMPT },
             ...messages,
           ],
           abortSignal: controller.signal,
-          maxOutputTokens: 600,
+          maxOutputTokens: MAX_TOKENS,
+          temperature: 0.1,
         });
 
         let fullResponse = "";
@@ -301,19 +302,37 @@ Output (JSON only):
 - en: a natural English translation.
 - Do NOT include any extra text, comments, keys, or code fences—output valid JSON only.`;
 
-const EXPLAIN_GRAMMAR = `You are a concise Japanese tutor.
-Given a word or a sentence, explain the core meaning or grammatical function and key nuances in clear English.
-Mention part of speech or grammar role when relevant.
-If helpful, include up to 2 short natural examples with kana and translations.
-Keep it compact and free-form (no rigid structure).`;
+const MAX_TOKENS = 1500; // Adjust based on typical response length needs
 
-const CHAT_SYSTEM_PROMPT = `You are a helpful Japanese language tutor assistant.
-You have expertise in Japanese vocabulary, grammar, cultural nuances, and language learning.
-Provide clear, concise, and helpful responses to questions about Japanese language and culture.
-You can explain grammar points, provide examples, suggest learning strategies, and help with translations.
-Keep your responses conversational and educational.`;
+const JP_EXPLANATION_SYSTEM_PROMPT = `
+You are a Japanese language expert who provides clear, structured explanations.
 
-// note: prompt separation by type removed; a single generic prompt is used for both words and sentences.
+IMPORTANT: Your response is limited to ${MAX_TOKENS} tokens. Plan your explanation to fit within this limit - prioritize the most essential information and conclude your response naturally before being cut off.
+
+For grammar patterns/phrases, explain:
+- What the pattern means and its grammatical function
+- Break down the components and structure
+- Provide usage examples with furigana and romaji
+- Mention related constructions and key usage rules
+- Note formality levels and common mistakes
+
+For vocabulary words, explain:
+- The word's meaning and part of speech (with furigana and romaji)
+- If it contains kanji, analyze each kanji's readings and core meaning
+- Show usage in both casual and formal contexts
+- List common compounds or collocations
+- Compare with similar words to highlight nuances
+- Include memory aids if helpful
+
+Format your response with clear headings and bullet points. Always include:
+- Japanese text with furigana in brackets: 漢字[かんじ]
+- Romaji in parentheses
+- English translations in quotes
+- Bold key terms and patterns
+
+Be comprehensive but concise. Focus on practical usage and cultural context. Ensure you complete your explanation within the token limit.
+`;
+
 /**
  * Picks the best Japanese voice from a voice list and returns a TTS config.
  * Prefers native Apple Japanese voices (Kyoko) over Eloquence voices.

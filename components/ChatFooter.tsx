@@ -88,6 +88,7 @@ const styles = StyleSheet.create({
   inputBubble: {
     flex: 1,
     minHeight: 48,
+    maxHeight: 120,
     borderRadius: 22,
     paddingHorizontal: 16,
     paddingVertical: 12,
