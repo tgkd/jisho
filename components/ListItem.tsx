@@ -31,11 +31,11 @@ const ACTION_WIDTH = 40;
 
 // Helper functions for type checking
 function isWordHistoryEntry(item: HistoryEntry): item is WordHistoryEntry {
-  return item.entryType === 'word';
+  return item.entryType === "word";
 }
 
 function isKanjiHistoryEntry(item: HistoryEntry): item is KanjiHistoryEntry {
-  return item.entryType === 'kanji';
+  return item.entryType === "kanji";
 }
 
 type BaseListItemProps = {
@@ -315,7 +315,11 @@ function HistoryContent({
                 {formatJp(item.reading, false)}
               </ThemedText>
             </ThemedText>
-            <ThemedText type="secondary" style={styles.meaning} uiTextView={false}>
+            <ThemedText
+              type="secondary"
+              style={styles.meaning}
+              uiTextView={false}
+            >
               {formatEn(item.meaning, "none", { truncateAll: 45 }).replace(
                 /[,;]\s*$/,
                 ""
@@ -329,7 +333,11 @@ function HistoryContent({
                 {item.character}
               </ThemedText>
             </ThemedText>
-            <ThemedText type="secondary" style={styles.meaning} uiTextView={false}>
+            <ThemedText
+              type="secondary"
+              style={styles.meaning}
+              uiTextView={false}
+            >
               {formatEn(item.meaning, "none", { truncateAll: 45 }).replace(
                 /[,;]\s*$/,
                 ""
@@ -490,20 +498,18 @@ function KanjiContent({
         >
           <View style={styles.col}>
             <View style={styles.kanjiRow}>
-              <ThemedText type="defaultSemiBold">
-                {item.character}
-              </ThemedText>
+              <ThemedText type="defaultSemiBold">{item.character}</ThemedText>
               <View style={styles.readings}>
-                {item.onReadings && item.onReadings.length > 0 && (
+                {item.onReadings?.length ? (
                   <ThemedText size="sm" type="secondary">
                     On: {item.onReadings.join(", ")}
                   </ThemedText>
-                )}
-                {item.kunReadings && item.kunReadings.length > 0 && (
+                ) : null}
+                {item.kunReadings?.length ? (
                   <ThemedText size="sm" type="secondary">
                     Kun: {item.kunReadings.join(", ")}
                   </ThemedText>
-                )}
+                ) : null}
               </View>
             </View>
             <ThemedText style={styles.detailsText} type="secondary">
@@ -627,5 +633,6 @@ const styles = StyleSheet.create({
   readings: {
     flexDirection: "column",
     gap: 2,
+    maxWidth: "80%"
   },
 });
