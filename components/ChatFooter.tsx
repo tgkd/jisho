@@ -1,5 +1,10 @@
 import { memo, useRef, useState } from "react";
-import { StyleSheet, TextInput, View } from "react-native";
+import {
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  View
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { HapticTab } from "@/components/HapticTab";
@@ -31,7 +36,10 @@ const ChatFooterView = memo(
     return (
       <View style={[styles.container, { paddingBottom: instets.bottom }]}>
         <View style={styles.inputRow}>
-          <View style={[styles.inputBubble, { backgroundColor: bg }]}>
+          <TouchableOpacity
+            style={[styles.inputBubble, { backgroundColor: bg }]}
+            onPress={() => inputRef.current?.focus()}
+          >
             <TextInput
               multiline
               numberOfLines={3}
@@ -42,7 +50,7 @@ const ChatFooterView = memo(
               value={value}
               style={{ color: textColor }}
             />
-          </View>
+          </TouchableOpacity>
 
           <HapticTab
             style={styles.sendButton}

@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { router } from "expo-router";
 import { StyleSheet, View } from "react-native";
 import ReanimatedSwipeable, {
@@ -76,43 +77,68 @@ export const ListItem = (props: ListItemProps) => {
   const { variant, index, total, onPress } = props;
   const isFirst = index === 0;
   const isLast = index === total - 1;
+  const swipeableRef = useRef<SwipeableMethods | null>(null);
+  const isSwipeActiveRef = useRef(false);
+  const autoActionTriggeredRef = useRef(false);
 
-  const handlePress =
-    onPress ||
-    (() => {
-      if (variant === "history") {
-        const item = props.item as HistoryEntry;
-        if (isWordHistoryEntry(item)) {
-          router.push({
-            pathname: "/word/[id]",
-            params: { id: item.wordId.toString(), title: item.word },
-          });
-        } else if (isKanjiHistoryEntry(item)) {
-          router.navigate({
-            pathname: "/word/kanji/[id]",
-            params: { id: item.kanjiId.toString(), title: item.character },
-          });
-        }
-      } else if (variant === "search") {
-        const item = props.item as DictionaryEntry;
+  const handleSwipeStart = () => {
+    isSwipeActiveRef.current = true;
+    autoActionTriggeredRef.current = false;
+  };
+
+  const handleSwipeEnd = () => {
+    isSwipeActiveRef.current = false;
+    autoActionTriggeredRef.current = false;
+  };
+
+  const executeDefaultPress = () => {
+    if (variant === "history") {
+      const item = props.item as HistoryEntry;
+      if (isWordHistoryEntry(item)) {
         router.push({
           pathname: "/word/[id]",
-          params: { id: item.id.toString(), title: item.word },
+          params: { id: item.wordId.toString(), title: item.word },
         });
-      } else if (variant === "bookmark") {
-        const item = props.item as DictionaryEntry;
-        router.push({
-          pathname: "/word/[id]",
-          params: { id: item.id.toString(), title: item.word },
-        });
-      } else if (variant === "kanji") {
-        const item = props.item as KanjiEntry;
+      } else if (isKanjiHistoryEntry(item)) {
         router.navigate({
           pathname: "/word/kanji/[id]",
-          params: { id: item.id.toString(), title: item.character },
+          params: { id: item.kanjiId.toString(), title: item.character },
         });
       }
-    });
+    } else if (variant === "search") {
+      const item = props.item as DictionaryEntry;
+      router.push({
+        pathname: "/word/[id]",
+        params: { id: item.id.toString(), title: item.word },
+      });
+    } else if (variant === "bookmark") {
+      const item = props.item as DictionaryEntry;
+      router.push({
+        pathname: "/word/[id]",
+        params: { id: item.id.toString(), title: item.word },
+      });
+    } else if (variant === "kanji") {
+      const item = props.item as KanjiEntry;
+      router.navigate({
+        pathname: "/word/kanji/[id]",
+        params: { id: item.id.toString(), title: item.character },
+      });
+    }
+  };
+
+  const handlePress = () => {
+    if (isSwipeActiveRef.current) {
+      swipeableRef.current?.close();
+      return;
+    }
+
+    if (onPress) {
+      onPress();
+      return;
+    }
+
+    executeDefaultPress();
+  };
 
   const renderContent = () => {
     switch (variant) {
@@ -157,15 +183,36 @@ export const ListItem = (props: ListItemProps) => {
 
   if (variant === "history") {
     const historyProps = props as HistoryVariantProps;
+    const handleAutoRemove = () => {
+      if (autoActionTriggeredRef.current) {
+        return;
+      }
+      autoActionTriggeredRef.current = true;
+      historyProps.onRemove(historyProps.item);
+      swipeableRef.current?.close();
+    };
     return (
       <ReanimatedSwipeable
+        ref={swipeableRef}
         friction={2}
         rightThreshold={ACTION_WIDTH}
         enableTrackpadTwoFingerGesture
+        onSwipeableOpenStartDrag={handleSwipeStart}
+        onSwipeableCloseStartDrag={handleSwipeStart}
+        onSwipeableWillOpen={handleSwipeStart}
+        onSwipeableOpen={() => {
+          handleSwipeStart();
+          handleAutoRemove();
+        }}
+        onSwipeableWillClose={handleSwipeEnd}
+        onSwipeableClose={handleSwipeEnd}
         renderRightActions={(_, drag, swipe) => (
           <RightAction
             drag={drag}
             swipe={swipe}
+            onActivate={() => {
+              autoActionTriggeredRef.current = true;
+            }}
             onPress={() => historyProps.onRemove(historyProps.item)}
           />
         )}
@@ -182,15 +229,36 @@ export const ListItem = (props: ListItemProps) => {
 
   if (variant === "bookmark") {
     const bookmarkProps = props as BookmarkVariantProps;
+    const handleAutoRemove = () => {
+      if (autoActionTriggeredRef.current) {
+        return;
+      }
+      autoActionTriggeredRef.current = true;
+      bookmarkProps.onRemove(bookmarkProps.item);
+      swipeableRef.current?.close();
+    };
     return (
       <ReanimatedSwipeable
+        ref={swipeableRef}
         friction={2}
         rightThreshold={ACTION_WIDTH}
         enableTrackpadTwoFingerGesture
+        onSwipeableOpenStartDrag={handleSwipeStart}
+        onSwipeableCloseStartDrag={handleSwipeStart}
+        onSwipeableWillOpen={handleSwipeStart}
+        onSwipeableOpen={() => {
+          handleSwipeStart();
+          handleAutoRemove();
+        }}
+        onSwipeableWillClose={handleSwipeEnd}
+        onSwipeableClose={handleSwipeEnd}
         renderRightActions={(_, drag, swipe) => (
           <RightAction
             drag={drag}
             swipe={swipe}
+            onActivate={() => {
+              autoActionTriggeredRef.current = true;
+            }}
             onPress={() => bookmarkProps.onRemove(bookmarkProps.item)}
           />
         )}
@@ -454,10 +522,12 @@ function RightAction({
   drag,
   swipe,
   onPress,
+  onActivate,
 }: {
   drag: SharedValue<number>;
   swipe: SwipeableMethods;
   onPress: () => void;
+  onActivate?: () => void;
 }) {
   const iconColor = useThemeColor({}, "error");
 
@@ -468,6 +538,7 @@ function RightAction({
   });
 
   const handlePress = () => {
+    onActivate?.();
     swipe.close();
     onPress();
   };

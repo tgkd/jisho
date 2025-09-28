@@ -1,10 +1,12 @@
 import { FlashList, FlashListRef } from "@shopify/flash-list";
+import * as Clipboard from "expo-clipboard";
 import { useCallback, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import Markdown from "react-native-markdown-display";
 
 import { ChatFooterView } from "@/components/ChatFooter";
+import { PopupMenu, PopupMenuItem } from "@/components/PopupMenu";
 import { ThemedText } from "@/components/ThemedText";
 import { Card } from "@/components/ui/Card";
 import { Colors } from "@/constants/Colors";
@@ -22,6 +24,10 @@ export default function ExploreScreen() {
   const scrollRef = useRef<FlashListRef<Message>>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
+
+  const copyMessage = useCallback(async (content: string) => {
+    await Clipboard.setStringAsync(content);
+  }, []);
 
   const handleSubmit = useCallback(
     async (query: string) => {
@@ -103,33 +109,48 @@ export default function ExploreScreen() {
   );
 
   const renderItem = useCallback(
-    ({ item }: { item: Message }) => (
-      <Card
-        lightColor={
-          item.role === 'user'
-            ? Colors.light.background
-            : Colors.light.secondaryBackground
-        }
-        darkColor={
-          item.role === 'user'
-            ? Colors.dark.background
-            : Colors.dark.secondaryBackground
-        }
-      >
-        <View style={styles.chatItem}>
-          {item.role === 'user' ? (
-            <ThemedText type="defaultSemiBold" style={styles.userMessage}>
-              {item.content}
-            </ThemedText>
-          ) : (
-            <Markdown style={markdownStyles}>
-              {item.content || '...'}
-            </Markdown>
-          )}
-        </View>
-      </Card>
-    ),
-    [markdownStyles]
+    ({ item }: { item: Message }) => {
+      const menuItems: PopupMenuItem[] = [
+        {
+          label: 'Copy',
+          icon: 'doc.on.doc',
+          onPress: () => copyMessage(item.content),
+        },
+      ];
+
+      return (
+        <PopupMenu
+          items={menuItems}
+          buttonView={
+            <Card
+              lightColor={
+                item.role === 'user'
+                  ? Colors.light.background
+                  : Colors.light.secondaryBackground
+              }
+              darkColor={
+                item.role === 'user'
+                  ? Colors.dark.background
+                  : Colors.dark.secondaryBackground
+              }
+            >
+              <View style={styles.chatItem}>
+                {item.role === 'user' ? (
+                  <ThemedText type="defaultSemiBold" style={styles.userMessage}>
+                    {item.content}
+                  </ThemedText>
+                ) : (
+                  <Markdown style={markdownStyles}>
+                    {item.content || '...'}
+                  </Markdown>
+                )}
+              </View>
+            </Card>
+          }
+        />
+      );
+    },
+    [markdownStyles, copyMessage]
   );
 
   const renderEmpty = useCallback(
