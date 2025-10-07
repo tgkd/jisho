@@ -4,8 +4,6 @@ import { Card } from "@/components/ui/Card";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { Colors } from "@/constants/Colors";
 import { useSubscription } from "@/providers/SubscriptionContext";
-import { PRODUCT_IDS } from "@/services/subscription";
-import { useRouter } from "expo-router";
 import {
   ActivityIndicator,
   Alert,
@@ -16,29 +14,28 @@ import {
 } from "react-native";
 
 export default function SubscriptionScreen() {
-  const router = useRouter();
   const subscription = useSubscription();
   const {
     isPremium,
     isTrial,
     trialDaysRemaining,
     dailyUsage,
-    products,
+    packages,
     isLoading,
     purchase,
     restore,
     startTrial,
   } = subscription;
 
-  const monthlyProduct = products.find((p) => p.productId === PRODUCT_IDS.MONTHLY);
+  const monthlyPackage = packages[0];
 
   const handlePurchase = async () => {
-    if (!monthlyProduct) {
+    if (!monthlyPackage) {
       Alert.alert("Error", "Subscription product not available");
       return;
     }
 
-    const success = await purchase(monthlyProduct.productId);
+    const success = await purchase(monthlyPackage.identifier);
     if (success) {
       Alert.alert("Success", "You are now a Premium member! 🎉");
     } else {
@@ -169,7 +166,7 @@ export default function SubscriptionScreen() {
         <HapticTab
           onPress={handlePurchase}
           style={[styles.actionButton, styles.primaryButton]}
-          disabled={isLoading || !monthlyProduct}
+          disabled={isLoading || !monthlyPackage}
         >
           {isLoading ? (
             <ActivityIndicator color="#fff" />
@@ -177,8 +174,8 @@ export default function SubscriptionScreen() {
             <>
               <IconSymbol name="star.fill" size={20} color="#fff" />
               <ThemedText size="sm" style={styles.primaryButtonText}>
-                {monthlyProduct
-                  ? `Upgrade to Premium - ${monthlyProduct.localizedPrice}/month`
+                {monthlyPackage
+                  ? `Upgrade to Premium - ${monthlyPackage.product.priceString}/month`
                   : "Loading..."}
               </ThemedText>
             </>
