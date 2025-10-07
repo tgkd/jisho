@@ -9216,6 +9216,7 @@ __metadata:
     react-dom: "npm:19.1.0"
     react-native: "npm:0.81.4"
     react-native-gesture-handler: "npm:~2.28.0"
+    react-native-iap: "npm:^14.4.12"
     react-native-keyboard-aware-scroll-view: "npm:^0.9.5"
     react-native-keyboard-controller: "npm:1.18.5"
     react-native-markdown-display: "npm:^7.0.2"
@@ -11554,6 +11555,17 @@ __metadata:
     react: "*"
     react-native: "*"
   checksum: 10c0/4240c8eedca69eb36b5d3e375b71867251cf8b87a755ba7066b3f73cfdbc80574042dbd4ff821041fd1539c4cd90dbf7ee34586f5a0ea6cc38052375b3169f2e
+  languageName: node
+  linkType: hard
+
+"react-native-iap@npm:^14.4.12":
+  version: 14.4.12
+  resolution: "react-native-iap@npm:14.4.12"
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+    react-native-nitro-modules: ^0.29.6
+  checksum: 10c0/d672995605a192be845ed96a5b4d85147fad1980e004b65cdc9b78ca33ee9ef3268e025671e20fff10b4a50df63eccd7f99552f40e33cfd1cb75bfab83432a70
   languageName: node
   linkType: hard
 

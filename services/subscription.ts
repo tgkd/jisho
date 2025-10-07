@@ -12,9 +12,10 @@ export interface SubscriptionInfo {
 }
 
 const PRODUCT_IDS = {
-  MONTHLY: "jisho_pro_monthly",
-  YEARLY: "jisho_pro_yearly",
+  MONTHLY: "com.jisho.premium.monthly",
 } as const;
+
+const SUBSCRIPTION_SKUS = [PRODUCT_IDS.MONTHLY];
 
 const TRIAL_DURATION_DAYS = 7;
 const FREE_AI_QUERIES_PER_DAY = 3;
@@ -183,6 +184,86 @@ export function clearSubscriptionData(): void {
   settingsStorage.delete(SETTINGS_KEYS.TRIAL_END_DATE);
   settingsStorage.delete(SETTINGS_KEYS.SUBSCRIPTION_PURCHASE_DATE);
   resetDailyUsage();
+}
+
+export async function initializeIAP(): Promise<void> {
+  try {
+    await RNIap.initConnection();
+    await RNIap.flushFailedPurchasesCachedAsPendingAndroid();
+  } catch (error) {
+    console.error("Failed to initialize IAP:", error);
+    throw error;
+  }
+}
+
+export async function endIAP(): Promise<void> {
+  try {
+    await RNIap.endConnection();
+  } catch (error) {
+    console.error("Failed to end IAP connection:", error);
+  }
+}
+
+export async function getSubscriptionProducts(): Promise<Subscription[]> {
+  try {
+    const products = await RNIap.getSubscriptions({ skus: SUBSCRIPTION_SKUS });
+    return products;
+  } catch (error) {
+    console.error("Failed to fetch subscription products:", error);
+    throw error;
+  }
+}
+
+export async function purchaseSubscription(productId: string): Promise<void> {
+  try {
+    const purchase = await RNIap.requestSubscription({ sku: productId });
+
+    if (purchase) {
+      await validateAndActivatePurchase(purchase);
+    }
+  } catch (error) {
+    if ((error as any).code === "E_USER_CANCELLED") {
+      throw new Error("Purchase cancelled");
+    }
+    console.error("Purchase failed:", error);
+    throw error;
+  }
+}
+
+export async function restorePurchases(): Promise<boolean> {
+  try {
+    const purchases = await RNIap.getAvailablePurchases();
+
+    if (purchases.length === 0) {
+      return false;
+    }
+
+    for (const purchase of purchases) {
+      await validateAndActivatePurchase(purchase);
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Failed to restore purchases:", error);
+    throw error;
+  }
+}
+
+async function validateAndActivatePurchase(purchase: ProductPurchase | Purchase): Promise<void> {
+  try {
+    const receipt = purchase.transactionReceipt;
+
+    if (!receipt) {
+      throw new Error("No receipt found");
+    }
+
+    activateSubscription(purchase.productId);
+
+    await RNIap.finishTransaction({ purchase, isConsumable: false });
+  } catch (error) {
+    console.error("Failed to validate purchase:", error);
+    throw error;
+  }
 }
 
 export { PRODUCT_IDS };

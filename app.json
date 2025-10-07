@@ -19,6 +19,13 @@
       "router": {
         "origin": false
       }
+    },
+    "ios": {
+      "bundleIdentifier": "app.jisho.loc",
+      "supportsTablet": true,
+      "infoPlist": {
+        "SKPaymentTransactionObserver": true
+      }
     }
   }
 }

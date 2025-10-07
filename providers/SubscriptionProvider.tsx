@@ -3,7 +3,11 @@ import { SubscriptionContext, SubscriptionContextValue } from "@/providers/Subsc
 import {
   activateSubscription,
   cancelSubscription,
-  canUseAIFeature, getDailyAIUsage, getSubscriptionInfo, getTrialDaysRemaining, incrementAIUsage, startFreeTrial, SubscriptionInfo
+  canUseAIFeature,
+  getDailyAIUsage,
+  getSubscriptionInfo, getTrialDaysRemaining,
+  incrementAIUsage, startFreeTrial,
+  SubscriptionInfo
 } from "@/services/subscription";
 import React, { ReactNode, useCallback, useEffect, useState } from "react";
 
@@ -13,6 +17,8 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const [dailyUsage, setDailyUsage] = useState(getDailyAIUsage());
   const [paywallVisible, setPaywallVisible] = useState(false);
   const [paywallFeature, setPaywallFeature] = useState<string | undefined>();
+  const [products, setProducts] = useState<Subscription[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const refreshSubscription = useCallback(() => {
     const info = getSubscriptionInfo();
@@ -22,13 +28,31 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    let mounted = true;
+
+    const initialize = async () => {
+      try {
+        await initializeIAP();
+        const availableProducts = await getSubscriptionProducts();
+        if (mounted) {
+          setProducts(availableProducts);
+        }
+      } catch (error) {
+        console.error("Failed to initialize IAP:", error);
+      }
+    };
+
+    initialize();
     refreshSubscription();
 
     const interval = setInterval(() => {
       refreshSubscription();
     }, 60000);
 
-    return () => clearInterval(interval);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
   }, [refreshSubscription]);
 
   const startTrial = useCallback(() => {
@@ -68,6 +92,36 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     setPaywallFeature(undefined);
   }, []);
 
+  const purchase = useCallback(async (productId: string) => {
+    setIsLoading(true);
+    try {
+      await purchaseSubscription(productId);
+      refreshSubscription();
+      return true;
+    } catch (error) {
+      console.error("Purchase failed:", error);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [refreshSubscription]);
+
+  const restore = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const restored = await restorePurchases();
+      if (restored) {
+        refreshSubscription();
+      }
+      return restored;
+    } catch (error) {
+      console.error("Restore failed:", error);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [refreshSubscription]);
+
   const contextValue: SubscriptionContextValue = {
     subscriptionInfo,
     isPremium: subscriptionInfo.isActive,
@@ -82,6 +136,10 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     refreshSubscription,
     showPaywall,
     hidePaywall,
+    products,
+    isLoading,
+    purchase,
+    restore,
   };
 
   return (

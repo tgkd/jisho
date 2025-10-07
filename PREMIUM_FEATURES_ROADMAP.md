@@ -1,6 +1,6 @@
 # Premium Features Implementation Roadmap
 
-> **Current Status**: Phase 1 completed - Core subscription system with centralized gating architecture. Ready for Phase 2: IAP integration.
+> **Current Status**: Phase 2 completed - IAP integration and subscription management UI ready. Ready for Phase 3: Word AI Chat feature.
 
 ## 📋 Quick Summary
 
@@ -11,12 +11,14 @@
 - ✅ All subscription logic centralized in `UnifiedAIProvider`
 - ✅ Clean UI components - no subscription checks in views
 - ✅ Environment-based API auth (no user credentials)
+- ✅ IAP integration with `react-native-iap`
+- ✅ Subscription settings screen with purchase flow
+- ✅ Restore purchases functionality
 
 **Next Steps**:
-1. Install `react-native-iap` package
-2. Create subscription settings screen
-3. Implement purchase flow
-4. Test with App Store sandbox
+1. Configure product `com.jisho.premium.monthly` in App Store Connect
+2. Test with App Store sandbox
+3. Implement Word AI Chat component (Phase 3)
 
 ---
 
@@ -49,78 +51,66 @@
 - [x] **Storage cleanup**
   - Removed deprecated `API_AUTH_USERNAME` and `API_AUTH_PASSWORD` keys
 
+### Phase 2: IAP & Subscription Management
+- [x] **IAP package integration** (`react-native-iap`)
+  - Installed and configured `react-native-iap@14.4.12`
+  - Product ID: `com.jisho.premium.monthly`
+- [x] **Subscription service methods** (`services/subscription.ts`)
+  - `initializeIAP()` - Initialize IAP connection
+  - `purchaseSubscription(productId)` - Handle purchase flow
+  - `restorePurchases()` - Restore previous purchases
+  - `getSubscriptionProducts()` - Fetch available products
+  - Receipt validation and activation
+- [x] **SubscriptionProvider enhancements** (`providers/SubscriptionProvider.tsx`)
+  - IAP initialization on mount
+  - Products state management
+  - `purchase()` and `restore()` methods in context
+  - Loading states for purchases
+- [x] **Subscription settings screen** (`app/settings/subscription.tsx`)
+  - Premium/Trial/Free status display with icons
+  - Trial countdown (X days remaining)
+  - Daily usage stats (X/3 AI queries used today)
+  - Premium benefits list
+  - "Upgrade to Premium" button with pricing
+  - "Start 7-Day Free Trial" button
+  - "Restore Purchases" button
+  - "Manage Subscription" link to App Store
+- [x] **Settings screen integration** (`app/settings/index.tsx:173-199`)
+  - Subscription status card (Premium/Trial/Free)
+  - Usage stats display
+  - Navigation to subscription screen
+- [x] **App configuration** (`app.json`)
+  - iOS bundle identifier: `app.jisho.loc`
+  - IAP entitlements (SKPaymentTransactionObserver)
+
 ### Current State
 - ✅ On-device AI: Free for all users (unlimited)
 - ✅ Cloud AI: Premium-only with usage limits (3/day free tier)
 - ✅ Subscription gating: All handled in provider, not UI
 - ✅ Settings: Simple toggle with paywall
+- ✅ IAP: Purchase and restore flows implemented
+- ✅ Subscription management UI: Complete with all states
 
 ---
 
-## 🚧 Next Priority: IAP & Subscription Management
+## 🚧 Next Priority: Word AI Chat Feature
 
-### Phase 2: In-App Purchases & Subscription Screen
-**Priority: HIGH** - Users need to actually subscribe and manage subscriptions
+### Manual Setup Required (Before App Store Testing)
+**Priority: HIGH** - Required for sandbox testing
 
-#### 2.1 Install IAP Package
-**Status**: 🔴 Not Started
+1. **App Store Connect Setup**:
+   - Create app in App Store Connect
+   - Add subscription product: `com.jisho.premium.monthly`
+   - Set pricing: $2.99/month
+   - Configure subscription group
+   - Add free trial period (7 days)
 
-**Command**: `yarn add react-native-iap`
-
-**Setup Requirements**:
-- Configure product IDs in App Store Connect
-- Add IAP entitlements to `app.json`
-- Update `services/subscription.ts` with purchase flow:
-  - `purchase(productId)` method
-  - `restorePurchases()` method
-  - Receipt validation
-- Test with App Store sandbox
-
-**Product ID**: `com.jisho.premium.monthly` ($2.99/month)
-
-#### 2.2 Create Subscription Settings Screen
-**Status**: 🔴 Not Started
-**File**: `app/settings/subscription.tsx`
-
-**Features**:
-- Display current subscription status (Free/Trial/Premium)
-- Trial countdown if active (`subscription.trialDaysRemaining`)
-- Daily usage stats: "X/3 AI queries used today" (for cloud AI free tier)
-- Premium benefits list:
-  - ✨ Unlimited cloud AI queries
-  - 🎙️ Natural voice pronunciation (cloud TTS)
-  - 📱 Or use on-device AI for free (no subscription needed)
-- "Upgrade to Premium" button → calls `subscription.upgrade(productId)`
-- "Restore Purchases" button
-- "Manage Subscription" → link to App Store
-- "Start Trial" button (if not used)
-
-**Implementation Pattern**:
-```tsx
-const subscription = useSubscription();
-
-if (subscription.isTrial) {
-  return <TrialCountdown days={subscription.trialDaysRemaining} />;
-}
-
-if (!subscription.isPremium) {
-  return <UpgradePrompt onUpgrade={() => subscription.upgrade('com.jisho.premium.monthly')} />;
-}
-
-return <ManageSubscription />;
-```
-
-#### 2.3 Add Subscription Link to Main Settings
-**Status**: 🔴 Not Started
-**File**: `app/settings/index.tsx`
-
-**Add to Card (after Furigana setting, before AI Features)**:
-- Premium status card/row:
-  - If premium: Show "Premium ✨" with badge
-  - If trial: Show "Trial - X days left"
-  - If free: Show "Free Plan"
-- Navigation link: "⭐ Manage Subscription" → `/settings/subscription`
-- Usage stats widget (if using cloud AI): "2/3 AI queries used today"
+2. **Sandbox Testing**:
+   - Create sandbox test accounts
+   - Install on physical device
+   - Test purchase flow with sandbox account
+   - Verify receipt validation
+   - Test restore purchases
 
 ---
 
@@ -272,14 +262,21 @@ await ai.generateSpeech(text);
 - [x] Environment-based API authentication
 - [x] Clean UI components (no subscription logic)
 
-### 🎯 Phase 2 - Next Priority
-- [ ] IAP package integration (`react-native-iap`)
-- [ ] Subscription settings screen (`app/settings/subscription.tsx`)
-- [ ] Purchase flow implementation
-- [ ] Subscription management UI
+### ✅ Phase 2 - Completed
+- [x] IAP package integration (`react-native-iap`)
+- [x] Subscription settings screen (`app/settings/subscription.tsx`)
+- [x] Purchase flow implementation
+- [x] Restore purchases functionality
+- [x] Subscription management UI with all states
+- [x] App Store configuration (`app.json`)
 
-### 🔮 Phase 3-6 - Future
-- Word AI Chat feature
+### 🎯 Phase 3 - Next Priority
+- [ ] Word AI Chat component (`components/WordAIChat.tsx`)
+- [ ] Bottom sheet/modal interface
+- [ ] Pre-populated word context and suggested prompts
+- [ ] Integration with word detail screen
+
+### 🔮 Phase 4-6 - Future
 - AI Reading Passages
 - UX improvements & onboarding
 - Backend optimization
@@ -388,7 +385,8 @@ const handleFeature = async () => {
 ### UI Components
 - `components/PaywallPrompt.tsx` - Modal shown when premium features accessed
 - `components/PremiumBadge.tsx` - Badge for premium features
-- `app/settings/index.tsx` - Settings screen with AI provider toggle
+- `app/settings/index.tsx` - Settings screen with AI provider toggle and subscription card
+- `app/settings/subscription.tsx` - **Subscription management screen** with purchase flow
 - `app/word/[id].tsx` - Example of clean AI integration (no subscription logic)
 
 ### Documentation

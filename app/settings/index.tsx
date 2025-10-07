@@ -169,6 +169,35 @@ export default function SettingsScreen() {
             />
           </View>
         </View>
+
+        <HapticTab
+          onPress={() => router.push("/settings/subscription")}
+          style={styles.subscriptionCard}
+        >
+          <View style={styles.row}>
+            <View style={{ flex: 1 }}>
+              <ThemedText size="sm">
+                {subscription.isPremium
+                  ? "Premium ✨"
+                  : subscription.isTrial
+                  ? `Trial - ${subscription.trialDaysRemaining} days left`
+                  : "Free Plan"}
+              </ThemedText>
+              {!subscription.isPremium && subscription.dailyUsage.limit !== Infinity && (
+                <ThemedText size="xs" type="secondary">
+                  {subscription.dailyUsage.count}/{subscription.dailyUsage.limit} AI queries
+                  used today
+                </ThemedText>
+              )}
+            </View>
+            <IconSymbol
+              name="chevron.right"
+              size={16}
+              color={Colors.light.textSecondary}
+            />
+          </View>
+        </HapticTab>
+
         <View style={styles.settingItem}>
           <ThemedText size="sm">{"AI Features"}</ThemedText>
           <ThemedText size="xs" style={styles.description}>
@@ -303,5 +332,11 @@ const styles = StyleSheet.create({
     borderColor: Colors.light.separator,
     borderRadius: 8,
     width: "100%",
+  },
+  subscriptionCard: {
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: Colors.light.accentLight,
+    marginBottom: 16,
   },
 });

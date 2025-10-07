@@ -1,5 +1,6 @@
 import { SubscriptionInfo } from "@/services/subscription";
 import { createContext, useContext } from "react";
+import type { Subscription } from "react-native-iap";
 
 export interface SubscriptionContextValue {
   subscriptionInfo: SubscriptionInfo;
@@ -19,6 +20,11 @@ export interface SubscriptionContextValue {
 
   showPaywall: (feature?: string) => void;
   hidePaywall: () => void;
+
+  products: Subscription[];
+  isLoading: boolean;
+  purchase: (productId: string) => Promise<boolean>;
+  restore: () => Promise<boolean>;
 }
 
 export const SubscriptionContext = createContext<SubscriptionContextValue | undefined>(undefined);
