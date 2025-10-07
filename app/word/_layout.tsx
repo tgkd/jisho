@@ -1,4 +1,3 @@
-import { apple } from "@react-native-ai/apple";
 import { Stack, useRouter } from "expo-router";
 import * as React from "react";
 

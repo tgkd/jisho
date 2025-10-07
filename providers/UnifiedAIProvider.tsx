@@ -5,7 +5,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
-  useState,
+  useState
 } from "react";
 import { useMMKVString } from "react-native-mmkv";
 
@@ -14,11 +14,12 @@ import {
   ExplainRequestType,
   getAiExamples,
   getAiExplanation,
-  getAiSound,
+  getAiSound
 } from "@/services/request";
 import { SETTINGS_KEYS } from "@/services/storage";
 import { useAudioPlayer } from "expo-audio";
 import { useAppleAI } from "./AppleAIProvider";
+import { useSubscription } from "./SubscriptionContext";
 
 export type AIProviderType = "local" | "remote";
 
@@ -26,6 +27,13 @@ export interface StreamingResponse {
   onChunk: (chunk: string) => void;
   onComplete: (fullText: string, error?: string) => void;
   onError: (error: string) => void;
+}
+
+class SubscriptionRequiredError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "SubscriptionRequiredError";
+  }
 }
 
 export interface UnifiedAIContextValue {
@@ -65,19 +73,35 @@ const UnifiedAIContext = createContext<UnifiedAIContextValue | undefined>(
 
 export function UnifiedAIProvider({ children }: { children: ReactNode }) {
   const localAI = useAppleAI();
+  const subscription = useSubscription();
   const audioPlayer = useAudioPlayer(undefined, {
     keepAudioSessionActive: false,
   });
   const [storedProvider, setStoredProvider] = useMMKVString(
     SETTINGS_KEYS.AI_PROVIDER_TYPE
   );
-  const [remoteUser] = useMMKVString(SETTINGS_KEYS.API_AUTH_USERNAME);
   const [currentProvider, setCurrentProvider] = useState<AIProviderType>(
     (storedProvider as AIProviderType) || "local"
   );
   const [isGenerating, setIsGenerating] = useState(false);
+  const hasRemoteCredentials = Boolean(
+    process.env.EXPO_PUBLIC_AUTH_USERNAME && process.env.EXPO_PUBLIC_AUTH_PASSWORD
+  );
   const isAvailable =
-    localAI.isReady || (Boolean(remoteUser) && currentProvider === "remote");
+    localAI.isReady || (hasRemoteCredentials && currentProvider === "remote");
+
+  const checkRemoteAccess = useCallback((featureName: string): boolean => {
+    if (currentProvider !== "remote") {
+      return true;
+    }
+
+    const { allowed } = subscription.canUseAI();
+    if (!allowed && !subscription.isPremium) {
+      subscription.showPaywall(featureName);
+      return false;
+    }
+    return true;
+  }, [currentProvider, subscription]);
 
   // Update persistent storage when provider changes
   const handleProviderChange = useCallback(
@@ -102,15 +126,21 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
           });
         });
       } else {
+        if (!checkRemoteAccess("AI Example Generation")) {
+          throw new SubscriptionRequiredError("Subscription required for AI examples");
+        }
+
         setIsGenerating(true);
         try {
-          return await getAiExamples(prompt, "open");
+          const examples = await getAiExamples(prompt, "open");
+          subscription.trackAIUsage();
+          return examples;
         } finally {
           setIsGenerating(false);
         }
       }
     },
-    [currentProvider, localAI]
+    [currentProvider, localAI, checkRemoteAccess, subscription]
   );
 
   const explainText = useCallback(
@@ -135,6 +165,11 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
             }
           );
         } else {
+          if (!checkRemoteAccess("AI Explanations")) {
+            streaming.onError("Subscription required for AI explanations");
+            return;
+          }
+
           // Remote provider with streaming
           const fetchFn = getAiExplanation(signal);
           const response = await fetchFn(text, type);
@@ -148,6 +183,7 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
             const fullText = await response.text();
             streaming.onChunk(fullText);
             streaming.onComplete(fullText);
+            subscription.trackAIUsage();
             return;
           }
 
@@ -171,6 +207,7 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
             }
 
             streaming.onComplete(fullText);
+            subscription.trackAIUsage();
           } catch (streamError) {
             streaming.onError(`Stream reading error: ${streamError}`);
           }
@@ -181,7 +218,7 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
         );
       }
     },
-    [currentProvider, localAI]
+    [currentProvider, localAI, checkRemoteAccess, subscription]
   );
 
   const chatWithMessages = useCallback(
@@ -204,6 +241,11 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
             }
           );
         } else {
+          if (!checkRemoteAccess("AI Chat")) {
+            streaming.onError("Subscription required for AI chat");
+            return;
+          }
+
           // Remote provider - send only last user message, backend handles history
           const lastUserMessage = messages[messages.length - 1];
           if (!lastUserMessage || lastUserMessage.role !== "user") {
@@ -226,6 +268,7 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
             const fullText = await response.text();
             streaming.onChunk(fullText);
             streaming.onComplete(fullText);
+            subscription.trackAIUsage();
             return;
           }
 
@@ -249,6 +292,7 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
             }
 
             streaming.onComplete(fullText);
+            subscription.trackAIUsage();
           } catch (streamError) {
             streaming.onError(`Stream reading error: ${streamError}`);
           }
@@ -259,7 +303,7 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
         );
       }
     },
-    [currentProvider, localAI]
+    [currentProvider, localAI, checkRemoteAccess, subscription]
   );
 
   const generateSpeech = useCallback(
@@ -275,9 +319,14 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
     ): Promise<string | undefined> => {
       try {
         if (currentProvider === "remote") {
+          if (!checkRemoteAccess("Natural Voice Pronunciation")) {
+            throw new SubscriptionRequiredError("Subscription required for cloud TTS");
+          }
+
           const file = await getAiSound(text, "open");
           audioPlayer.replace(file.uri);
           await audioPlayer.play();
+          subscription.trackAIUsage();
           return file.base64Sync();
         }
 
@@ -295,7 +344,7 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
         rate: options.rate,
       });
     },
-    [currentProvider, localAI, audioPlayer]
+    [currentProvider, localAI, audioPlayer, checkRemoteAccess, subscription]
   );
 
   const interrupt = useCallback(() => {

@@ -4,23 +4,21 @@ import {
   ScrollView,
   StyleSheet,
   Switch,
-  TextInput,
-  TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import { useMMKVBoolean, useMMKVString } from "react-native-mmkv";
 
+import { FuriganaText } from "@/components/FuriganaText";
 import { HapticTab } from "@/components/HapticTab";
 import { ThemedText } from "@/components/ThemedText";
 import { Card } from "@/components/ui/Card";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { Colors, getHighlightColorValue } from "@/constants/Colors";
+import { useSubscription } from "@/providers/SubscriptionContext";
 import { useUnifiedAI } from "@/providers/UnifiedAIProvider";
 import { clearHistory, resetDatabase } from "@/services/database";
 import { SETTINGS_KEYS } from "@/services/storage";
 import { useRouter } from "expo-router";
-import { useState } from "react";
-import { FuriganaText } from "@/components/FuriganaText";
 
 const highlightColorOptions: {
   label: string;
@@ -36,6 +34,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const db = useSQLiteContext();
   const ai = useUnifiedAI();
+  const subscription = useSubscription();
 
   const [highlightColorState, setHighlightColor] = useMMKVString(
     SETTINGS_KEYS.HIGHLIGHT_COLOR
@@ -45,17 +44,9 @@ export default function SettingsScreen() {
         (option) => option.value === highlightColorState
       ) ?? highlightColorOptions[0]
     : highlightColorOptions[0];
-  const [apiAuthUsername, setApiAuthUsername] = useMMKVString(
-    SETTINGS_KEYS.API_AUTH_USERNAME
-  );
-  const [apiAuthPassword, setApiAuthPassword] = useMMKVString(
-    SETTINGS_KEYS.API_AUTH_PASSWORD
-  );
   const [showFurigana, setShowFurigana] = useMMKVBoolean(
     SETTINGS_KEYS.SHOW_FURIGANA
   );
-
-  const [remoteCount, addC] = useState(0);
 
   const handleDatabaseReset = () => {
     Alert.alert(
@@ -115,6 +106,10 @@ export default function SettingsScreen() {
   };
 
   const handleToggleRemoteApi = (value: boolean) => {
+    if (value && !subscription.isPremium) {
+      subscription.showPaywall("Cloud AI Access");
+      return;
+    }
     ai.setCurrentProvider(value ? "remote" : "local");
   };
 
@@ -175,54 +170,29 @@ export default function SettingsScreen() {
           </View>
         </View>
         <View style={styles.settingItem}>
-          <ThemedText size="sm">{"AI fearures"}</ThemedText>
+          <ThemedText size="sm">{"AI Features"}</ThemedText>
           <ThemedText size="xs" style={styles.description}>
-            {"Using local Apple Intelligence (requires iOS 18.1+)"}
+            {"Choose between on-device AI or cloud-powered AI"}
           </ThemedText>
-          {remoteCount > 6 ? (
-            <>
-              <View style={styles.row}>
-                <ThemedText size="sm">{"Turn on remote API?"}</ThemedText>
-                <Switch
-                  value={ai.currentProvider === "remote"}
-                  onValueChange={handleToggleRemoteApi}
-                />
-              </View>
+
+          <View style={styles.row}>
+            <View style={{ flex: 1 }}>
+              <ThemedText size="sm">{"Cloud AI (Premium)"}</ThemedText>
               <ThemedText size="xs" style={styles.description}>
-                {ai.currentProvider === "remote"
-                  ? "Using remote API (requires credentials below)"
-                  : "Using local Apple Intelligence (requires iOS 18.1+)"}
+                {"Better voices, faster processing"}
               </ThemedText>
-              <ThemedText size="xs" style={styles.description}>
-                {
-                  "AI features: conversational chat, word explanations, example sentences, and text-to-speech"
-                }
-              </ThemedText>
-            </>
-          ) : null}
-          {ai.currentProvider === "remote" ? (
-            <View>
-              <View style={styles.settingItem}>
-                <TextInput
-                  style={styles.textInput}
-                  value={apiAuthUsername}
-                  onChangeText={setApiAuthUsername}
-                  placeholder="Username"
-                  autoCapitalize="none"
-                />
-              </View>
-              <View style={styles.settingItem}>
-                <TextInput
-                  style={styles.textInput}
-                  value={apiAuthPassword}
-                  onChangeText={setApiAuthPassword}
-                  placeholder="Password"
-                  autoCapitalize="none"
-                  secureTextEntry
-                />
-              </View>
             </View>
-          ) : null}
+            <Switch
+              value={ai.currentProvider === "remote"}
+              onValueChange={handleToggleRemoteApi}
+            />
+          </View>
+
+          <ThemedText size="xs" style={styles.description}>
+            {ai.currentProvider === "remote"
+              ? "✨ Using cloud AI - premium features enabled"
+              : "📱 Using on-device Apple Intelligence (free)"}
+          </ThemedText>
         </View>
       </Card>
 
@@ -254,17 +224,6 @@ export default function SettingsScreen() {
           {"About"}
         </ThemedText>
       </HapticTab>
-
-      <TouchableOpacity
-        onPress={() => addC(remoteCount + 1)}
-        style={{
-          marginTop: 8,
-          width: 40,
-          height: 40,
-          alignSelf: "center",
-          backgroundColor: "transparent",
-        }}
-      />
     </ScrollView>
   );
 }

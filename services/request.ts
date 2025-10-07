@@ -4,7 +4,6 @@ import { fetch, FetchRequestInit } from "expo/fetch";
 import { z } from "zod";
 
 import { DictionaryEntry, ExampleSentence, WordMeaning } from "./database";
-import { settingsStorage, SETTINGS_KEYS } from "./storage";
 
 export enum ExplainRequestType {
   V = "vocabulary",
@@ -99,8 +98,8 @@ export async function getAiSound(
 }
 
 function getDefaultOptions(): FetchRequestInit {
-  const username = settingsStorage.getString(SETTINGS_KEYS.API_AUTH_USERNAME);
-  const password = settingsStorage.getString(SETTINGS_KEYS.API_AUTH_PASSWORD);
+  const username = process.env.EXPO_PUBLIC_AUTH_USERNAME;
+  const password = process.env.EXPO_PUBLIC_AUTH_PASSWORD;
   const headers: Record<string, string> = {};
   if (username && password) {
     headers.Authorization = `Basic ${btoa(`${username}:${password}`)}`;

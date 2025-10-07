@@ -23,7 +23,7 @@ PODS:
     - Yoga
   - EXConstants (18.0.9):
     - ExpoModulesCore
-  - Expo (54.0.10):
+  - Expo (54.0.12):
     - ExpoModulesCore
     - hermes-engine
     - RCTRequired
@@ -56,7 +56,7 @@ PODS:
     - ExpoModulesCore
   - ExpoClipboard (8.0.7):
     - ExpoModulesCore
-  - ExpoFileSystem (19.0.15):
+  - ExpoFileSystem (19.0.16):
     - ExpoModulesCore
   - ExpoFont (14.0.8):
     - ExpoModulesCore
@@ -64,14 +64,14 @@ PODS:
     - ExpoModulesCore
   - ExpoHaptics (15.0.7):
     - ExpoModulesCore
-  - ExpoHead (6.0.8):
+  - ExpoHead (6.0.10):
     - ExpoModulesCore
     - RNScreens
   - ExpoKeepAwake (15.0.7):
     - ExpoModulesCore
   - ExpoLinking (8.0.8):
     - ExpoModulesCore
-  - ExpoModulesCore (3.0.18):
+  - ExpoModulesCore (3.0.20):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -106,7 +106,7 @@ PODS:
     - ExpoModulesCore
   - ExpoSystemUI (6.0.7):
     - ExpoModulesCore
-  - ExpoUI (0.2.0-canary-20250919-7a31b96):
+  - ExpoUI (0.2.0-canary-20251003-7b9d7ff):
     - ExpoModulesCore
   - FBLazyVector (0.81.4)
   - hermes-engine (0.81.4):
@@ -2415,26 +2415,26 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   AppleLLM: 5bdfc92651e01b5c5fe692f64d1dfff525c1b7af
   EXConstants: a95804601ee4a6aa7800645f9b070d753b1142b3
-  Expo: c839a13691635386c0134f204dbbaed3cebff0a8
+  Expo: 24375439ae3be9e01cdd3ab8e03967d453e66d3e
   ExpoAsset: 9ba6fbd677fb8e241a3899ac00fa735bc911eadf
   ExpoAudio: f3ad69235f7e4c36cd09b7951b710fce3eef17fa
   ExpoBlur: 2dd8f64aa31f5d405652c21d3deb2d2588b1852f
   ExpoClipboard: af650d14765f19c60ce2a1eaf9dfe6445eff7365
-  ExpoFileSystem: 5fb091ea11198e109ceef2bdef2e6e66523e62c4
+  ExpoFileSystem: f4bf6bac4ede3b6671c22777f01102a02a028412
   ExpoFont: 86ceec09ffed1c99cfee36ceb79ba149074901b5
   ExpoGlassEffect: 744bf0c58c26a1b0212dff92856be07b98d01d8c
   ExpoHaptics: 807476b0c39e9d82b7270349d6487928ce32df84
-  ExpoHead: 5570e5edbe54fd8f88e51e8b94bf2931caaa7363
+  ExpoHead: b1843315be5ef6751b4ecb2404b3effffbb33d96
   ExpoKeepAwake: 1a2e820692e933c94a565ec3fbbe38ac31658ffe
   ExpoLinking: f051f28e50ea9269ff539317c166adec81d9342d
-  ExpoModulesCore: c03ac4bc5a83469ca1222c3954a0499cd059addf
+  ExpoModulesCore: e646280de9e06297a3668c568ddc6b8564fa2896
   ExpoNetwork: b87392dcc24d49a595f186ca25cdcf7293d30275
   ExpoSpeech: 18a7f92a932028e16d3df1891377a8b626ab5cc0
   ExpoSplashScreen: cbb839de72110dea1851dd3e85080b7923af2540
   ExpoSQLite: 7fa091ba5562474093fef09be644161a65e11b3f
   ExpoSymbols: 1ae04ce686de719b9720453b988d8bc5bf776c68
   ExpoSystemUI: 6cd74248a2282adf6dec488a75fa532d69dee314
-  ExpoUI: fd088e173eff2b990994d0d7d7551c40c739e945
+  ExpoUI: 0375662ea183850a2d4ec5f987d8f7d9e9e2e39d
   FBLazyVector: 9e0cd874afd81d9a4d36679daca991b58b260d42
   hermes-engine: 35c763d57c9832d0eef764316ca1c4d043581394
   RCTDeprecation: 7487d6dda857ccd4cb3dd6ecfccdc3170e85dcbc

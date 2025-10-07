@@ -1,7 +1,7 @@
 import {
   DarkTheme,
   DefaultTheme,
-  ThemeProvider,
+  ThemeProvider
 } from "@react-navigation/native";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { setAudioModeAsync } from "expo-audio";
@@ -15,7 +15,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import {
   configureReanimatedLogger,
-  ReanimatedLogLevel,
+  ReanimatedLogLevel
 } from "react-native-reanimated";
 import { AppleAIProvider } from "../providers/AppleAIProvider";
 import { UnifiedAIProvider } from "../providers/UnifiedAIProvider";
@@ -26,6 +26,7 @@ import { Loader } from "@/components/Loader";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { migrateDbIfNeeded } from "@/services/database";
 import { queryClient } from "@/services/queryClient";
+import { SubscriptionProvider } from "@/providers/SubscriptionProvider";
 
 const dbname = "db_20250927_130743.db"
 const DATABASE_PATH = "../assets/db/" + dbname;
@@ -60,9 +61,10 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
       <QueryClientProvider client={queryClient}>
-        <AppleAIProvider>
-          <UnifiedAIProvider>
-            <GestureHandlerRootView style={styles.container}>
+        <SubscriptionProvider>
+          <AppleAIProvider>
+            <UnifiedAIProvider>
+              <GestureHandlerRootView style={styles.container}>
               <Suspense fallback={<Loader />}>
                 <SQLiteProvider
                   databaseName={dbname}
@@ -97,9 +99,10 @@ export default function RootLayout() {
                   <StatusBar style="auto" />
                 </SQLiteProvider>
               </Suspense>
-            </GestureHandlerRootView>
-          </UnifiedAIProvider>
-        </AppleAIProvider>
+              </GestureHandlerRootView>
+            </UnifiedAIProvider>
+          </AppleAIProvider>
+        </SubscriptionProvider>
       </QueryClientProvider>
     </ThemeProvider>
   );

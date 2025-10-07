@@ -7,7 +7,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  View,
+  View
 } from "react-native";
 
 import { FuriganaText } from "@/components/FuriganaText";
@@ -32,7 +32,7 @@ import {
   getFuriganaForText,
   getWordExamples,
   saveAudioFile,
-  WordMeaning,
+  WordMeaning
 } from "@/services/database";
 import {
   cleanupJpReadings,
@@ -203,7 +203,6 @@ function ExamplesView({
       }
     } catch (error) {
       console.error("Failed to generate or save examples:", error);
-      // TODO: Show user-friendly error message
     }
   };
 
@@ -217,7 +216,6 @@ function ExamplesView({
           <ExampleRow
             key={idx}
             e={e}
-            idx={idx}
             word={entry.word.word}
             wordId={entry.word.id}
             onKanjiPress={setSelectedExample}
@@ -250,13 +248,11 @@ function ExamplesView({
 
 function ExampleRow({
   e,
-  idx,
   word,
   wordId,
   onKanjiPress,
 }: {
   e: ExampleSentence;
-  idx: number;
   word: string;
   wordId: number;
   onKanjiPress?: (kanjiChars: string[]) => void;
