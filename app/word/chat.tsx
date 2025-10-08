@@ -1,7 +1,7 @@
 import { FlashList, FlashListRef } from "@shopify/flash-list";
 import * as Clipboard from "expo-clipboard";
-import { Stack } from "expo-router";
-import { useCallback, useRef, useState } from "react";
+import { Stack, useLocalSearchParams } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import Markdown from "react-native-markdown-display";
@@ -23,9 +23,16 @@ interface Message {
 export default function ExploreScreen() {
   const markdownStyles = useMdStyles();
   const ai = useUnifiedAI();
+  const params = useLocalSearchParams<{
+    word?: string;
+    reading?: string;
+    meanings?: string;
+    initialPrompt?: string;
+  }>();
   const scrollRef = useRef<FlashListRef<Message>>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [initialized, setInitialized] = useState<boolean>(false);
 
   const copyMessage = useCallback(async (content: string) => {
     await Clipboard.setStringAsync(content);
@@ -42,7 +49,6 @@ export default function ExploreScreen() {
       try {
         setIsGenerating(true);
 
-        // Add user message and placeholder assistant message to UI
         const userMessage: Message = { role: "user", content: text };
         const placeholderAssistant: Message = {
           role: "assistant",
@@ -56,7 +62,6 @@ export default function ExploreScreen() {
         ];
         setMessages(updatedUIMessages);
 
-        // Send only messages up to the user message (no empty assistant message)
         const conversationMessages = [...messages, userMessage];
         const assistantMessageIndex = updatedUIMessages.length - 1;
         let accumulatedContent = "";
@@ -111,6 +116,13 @@ export default function ExploreScreen() {
     [ai, messages, isGenerating, scrollRef]
   );
 
+  useEffect(() => {
+    if (!initialized && params.word && params.initialPrompt) {
+      setInitialized(true);
+      handleSubmit(params.initialPrompt);
+    }
+  }, [initialized, params, handleSubmit]);
+
   const renderItem = useCallback(
     ({ item }: { item: Message }) => {
       const menuItems: PopupMenuItem[] = [
@@ -161,13 +173,13 @@ export default function ExploreScreen() {
       !messages.length ? (
         <View style={styles.emptyMsg}>
           <ThemedText textAlign="center" type="secondary">
-            {
-              "All messages are temporary and will disappear after closing the chat."
-            }
+            {params.word
+              ? `Ask me anything about ${params.word}!`
+              : "All messages are temporary and will disappear after closing the chat."}
           </ThemedText>
         </View>
       ) : null,
-    [messages]
+    [messages, params.word]
   );
 
   const clearMessages = () => {
@@ -175,12 +187,14 @@ export default function ExploreScreen() {
       return;
     }
     setMessages([]);
+    setInitialized(false);
   };
 
   return (
     <>
       <Stack.Screen
         options={{
+          title: params.word ? `Ask about ${params.word}` : "AI Chat",
           headerTitle: ({ children }) => (
             <ThemedText type="title" style={{ flex: 1 }}>{children}</ThemedText>
           ),

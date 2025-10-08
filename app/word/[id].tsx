@@ -1,5 +1,5 @@
 import { useAudioPlayer } from "expo-audio";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -44,6 +44,8 @@ import { createWordPrompt } from "@/services/request";
 
 export default function WordDetailScreen() {
   const markColor = useThemeColor({}, "text");
+  const tintColor = useThemeColor({}, "tint");
+  const router = useRouter();
   const params = useLocalSearchParams();
   const [entry, setEntry] = useState<{
     word: DictionaryEntry;
@@ -151,6 +153,42 @@ export default function WordDetailScreen() {
       <WordKanjiSection word={entry.word.word} />
 
       <ExamplesView entry={entry} refreshExamples={handleRefreshExamples} />
+
+      {ai.isAvailable && (
+        <>
+          <ThemedText type="title" style={styles.sectionTitle}>
+            {"AI Assistant"}
+          </ThemedText>
+          <Card variant="grouped">
+            <HapticTab
+              onPress={() => {
+                const meanings = entry.meanings.map((m) => m.meaning).join("; ");
+                const initialPrompt = `Tell me about the Japanese word ${entry.word.kanji || entry.word.reading} (${entry.word.reading}). What does it mean and how is it used?`;
+                router.push({
+                  pathname: "/word/chat",
+                  params: {
+                    word: entry.word.word,
+                    reading: entry.word.reading,
+                    meanings,
+                    initialPrompt,
+                  },
+                });
+              }}
+              style={styles.askAIButton}
+            >
+              <View style={styles.askAIContent}>
+                <IconSymbol name="bubble.left.and.text.bubble.right" size={24} color={tintColor} />
+                <View style={styles.askAIText}>
+                  <ThemedText>Ask questions about this word</ThemedText>
+                  <ThemedText type="secondary" size="sm">
+                    Get explanations, examples, and usage tips
+                  </ThemedText>
+                </View>
+              </View>
+            </HapticTab>
+          </Card>
+        </>
+      )}
     </ScrollView>
   );
 }
@@ -396,5 +434,17 @@ const styles = StyleSheet.create({
   kanjiButton: {
     paddingVertical: 8,
     paddingHorizontal: 12,
+  },
+  askAIButton: {
+    paddingVertical: 12,
+  },
+  askAIContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  askAIText: {
+    flex: 1,
+    gap: 4,
   },
 });
