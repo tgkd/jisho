@@ -11,9 +11,11 @@ import { useMMKVString } from "react-native-mmkv";
 
 import {
   AiExample,
+  AiReadingPassage,
   ExplainRequestType,
   getAiExamples,
   getAiExplanation,
+  getAiReadingPassage,
   getAiSound
 } from "@/services/request";
 import { SETTINGS_KEYS } from "@/services/storage";
@@ -54,6 +56,8 @@ export interface UnifiedAIContextValue {
     text: string,
     options?: { language?: string; rate?: number }
   ) => Promise<string | undefined>;
+  generateReadingPassage: (level: string) => Promise<AiReadingPassage>;
+  speakText: (text: string) => Promise<void>;
 
   // State management
   isGenerating: boolean;
@@ -347,6 +351,35 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
     [currentProvider, localAI, audioPlayer, checkRemoteAccess, subscription]
   );
 
+  const generateReadingPassage = useCallback(
+    async (level: string): Promise<AiReadingPassage> => {
+      if (currentProvider === "local") {
+        throw new Error("Reading passage generation not supported on local AI");
+      }
+
+      if (!checkRemoteAccess("AI Reading Passages")) {
+        throw new SubscriptionRequiredError("Subscription required for AI reading passages");
+      }
+
+      setIsGenerating(true);
+      try {
+        const passage = await getAiReadingPassage(level, "open");
+        subscription.trackAIUsage();
+        return passage;
+      } finally {
+        setIsGenerating(false);
+      }
+    },
+    [currentProvider, checkRemoteAccess, subscription]
+  );
+
+  const speakText = useCallback(
+    async (text: string): Promise<void> => {
+      await generateSpeech(text);
+    },
+    [generateSpeech]
+  );
+
   const interrupt = useCallback(() => {
     if (currentProvider === "local") {
       localAI.interrupt();
@@ -359,6 +392,8 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
     explainText,
     chatWithMessages,
     generateSpeech,
+    generateReadingPassage,
+    speakText,
     isGenerating,
     isAvailable,
     currentProvider,

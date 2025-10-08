@@ -24,9 +24,9 @@ import { UnifiedAIProvider } from "../providers/UnifiedAIProvider";
 
 import { Loader } from "@/components/Loader";
 import { useColorScheme } from "@/hooks/useColorScheme";
+import { SubscriptionProvider } from "@/providers/SubscriptionProvider";
 import { migrateDbIfNeeded } from "@/services/database";
 import { queryClient } from "@/services/queryClient";
-import { SubscriptionProvider } from "@/providers/SubscriptionProvider";
 
 const dbname = "db_20250927_130743.db"
 const DATABASE_PATH = "../assets/db/" + dbname;
@@ -82,6 +82,11 @@ export default function RootLayout() {
                           drawable="custom_android_drawable"
                         />
                         <Label>Search</Label>
+                      </NativeTabs.Trigger>
+
+                      <NativeTabs.Trigger name="practice">
+                        <Icon sf="book" drawable="custom_android_drawable" />
+                        <Label>Practice</Label>
                       </NativeTabs.Trigger>
 
                       <NativeTabs.Trigger name="history">

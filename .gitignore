@@ -52,3 +52,4 @@ jm/
 *.db-wal
 *.db-shm
 assets/db/dict_2のコピー.db
+ios/StoreKitTestCertificate.cer

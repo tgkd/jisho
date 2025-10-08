@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/Card";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { Colors } from "@/constants/Colors";
 import { useSubscription } from "@/providers/SubscriptionContext";
+import React from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -27,15 +28,24 @@ export default function SubscriptionScreen() {
     startTrial,
   } = subscription;
 
-  const monthlyPackage = packages[0];
+  const [showTestInfo, setShowTestInfo] = React.useState(false);
 
-  const handlePurchase = async () => {
-    if (!monthlyPackage) {
-      Alert.alert("Error", "Subscription product not available");
+  const monthlyPackage = packages.find(pkg =>
+    pkg.product.identifier.includes("Monthly") ||
+    pkg.packageType === "MONTHLY"
+  );
+  const lifetimePackage = packages.find(pkg =>
+    pkg.product.identifier.includes("Lifetime") ||
+    pkg.packageType === "LIFETIME"
+  );
+
+  const handlePurchase = async (pkg: typeof packages[0]) => {
+    if (!pkg) {
+      Alert.alert("Error", "Product not available");
       return;
     }
 
-    const success = await purchase(monthlyPackage.identifier);
+    const success = await purchase(pkg.identifier);
     if (success) {
       Alert.alert("Success", "You are now a Premium member! 🎉");
     } else {
@@ -86,7 +96,7 @@ export default function SubscriptionScreen() {
       return (
         <Card>
           <View style={styles.statusContainer}>
-            <IconSymbol name="clock.fill" size={48} color={Colors.light.warning} />
+            <IconSymbol name="clock.fill" size={48} color={Colors.light.tint} />
             <ThemedText size="lg" style={styles.statusTitle}>
               Trial Active
             </ThemedText>
@@ -163,24 +173,49 @@ export default function SubscriptionScreen() {
           </HapticTab>
         )}
 
-        <HapticTab
-          onPress={handlePurchase}
-          style={[styles.actionButton, styles.primaryButton]}
-          disabled={isLoading || !monthlyPackage}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <>
-              <IconSymbol name="star.fill" size={20} color="#fff" />
-              <ThemedText size="sm" style={styles.primaryButtonText}>
-                {monthlyPackage
-                  ? `Upgrade to Premium - ${monthlyPackage.product.priceString}/month`
-                  : "Loading..."}
-              </ThemedText>
-            </>
-          )}
-        </HapticTab>
+        {lifetimePackage && (
+          <HapticTab
+            onPress={() => handlePurchase(lifetimePackage)}
+            style={[styles.actionButton, styles.primaryButton]}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <IconSymbol name="infinity" size={20} color="#fff" />
+                <ThemedText size="sm" style={styles.primaryButtonText}>
+                  Lifetime Access - {lifetimePackage.product.priceString}
+                </ThemedText>
+              </>
+            )}
+          </HapticTab>
+        )}
+
+        {monthlyPackage && (
+          <HapticTab
+            onPress={() => handlePurchase(monthlyPackage)}
+            style={[styles.actionButton, styles.primaryButton]}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <IconSymbol name="star.fill" size={20} color="#fff" />
+                <ThemedText size="sm" style={styles.primaryButtonText}>
+                  Monthly Subscription - {monthlyPackage.product.priceString}/month
+                </ThemedText>
+              </>
+            )}
+          </HapticTab>
+        )}
+
+        {!monthlyPackage && !lifetimePackage && (
+          <ThemedText size="sm" type="secondary" textAlign="center" style={{ paddingVertical: 16 }}>
+            Loading subscription options...
+          </ThemedText>
+        )}
 
         <HapticTab onPress={handleRestore} style={styles.actionButton}>
           <IconSymbol name="arrow.clockwise" size={20} color={Colors.light.accent} />
@@ -203,15 +238,104 @@ export default function SubscriptionScreen() {
         Subscription automatically renews unless auto-renew is turned off at least 24 hours
         before the end of the current period. Manage your subscription in App Store settings.
       </ThemedText>
+
+      <HapticTab
+        onPress={() => setShowTestInfo(!showTestInfo)}
+        style={styles.actionButton}
+      >
+        <IconSymbol
+          name={showTestInfo ? "chevron.up" : "chevron.down"}
+          size={16}
+          color={Colors.light.textSecondary}
+        />
+        <ThemedText size="xs" type="secondary">
+          {showTestInfo ? 'Hide Test Info' : 'Show Test Info'}
+        </ThemedText>
+      </HapticTab>
+
+      {showTestInfo && (
+        <Card style={{ backgroundColor: '#f5f5f5', borderWidth: 1, borderColor: '#ddd' }}>
+        <ThemedText size="sm" style={{ fontWeight: '600', marginBottom: 12 }}>
+          🧪 Test Info
+        </ThemedText>
+
+        <View style={{ gap: 8 }}>
+          <ThemedText size="xs" type="secondary">
+            Packages loaded: {packages.length}
+          </ThemedText>
+
+          {packages.map((pkg, idx) => (
+            <View key={idx} style={{ paddingLeft: 8, paddingVertical: 4, backgroundColor: '#fff', borderRadius: 4 }}>
+              <ThemedText size="xs" style={{ fontWeight: '600' }}>
+                {pkg.product.title}
+              </ThemedText>
+              <ThemedText size="xs" type="secondary">
+                ID: {pkg.product.identifier}
+              </ThemedText>
+              <ThemedText size="xs" type="secondary">
+                Price: {pkg.product.priceString}
+              </ThemedText>
+              <ThemedText size="xs" type="secondary">
+                Type: {pkg.packageType}
+              </ThemedText>
+            </View>
+          ))}
+
+          {packages.length === 0 && (
+            <ThemedText size="xs" type="secondary">
+              No packages available yet...
+            </ThemedText>
+          )}
+        </View>
+
+        <View style={{ marginTop: 16, gap: 8 }}>
+          <HapticTab
+            onPress={() => {
+              Alert.alert(
+                "Test Purchase",
+                `Monthly: ${monthlyPackage ? '✅ Found' : '❌ Not found'}\nLifetime: ${lifetimePackage ? '✅ Found' : '❌ Not found'}`
+              );
+            }}
+            style={[styles.actionButton, { backgroundColor: '#007AFF' }]}
+          >
+            <ThemedText size="xs" style={{ color: '#fff' }}>
+              Check Package Detection
+            </ThemedText>
+          </HapticTab>
+
+          {monthlyPackage && (
+            <HapticTab
+              onPress={() => handlePurchase(monthlyPackage)}
+              style={[styles.actionButton, { backgroundColor: '#34C759' }]}
+              disabled={isLoading}
+            >
+              <ThemedText size="xs" style={{ color: '#fff' }}>
+                {isLoading ? 'Processing...' : '💳 Test Subscribe (Monthly)'}
+              </ThemedText>
+            </HapticTab>
+          )}
+
+          {lifetimePackage && (
+            <HapticTab
+              onPress={() => handlePurchase(lifetimePackage)}
+              style={[styles.actionButton, { backgroundColor: '#FF9500' }]}
+              disabled={isLoading}
+            >
+              <ThemedText size="xs" style={{ color: '#fff' }}>
+                {isLoading ? 'Processing...' : '💳 Test Purchase (Lifetime)'}
+              </ThemedText>
+            </HapticTab>
+          )}
+        </View>
+      </Card>
+      )}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     paddingHorizontal: 16,
-    paddingVertical: 24,
     gap: 24,
   },
   statusContainer: {

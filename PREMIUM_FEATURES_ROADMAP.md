@@ -1,6 +1,6 @@
 # Premium Features TODO
 
-> **Status**: RevenueCat integrated. Phase 3 (Word AI Chat) complete. Ready for sandbox testing.
+> **Status**: RevenueCat integrated. Phase 3 (Word AI Chat) & Phase 4 (AI Reading Passages) complete. Ready for sandbox testing.
 
 ## 🔧 Setup Required
 
@@ -42,18 +42,33 @@
 
 **Implementation Note**: Instead of creating a bottom sheet component, we enhanced the existing chat screen to accept word context via route params and auto-initialize conversations. This provides a cleaner, full-screen experience while reusing existing infrastructure.
 
-### Phase 4: AI Reading Passages
-- [ ] Practice section navigation (`app/practice/`)
-- [ ] JLPT level-based passages (N5-N1)
-- [ ] Furigana toggle, translation, audio
-- [ ] Word lookup integration
-- [ ] Database: `practice_passages`, `audio_cache` tables
+### Phase 4: AI Reading Passages ✅ COMPLETE
+- [x] Practice section navigation (`app/practice/`)
+- [x] JLPT level selection UI (N5-N1)
+- [x] Passages list screen with AI generation
+- [x] Passage reader with full features
+- [x] Furigana toggle (uses existing MMKV settings)
+- [x] Translation show/hide
+- [x] Audio playback (TTS via UnifiedAI)
+- [x] Word lookup integration (tap words to search)
+- [x] Database migrations (v13-v14): `practice_passages`, `audio_cache` tables
+- [x] Passage caching service (`services/database/passages.ts`)
+- [x] Audio caching service (`services/database/audioCache.ts`)
+- [x] API integration: `getAiReadingPassage(level)` in UnifiedAIProvider
+- [x] Practice tab added to main navigation
+
+**Implementation Note**: Created a three-screen flow: level selection → passages list → passage reader. The system generates JLPT-appropriate reading passages on demand via cloud AI, stores them locally, and provides a full-featured reading experience with furigana, translation, TTS audio, and word lookup. All subscription gating is handled centrally by UnifiedAIProvider following the established pattern.
 
 ### Phase 5: Backend Optimization
 - [ ] Cloudflare Workers for AI gateway
 - [ ] TTS caching (Cloudflare KV)
 - [ ] Rate limiting per user
 - [ ] LLM prompt optimization
+- [ ] Implement `/passage/{provider}?level={level}` endpoint for Phase 4
+  - Returns: `{ title: string, content: string, translation: string }`
+  - JLPT levels: N5, N4, N3, N2, N1
+  - Content should be Japanese text appropriate for the level
+  - Translation should be English
 
 ---
 
@@ -87,11 +102,19 @@ const result = await ai.generateExamples(prompt);
 - `providers/AppleAIProvider.tsx` - On-device Apple Intelligence
 - `services/request.ts` - Cloud AI (env vars auth)
 
+**Database**
+- `services/database/core.ts` - Database migrations (currently v14)
+- `services/database/passages.ts` - Practice passages CRUD operations
+- `services/database/audioCache.ts` - Audio caching with auto-cleanup
+
 **UI**
 - `components/PaywallPrompt.tsx` - Paywall modal
 - `app/settings/subscription.tsx` - Subscription management screen
 - `app/word/[id].tsx` - Word detail page with AI chat integration
 - `app/word/chat.tsx` - AI chat screen with word context support
+- `app/practice/index.tsx` - JLPT level selection screen
+- `app/practice/passages/[level].tsx` - Passages list with generation
+- `app/practice/passage/[id].tsx` - Passage reader with full features
 
 **Docs**
 - RevenueCat: https://www.revenuecat.com/docs/getting-started/installation/reactnative

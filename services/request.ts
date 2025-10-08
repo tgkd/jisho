@@ -20,6 +20,14 @@ export const aiExampleSchemaArray = z.array(aiExampleSchema);
 
 export type AiExample = z.infer<typeof aiExampleSchema>;
 
+export const aiReadingPassageSchema = z.object({
+  title: z.string(),
+  content: z.string(),
+  translation: z.string(),
+});
+
+export type AiReadingPassage = z.infer<typeof aiReadingPassageSchema>;
+
 export function createWordPrompt(
   e: {
     word: DictionaryEntry;
@@ -187,4 +195,31 @@ export function getAiChat(signal?: AbortSignal | null) {
       body: JSON.stringify({ messages }),
     });
   };
+}
+
+export async function getAiReadingPassage(
+  level: string,
+  provider: "cf" | "open" = "open",
+  signal?: AbortSignal
+): Promise<AiReadingPassage> {
+  if (!level) {
+    throw new Error("No level provided");
+  }
+
+  const resp = await fetch(
+    `${
+      process.env.EXPO_PUBLIC_BASE_URL
+    }/passage/${provider}?level=${encodeURIComponent(level)}`,
+    {
+      signal,
+      method: "GET",
+      ...getDefaultOptions(),
+    }
+  );
+
+  if (!resp.ok) {
+    throw new Error("Network response was not ok");
+  }
+
+  return resp.json() as Promise<AiReadingPassage>;
 }

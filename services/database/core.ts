@@ -1,7 +1,7 @@
 import { SQLiteDatabase } from "expo-sqlite";
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
-  const DATABASE_VERSION = 12;
+  const DATABASE_VERSION = 14;
 
   try {
     // Test if database is corrupted by trying a simple query
@@ -285,6 +285,60 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
         console.log("✅ History table successfully migrated to support kanji entries");
       } catch (error) {
         console.error("Error migrating to version 12:", error);
+        throw error;
+      }
+    }
+
+    if (currentDbVersion < 13) {
+      try {
+        await db.execAsync(`
+          CREATE TABLE IF NOT EXISTS practice_passages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            level TEXT NOT NULL,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            translation TEXT,
+            created_at INTEGER NOT NULL,
+            UNIQUE(level, title)
+          );
+        `);
+
+        await db.execAsync(`
+          CREATE INDEX IF NOT EXISTS idx_practice_passages_level ON practice_passages(level);
+          CREATE INDEX IF NOT EXISTS idx_practice_passages_created_at ON practice_passages(created_at);
+        `);
+
+        await db.execAsync(`PRAGMA user_version = 13`);
+        currentDbVersion = 13;
+
+        console.log("✅ Practice passages table created successfully");
+      } catch (error) {
+        console.error("Error migrating to version 13:", error);
+        throw error;
+      }
+    }
+
+    if (currentDbVersion < 14) {
+      try {
+        await db.execAsync(`
+          CREATE TABLE IF NOT EXISTS audio_cache (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            text TEXT NOT NULL UNIQUE,
+            audio_data BLOB NOT NULL,
+            created_at INTEGER NOT NULL
+          );
+        `);
+
+        await db.execAsync(`
+          CREATE INDEX IF NOT EXISTS idx_audio_cache_text ON audio_cache(text);
+        `);
+
+        await db.execAsync(`PRAGMA user_version = 14`);
+        currentDbVersion = 14;
+
+        console.log("✅ Audio cache table created successfully");
+      } catch (error) {
+        console.error("Error migrating to version 14:", error);
         throw error;
       }
     }

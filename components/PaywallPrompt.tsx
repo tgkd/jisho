@@ -1,6 +1,6 @@
 import { Colors } from "@/constants/Colors";
 import { useSubscription } from "@/providers/SubscriptionContext";
-import { Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { HapticTab } from "./HapticTab";
 import { PremiumBadge } from "./PremiumBadge";
 import { ThemedText } from "./ThemedText";
@@ -44,6 +44,11 @@ const PREMIUM_FEATURES = [
 export function PaywallPrompt({ visible, onClose, feature }: PaywallPromptProps) {
   const subscription = useSubscription();
 
+  const monthlyPackage = subscription.packages.find(pkg =>
+    pkg.product.identifier.includes("Monthly") ||
+    pkg.packageType === "MONTHLY"
+  );
+
   const handleStartTrial = () => {
     const success = subscription.startTrial();
     if (success) {
@@ -51,8 +56,19 @@ export function PaywallPrompt({ visible, onClose, feature }: PaywallPromptProps)
     }
   };
 
-  const handleUpgrade = () => {
-    onClose();
+  const handleUpgrade = async () => {
+    if (!monthlyPackage) {
+      Alert.alert("Error", "Subscription not available");
+      return;
+    }
+
+    const success = await subscription.purchase(monthlyPackage.identifier);
+    if (success) {
+      Alert.alert("Success", "You are now a Premium member! 🎉");
+      onClose();
+    } else {
+      Alert.alert("Error", "Purchase failed. Please try again.");
+    }
   };
 
   return (
@@ -95,7 +111,7 @@ export function PaywallPrompt({ visible, onClose, feature }: PaywallPromptProps)
             {PREMIUM_FEATURES.map((item, index) => (
               <View key={index} style={styles.featureRow}>
                 <View style={styles.iconContainer}>
-                  <IconSymbol name={item.icon} size={24} color={Colors.light.tint} />
+                  <IconSymbol name={item.icon as any} size={24} color={Colors.light.tint} />
                 </View>
                 <View style={styles.featureText}>
                   <ThemedText style={styles.featureTitle}>{item.title}</ThemedText>
@@ -125,15 +141,27 @@ export function PaywallPrompt({ visible, onClose, feature }: PaywallPromptProps)
         </ScrollView>
 
         <View style={styles.footer}>
-          {!subscription.subscriptionInfo.trialEndDate ? (
+          {!subscription.subscriptionInfo.trialEndDate && (
             <HapticTab onPress={handleStartTrial} style={styles.primaryButton}>
-              <ThemedText style={styles.primaryButtonText}>Start Free Trial</ThemedText>
-            </HapticTab>
-          ) : (
-            <HapticTab onPress={handleUpgrade} style={styles.primaryButton}>
-              <ThemedText style={styles.primaryButtonText}>Upgrade to Pro</ThemedText>
+              <ThemedText style={styles.primaryButtonText}>Start 7-Day Free Trial</ThemedText>
             </HapticTab>
           )}
+
+          <HapticTab
+            onPress={handleUpgrade}
+            style={[styles.primaryButton, !subscription.subscriptionInfo.trialEndDate && styles.secondaryButtonStyle]}
+            disabled={subscription.isLoading || !monthlyPackage}
+          >
+            {subscription.isLoading ? (
+              <ThemedText style={styles.primaryButtonText}>Loading...</ThemedText>
+            ) : (
+              <ThemedText style={styles.primaryButtonText}>
+                {monthlyPackage
+                  ? `Upgrade to Pro - ${monthlyPackage.product.priceString}/month`
+                  : "Loading..."}
+              </ThemedText>
+            )}
+          </HapticTab>
 
           <HapticTab onPress={onClose} style={styles.secondaryButton}>
             <ThemedText type="secondary">Maybe Later</ThemedText>
@@ -251,6 +279,10 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 17,
     fontWeight: "600",
+  },
+  secondaryButtonStyle: {
+    backgroundColor: Colors.light.secondaryBackground,
+    marginTop: 0,
   },
   secondaryButton: {
     paddingVertical: 12,
