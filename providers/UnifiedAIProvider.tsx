@@ -88,11 +88,7 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
     (storedProvider as AIProviderType) || "local"
   );
   const [isGenerating, setIsGenerating] = useState(false);
-  const hasRemoteCredentials = Boolean(
-    process.env.EXPO_PUBLIC_AUTH_USERNAME && process.env.EXPO_PUBLIC_AUTH_PASSWORD
-  );
-  const isAvailable =
-    localAI.isReady || (hasRemoteCredentials && currentProvider === "remote");
+  const isAvailable = localAI.isReady || currentProvider === "remote";
 
   const checkRemoteAccess = useCallback((featureName: string): boolean => {
     if (currentProvider !== "remote") {
@@ -136,7 +132,7 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
 
         setIsGenerating(true);
         try {
-          const examples = await getAiExamples(prompt, "open");
+          const examples = await getAiExamples(prompt);
           subscription.trackAIUsage();
           return examples;
         } finally {
@@ -327,7 +323,7 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
             throw new SubscriptionRequiredError("Subscription required for cloud TTS");
           }
 
-          const file = await getAiSound(text, "open");
+          const file = await getAiSound(text);
           audioPlayer.replace(file.uri);
           await audioPlayer.play();
           subscription.trackAIUsage();
@@ -363,7 +359,7 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
 
       setIsGenerating(true);
       try {
-        const passage = await getAiReadingPassage(level, "open");
+        const passage = await getAiReadingPassage(level);
         subscription.trackAIUsage();
         return passage;
       } finally {

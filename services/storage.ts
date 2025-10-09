@@ -12,6 +12,7 @@ export const SETTINGS_KEYS = {
   SUBSCRIPTION_PURCHASE_DATE: "subscription.purchaseDate",
   AI_USAGE_COUNT: "subscription.aiUsageCount",
   AI_USAGE_RESET_DATE: "subscription.aiUsageResetDate",
+  REVENUECAT_USER_ID: "subscription.revenuecatUserId",
 };
 
 export const settingsStorage = new MMKV();

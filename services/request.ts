@@ -1,9 +1,10 @@
 import { queryOptions } from "@tanstack/react-query";
-import { Directory, File, Paths } from "expo-file-system";
+import { File, Paths } from "expo-file-system";
 import { fetch, FetchRequestInit } from "expo/fetch";
 import { z } from "zod";
 
 import { DictionaryEntry, ExampleSentence, WordMeaning } from "./database";
+import { settingsStorage, SETTINGS_KEYS } from "./storage";
 
 export enum ExplainRequestType {
   V = "vocabulary",
@@ -46,7 +47,6 @@ export function createWordPrompt(
 
 export async function getAiExamples(
   prompt: string,
-  provider: "cf" | "open" = "open",
   signal?: AbortSignal
 ): Promise<AiExample[]> {
   if (!prompt) {
@@ -54,9 +54,7 @@ export async function getAiExamples(
   }
 
   const resp = await fetch(
-    `${
-      process.env.EXPO_PUBLIC_BASE_URL
-    }/ask/${provider}?prompt=${encodeURIComponent(prompt)}`,
+    `${process.env.EXPO_PUBLIC_BASE_URL}/ask?prompt=${encodeURIComponent(prompt)}`,
     {
       signal,
       method: "GET",
@@ -71,10 +69,7 @@ export async function getAiExamples(
   return resp.json() as Promise<AiExample[]>;
 }
 
-export async function getAiSound(
-  prompt: string,
-  provider: "cf" | "open" = "open"
-) {
+export async function getAiSound(prompt: string) {
   if (!prompt) {
     throw new Error("No prompt provided");
   }
@@ -87,14 +82,17 @@ export async function getAiSound(
     Object.assign(headers, defaultOptions.headers);
   }
 
+  const timestamp = Date.now();
+  const sanitizedPrompt = prompt.slice(0, 20).replace(/[^a-zA-Z0-9]/g, "_");
+  const filename = `audio_${sanitizedPrompt}_${timestamp}.mp3`;
+  const targetFile = new File(Paths.cache, filename);
+
   const file = await File.downloadFileAsync(
-    `${
-      process.env.EXPO_PUBLIC_BASE_URL
-    }/sound/${provider}?prompt=${encodeURIComponent(prompt)}`,
-    new Directory(Paths.cache),
+    `${process.env.EXPO_PUBLIC_BASE_URL}/sound?prompt=${encodeURIComponent(prompt)}`,
+    targetFile,
     {
       headers,
-      idempotent: true,
+      idempotent: false,
     }
   );
 
@@ -105,30 +103,34 @@ export async function getAiSound(
   return file;
 }
 
+/**
+ * Get default fetch options including authentication headers.
+ * Adds RevenueCat user ID for subscription verification.
+ * @returns {FetchRequestInit} Default fetch configuration with headers
+ */
 function getDefaultOptions(): FetchRequestInit {
-  const username = process.env.EXPO_PUBLIC_AUTH_USERNAME;
-  const password = process.env.EXPO_PUBLIC_AUTH_PASSWORD;
   const headers: Record<string, string> = {};
-  if (username && password) {
-    headers.Authorization = `Basic ${btoa(`${username}:${password}`)}`;
+
+  // Add RevenueCat user ID for subscription verification
+  const userId = settingsStorage.getString(SETTINGS_KEYS.REVENUECAT_USER_ID);
+  if (userId) {
+    headers["X-User-ID"] = userId;
   }
+
   return { headers, credentials: "include" };
 }
 
-export const aiExamplesQueryOptions = (
-  prompt: string | null,
-  o: { provider?: "cf" | "open" } = { provider: "open" }
-) =>
+export const aiExamplesQueryOptions = (prompt: string | null) =>
   queryOptions({
     enabled: false,
-    queryKey: ["ai-examples", prompt, o.provider],
+    queryKey: ["ai-examples", prompt],
     queryFn: async ({ signal }) => {
       if (!prompt) {
         throw new Error("No prompt provided");
       }
 
       const resp = await fetch(
-        `${process.env.EXPO_PUBLIC_BASE_URL}/ask/${o.provider}?prompt=${prompt}`,
+        `${process.env.EXPO_PUBLIC_BASE_URL}/ask?prompt=${prompt}`,
         {
           signal,
           method: "GET",
@@ -145,11 +147,7 @@ export const aiExamplesQueryOptions = (
   });
 
 export function getAiExplanation(signal?: AbortSignal | null) {
-  return function (
-    prompt: string,
-    type: ExplainRequestType,
-    provider: "cf" | "open" = "open"
-  ) {
+  return function (prompt: string, type: ExplainRequestType) {
     if (!prompt) {
       return Promise.resolve(new Response());
     }
@@ -161,7 +159,7 @@ export function getAiExplanation(signal?: AbortSignal | null) {
       Connection: "keep-alive",
     };
     return fetch(
-      `${process.env.EXPO_PUBLIC_BASE_URL}/explain/${provider}?prompt=${prompt}&type=${type}`,
+      `${process.env.EXPO_PUBLIC_BASE_URL}/explain?prompt=${prompt}&type=${type}`,
       {
         signal: signal || undefined,
         headers,
@@ -172,10 +170,7 @@ export function getAiExplanation(signal?: AbortSignal | null) {
 }
 
 export function getAiChat(signal?: AbortSignal | null) {
-  return function (
-    messages: { role: "user" | "assistant"; content: string }[],
-    provider: "cf" | "open" = "open"
-  ) {
+  return function (messages: { role: "user" | "assistant"; content: string }[]) {
     if (!messages.length) {
       return Promise.resolve(new Response());
     }
@@ -187,7 +182,7 @@ export function getAiChat(signal?: AbortSignal | null) {
       "Cache-Control": "no-cache",
       Connection: "keep-alive",
     };
-    return fetch(`${process.env.EXPO_PUBLIC_BASE_URL}/chat/${provider}`, {
+    return fetch(`${process.env.EXPO_PUBLIC_BASE_URL}/chat`, {
       method: "POST",
       signal: signal || undefined,
       headers,
@@ -199,7 +194,6 @@ export function getAiChat(signal?: AbortSignal | null) {
 
 export async function getAiReadingPassage(
   level: string,
-  provider: "cf" | "open" = "open",
   signal?: AbortSignal
 ): Promise<AiReadingPassage> {
   if (!level) {
@@ -207,9 +201,7 @@ export async function getAiReadingPassage(
   }
 
   const resp = await fetch(
-    `${
-      process.env.EXPO_PUBLIC_BASE_URL
-    }/passage/${provider}?level=${encodeURIComponent(level)}`,
+    `${process.env.EXPO_PUBLIC_BASE_URL}/passage?level=${encodeURIComponent(level)}`,
     {
       signal,
       method: "GET",
