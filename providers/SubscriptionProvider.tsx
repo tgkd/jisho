@@ -10,7 +10,7 @@ import Purchases, {
   LOG_LEVEL,
   PurchasesPackage,
 } from "react-native-purchases";
-import RevenueCatUI, { PAYWALL_RESULT } from "react-native-purchases-ui";
+import RevenueCatUI from "react-native-purchases-ui";
 
 const ENTITLEMENT_ID = "Pro";
 

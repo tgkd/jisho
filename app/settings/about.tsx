@@ -3,8 +3,16 @@ import { Linking, ScrollView, StyleSheet, View } from "react-native";
 import { ThemedText } from "@/components/ThemedText";
 import { Card } from "@/components/ui/Card";
 import { Colors } from "@/constants/Colors";
+import { useSubscription } from "@/providers/SubscriptionContext";
 
 export default function AboutScreen() {
+  const sub = useSubscription();
+  const subType = sub.subscriptionInfo.productId
+    ? sub.subscriptionInfo.productId?.includes("lifetime")
+      ? "lifetime"
+      : "monthly"
+    : null;
+
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
@@ -54,6 +62,29 @@ export default function AboutScreen() {
               KANJIDIC Project
             </ThemedText>
           </View>
+        </View>
+      </Card>
+      <Card>
+        <View style={styles.section}>
+          <ThemedText size="md" style={styles.sectionTitle}>
+            Subscription
+          </ThemedText>
+          <ThemedText size="sm" style={styles.description}>
+            {sub.isPremium
+              ? "Thank you for being a subscriber! Your support helps us continue to improve the app and add new features."
+              : "Subscribe to unlock AI features, support future development, and help keep the app ad-free."}
+          </ThemedText>
+          <ThemedText
+            size="sm"
+            style={[styles.description, { marginTop: 8 }]}
+            onPress={() => sub.showPaywall()}
+          >
+            {subType === "monthly"
+              ? "You are subscribed to the monthly plan."
+              : subType === "lifetime"
+              ? "You have a lifetime subscription."
+              : "You are not currently subscribed."}
+          </ThemedText>
         </View>
       </Card>
     </ScrollView>

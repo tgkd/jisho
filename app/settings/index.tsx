@@ -220,14 +220,6 @@ export default function SettingsScreen() {
             {"About"}
           </ThemedText>
         </HapticTab>
-        <HapticTab
-          onPress={() => router.push("/settings/subscription")}
-          style={styles.aboutBtn}
-        >
-          <ThemedText size="sm" type="secondary">
-            {"Subscription"}
-          </ThemedText>
-        </HapticTab>
       </View>
     </ScrollView>
   );
