@@ -7,7 +7,11 @@ async function audioFileBlobToFileUrl(
 ): Promise<string | null> {
   try {
     const audioDir = new Directory(Paths.cache, "audio");
-    await audioDir.create();
+
+    // Only create directory if it doesn't exist
+    if (!audioDir.exists) {
+      await audioDir.create();
+    }
 
     const audioFile_file = new File(audioDir, `audio-${audioFile.id}.mp3`);
 
