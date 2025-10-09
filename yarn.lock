@@ -17,60 +17,38 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ai-sdk/gateway@npm:1.1.0-beta.19":
-  version: 1.1.0-beta.19
-  resolution: "@ai-sdk/gateway@npm:1.1.0-beta.19"
+"@ai-sdk/gateway@npm:1.0.35":
+  version: 1.0.35
+  resolution: "@ai-sdk/gateway@npm:1.0.35"
   dependencies:
-    "@ai-sdk/provider": "npm:2.1.0-beta.5"
-    "@ai-sdk/provider-utils": "npm:3.1.0-beta.9"
-    "@vercel/oidc": "npm:^3.0.1"
+    "@ai-sdk/provider": "npm:2.0.0"
+    "@ai-sdk/provider-utils": "npm:3.0.11"
+    "@vercel/oidc": "npm:3.0.2"
   peerDependencies:
     zod: ^3.25.76 || ^4.1.8
-  checksum: 10c0/a5f931ff37a27c31c10eb215d280f4e25cfbe8432538077a234b11990f163a5e2e14c4d6772f84561851c94a3dabebfc240f96bd803aab89320a516037659091
+  checksum: 10c0/224c033ea49680b4597b62cf7d46cae66dcc78cade247a8476b7c09971795b427f339836d399212baf3466dbba5983d081d0b8a7454e3f8e47abf1b8f5e87e60
   languageName: node
   linkType: hard
 
-"@ai-sdk/provider-utils@npm:3.1.0-beta.9":
-  version: 3.1.0-beta.9
-  resolution: "@ai-sdk/provider-utils@npm:3.1.0-beta.9"
-  dependencies:
-    "@ai-sdk/provider": "npm:2.1.0-beta.5"
-    "@standard-schema/spec": "npm:^1.0.0"
-    eventsource-parser: "npm:^3.0.5"
-  peerDependencies:
-    zod: ^3.25.76 || ^4.1.8
-  checksum: 10c0/6641fddfecdf5e6d8d8453b011221d5fab53ac77f5755a2113a5b0d76dc53cf3087557262ba6e5de7d06df86820f79b0a3a98bcdde581123a3ea6b3d29cacd2b
-  languageName: node
-  linkType: hard
-
-"@ai-sdk/provider-utils@npm:^3.0.0-beta.5":
-  version: 3.0.10
-  resolution: "@ai-sdk/provider-utils@npm:3.0.10"
+"@ai-sdk/provider-utils@npm:3.0.11, @ai-sdk/provider-utils@npm:^3.0.10":
+  version: 3.0.11
+  resolution: "@ai-sdk/provider-utils@npm:3.0.11"
   dependencies:
     "@ai-sdk/provider": "npm:2.0.0"
     "@standard-schema/spec": "npm:^1.0.0"
     eventsource-parser: "npm:^3.0.5"
   peerDependencies:
     zod: ^3.25.76 || ^4.1.8
-  checksum: 10c0/d2c16abdb84ba4ef48c9f56190b5ffde224b9e6ae5147c5c713d2623627732d34b96aa9aef2a2ea4b0c49e1b863cc963c7d7ff964a1dc95f0f036097aaaaaa98
+  checksum: 10c0/31081b127b48f3eefb448eaca59574b4631da9577aa0778622d28669c71bbde0361c9b37962c5edbb1d0c163ed1479755fc889da9251a03e906b1e27d0d2eb24
   languageName: node
   linkType: hard
 
-"@ai-sdk/provider@npm:2.0.0, @ai-sdk/provider@npm:^2.0.0-beta.1":
+"@ai-sdk/provider@npm:2.0.0, @ai-sdk/provider@npm:^2.0.0":
   version: 2.0.0
   resolution: "@ai-sdk/provider@npm:2.0.0"
   dependencies:
     json-schema: "npm:^0.4.0"
   checksum: 10c0/e50e520016c9fc0a8b5009cadd47dae2f1c81ec05c1792b9e312d7d15479f024ca8039525813a33425c884e3449019fed21043b1bfabd6a2626152ca9a388199
-  languageName: node
-  linkType: hard
-
-"@ai-sdk/provider@npm:2.1.0-beta.5":
-  version: 2.1.0-beta.5
-  resolution: "@ai-sdk/provider@npm:2.1.0-beta.5"
-  dependencies:
-    json-schema: "npm:^0.4.0"
-  checksum: 10c0/4f51813285a8e92be18ef14645b0505bb0c9d2daa0d9290cac8a3c1f87d8e2e8507b1edf1818ae2305a90723e8cd44477f55f0631407dee35912ab8fdded52ba
   languageName: node
   linkType: hard
 
@@ -2126,15 +2104,15 @@ __metadata:
   linkType: hard
 
 "@expo/ui@npm:~0.2.0-beta.2":
-  version: 0.2.0-canary-20251003-7b9d7ff
-  resolution: "@expo/ui@npm:0.2.0-canary-20251003-7b9d7ff"
+  version: 0.2.0-canary-20251009-9919e08
+  resolution: "@expo/ui@npm:0.2.0-canary-20251009-9919e08"
   dependencies:
     sf-symbols-typescript: "npm:^2.1.0"
   peerDependencies:
     expo: "*"
     react: "*"
     react-native: "*"
-  checksum: 10c0/e75dc62c153e4e1c708aa94cf9557f8ce9bc49d479ad838aeb8ea2b833b307b781a49765ffa09b20a3b878168e8cc9cbb2baa213ed1a0327db15e79fb39bdb26
+  checksum: 10c0/79275bf3fccdef8dbc46088b5473d52849d02a16f7057d11fa815d23e781fbc8130ce16edfd51e2935af34833e6aea205ea95adb634da8fbe54d6830598f229f
   languageName: node
   linkType: hard
 
@@ -3307,17 +3285,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-native-ai/apple@npm:^0.9.0":
-  version: 0.9.0
-  resolution: "@react-native-ai/apple@npm:0.9.0"
+"@react-native-ai/apple@npm:^0.10.0":
+  version: 0.10.0
+  resolution: "@react-native-ai/apple@npm:0.10.0"
   dependencies:
-    "@ai-sdk/provider": "npm:^2.0.0-beta.1"
-    "@ai-sdk/provider-utils": "npm:^3.0.0-beta.5"
+    "@ai-sdk/provider": "npm:^2.0.0"
+    "@ai-sdk/provider-utils": "npm:^3.0.10"
     zod: "npm:^4.0.0"
   peerDependencies:
-    react: 19.0.0
-    react-native: 0.79.5
-  checksum: 10c0/b8a7226ed1a8827f091b41f3f21b05b1d8be55597f51ec03265d89470e965603c15e443373223ed337b80e1dbc1a85a334130c282560f119d6b8b5d97cc13cd4
+    react-native: ">=0.76.0"
+  checksum: 10c0/42ea62aa6ba481f9b5e55b58d4bacdd818cb6f8d2ad14e416edc1659981fdfac5cba4d801e766321d30f9e61894efec0da602d856b0427bae271a9ba14de82bd
   languageName: node
   linkType: hard
 
@@ -3687,7 +3664,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/eslint-plugin-query@npm:^5.89.0":
+"@tanstack/eslint-plugin-query@npm:^5.91.0":
   version: 5.91.0
   resolution: "@tanstack/eslint-plugin-query@npm:5.91.0"
   dependencies:
@@ -3698,21 +3675,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/query-core@npm:5.89.0":
-  version: 5.89.0
-  resolution: "@tanstack/query-core@npm:5.89.0"
-  checksum: 10c0/8e1e92fb4e3694d7f706bb686135a237280528ad5da890e996521780ecf30dbe139662dfd75b2f73bfe617e9275de1b3e7ab5c9fc6cacbf79cabf8163922e334
+"@tanstack/query-core@npm:5.90.2":
+  version: 5.90.2
+  resolution: "@tanstack/query-core@npm:5.90.2"
+  checksum: 10c0/695a7450b0bb9f6dd21bebeacfc962dfc886631a3b3a13c33a842ef719b4c3dd30c15febe8c1ade6902a85e0f387c51a97570f430cc8f5c7032ff737d6410597
   languageName: node
   linkType: hard
 
-"@tanstack/react-query@npm:5.89.0":
-  version: 5.89.0
-  resolution: "@tanstack/react-query@npm:5.89.0"
+"@tanstack/react-query@npm:5.90.2":
+  version: 5.90.2
+  resolution: "@tanstack/react-query@npm:5.90.2"
   dependencies:
-    "@tanstack/query-core": "npm:5.89.0"
+    "@tanstack/query-core": "npm:5.90.2"
   peerDependencies:
     react: ^18 || ^19
-  checksum: 10c0/07364b36bcf8424777b79fad3a87e16867e955a09c27696e8a9833bacf5cd2a3f69474bb7285b6103a7c49f578a23a3f211cf3dbd36c63871ffdacd8baf0faeb
+  checksum: 10c0/22e76626a59890409858521b0e42b49219126a4ea5ed79eaa48a267959175dfdd28b30b9b03a415dccf703d95c18100a9d8917679818f6d2adc26d6c5f96a4d6
   languageName: node
   linkType: hard
 
@@ -4249,10 +4226,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vercel/oidc@npm:^3.0.1":
-  version: 3.0.1
-  resolution: "@vercel/oidc@npm:3.0.1"
-  checksum: 10c0/c21b1492fa87b7d2b08ff9a0ea83fe079cfc8b2ecd7bcb54d6ed98d2e3ef2553a189fa20c64433536ac1ccc8431d51fbe2f72671a6ae0f8357c05fed9b446721
+"@vercel/oidc@npm:3.0.2":
+  version: 3.0.2
+  resolution: "@vercel/oidc@npm:3.0.2"
+  checksum: 10c0/8d4c8553baa5aed339ab7614d775139bc124a6d443b76877ab17e98c156daa4dbeb3cf2f3bf21fabfae2ac0dd3ff462ab43b9398708e02483e5923d302a1c4c8
   languageName: node
   linkType: hard
 
@@ -4412,17 +4389,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ai@npm:^5.1.0-beta.4":
-  version: 5.1.0-beta.28
-  resolution: "ai@npm:5.1.0-beta.28"
+"ai@npm:^5.0.63":
+  version: 5.0.63
+  resolution: "ai@npm:5.0.63"
   dependencies:
-    "@ai-sdk/gateway": "npm:1.1.0-beta.19"
-    "@ai-sdk/provider": "npm:2.1.0-beta.5"
-    "@ai-sdk/provider-utils": "npm:3.1.0-beta.9"
+    "@ai-sdk/gateway": "npm:1.0.35"
+    "@ai-sdk/provider": "npm:2.0.0"
+    "@ai-sdk/provider-utils": "npm:3.0.11"
     "@opentelemetry/api": "npm:1.9.0"
   peerDependencies:
     zod: ^3.25.76 || ^4.1.8
-  checksum: 10c0/7bca190a90d62e60519ad2ff89aefc4c1d198d3192054c9378256afa7ba4106cfc393204e4e24f885a08c21588544df797f7894a0fea5d8e041e1c18a3edceb7
+  checksum: 10c0/2f201a3dfd699290f42b6cfa5530d28b7f560701445aacc49fd8b69649ccecb5ac8848281f00eb312fb1179e5c5f6dd09c17d7645d0dce10f498dfe7573ae46c
   languageName: node
   linkType: hard
 
@@ -4948,11 +4925,11 @@ __metadata:
   linkType: hard
 
 "baseline-browser-mapping@npm:^2.8.9":
-  version: 2.8.13
-  resolution: "baseline-browser-mapping@npm:2.8.13"
+  version: 2.8.14
+  resolution: "baseline-browser-mapping@npm:2.8.14"
   bin:
     baseline-browser-mapping: dist/cli.js
-  checksum: 10c0/af390cf16e1437e35e48ea557471eeb006a912b94af5d74fa730d32c86934afa2dc3741ae820bf963eb502cf362b3480144d556ec64d656ec573959c357070d3
+  checksum: 10c0/d27b83bee3c0f68a38eac5694e2f1e37135fbd0d402ebbafb9414423928f30206d3f4146fc53e1b49ec856142123cf537855beaa7eb9eb9e37bca1c52b38587a
   languageName: node
   linkType: hard
 
@@ -4965,14 +4942,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"better-sqlite3@npm:12.2.0":
-  version: 12.2.0
-  resolution: "better-sqlite3@npm:12.2.0"
+"better-sqlite3@npm:12.4.1":
+  version: 12.4.1
+  resolution: "better-sqlite3@npm:12.4.1"
   dependencies:
     bindings: "npm:^1.5.0"
     node-gyp: "npm:latest"
     prebuild-install: "npm:^7.1.1"
-  checksum: 10c0/842247e9bbb775f366ac91f604117112c312497e643bac21648d8b69f479763de0ac049b14b609d6d5ecaee50debcc09a854f682d3dc099a1d933fea92ce68d0
+  checksum: 10c0/88773a75d996b4171e5690a38459b05dc814a792701b224bd9909ee084dc0b4c64aaffbdbcf4bbbc6d4e247faf19e91b2a56cf4175d746d3bd9ff14764eb05aa
   languageName: node
   linkType: hard
 
@@ -7645,11 +7622,11 @@ __metadata:
   linkType: hard
 
 "get-tsconfig@npm:^4.10.0, get-tsconfig@npm:^4.7.5":
-  version: 4.11.0
-  resolution: "get-tsconfig@npm:4.11.0"
+  version: 4.12.0
+  resolution: "get-tsconfig@npm:4.12.0"
   dependencies:
     resolve-pkg-maps: "npm:^1.0.0"
-  checksum: 10c0/cccf65c8434cecbf24cf581a2d40f635c7bbf98e4bc241abd39d8a9990f2053bb5e8ed41496ed445a3a073a33ff716b531d99a71330e56cfac593e42d6adbd17
+  checksum: 10c0/3438106bd46bfc6595fce6117190f1ac0998de2e6916b40ec23b20c784b0b47e79ea2b920895b9ed26029b1f80b8867626fb24795d5f45abbdab716a4ba1ef92
   languageName: node
   linkType: hard
 
@@ -9198,19 +9175,19 @@ __metadata:
     "@expo/metro-runtime": "npm:^6.1.2"
     "@expo/ui": "npm:~0.2.0-beta.2"
     "@expo/vector-icons": "npm:^15.0.2"
-    "@react-native-ai/apple": "npm:^0.9.0"
+    "@react-native-ai/apple": "npm:^0.10.0"
     "@react-navigation/bottom-tabs": "npm:^7.3.10"
     "@react-navigation/elements": "npm:^2.4.1"
     "@react-navigation/native": "npm:^7.1.6"
     "@shopify/flash-list": "npm:2.0.2"
-    "@tanstack/eslint-plugin-query": "npm:^5.89.0"
-    "@tanstack/react-query": "npm:5.89.0"
+    "@tanstack/eslint-plugin-query": "npm:^5.91.0"
+    "@tanstack/react-query": "npm:5.90.2"
     "@types/better-sqlite3": "npm:7.6.13"
     "@types/jest": "npm:^30.0.0"
     "@types/react": "npm:~19.1.10"
     JSONStream: "npm:^1.3.5"
-    ai: "npm:^5.1.0-beta.4"
-    better-sqlite3: "npm:12.2.0"
+    ai: "npm:^5.0.63"
+    better-sqlite3: "npm:12.4.1"
     csv-parser: "npm:^3.2.0"
     eslint: "npm:^9.33.0"
     eslint-config-expo: "npm:~10.0.0"
@@ -9242,8 +9219,9 @@ __metadata:
     react-native-keyboard-aware-scroll-view: "npm:^0.9.5"
     react-native-keyboard-controller: "npm:1.18.5"
     react-native-markdown-display: "npm:^7.0.2"
-    react-native-mmkv: "npm:^3.3.1"
+    react-native-mmkv: "npm:^3.3.3"
     react-native-purchases: "npm:^9.5.3"
+    react-native-purchases-ui: "npm:^9.5.3"
     react-native-reanimated: "npm:~4.1.1"
     react-native-safe-area-context: "npm:~5.6.0"
     react-native-screens: "npm:~4.16.0"
@@ -9258,8 +9236,8 @@ __metadata:
     tsx: "npm:^4.20.3"
     typescript: "npm:~5.9.2"
     wanakana: "npm:^5.3.1"
-    wrangler: "npm:^4.40.2"
-    zod: "npm:^4.1.9"
+    wrangler: "npm:^4.42.1"
+    zod: "npm:^4.1.12"
   languageName: unknown
   linkType: soft
 
@@ -11640,13 +11618,30 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-mmkv@npm:^3.3.1":
+"react-native-mmkv@npm:^3.3.3":
   version: 3.3.3
   resolution: "react-native-mmkv@npm:3.3.3"
   peerDependencies:
     react: "*"
     react-native: "*"
   checksum: 10c0/efd7f725674d686ea126a213bd8c4270e8e4e8f306917a1b846a9f7ddf652ad057c7d509a9292d7bbf6a58603d4ab5a18e0c3b0d1b00447df45eeac81cbbd1e1
+  languageName: node
+  linkType: hard
+
+"react-native-purchases-ui@npm:^9.5.3":
+  version: 9.5.3
+  resolution: "react-native-purchases-ui@npm:9.5.3"
+  dependencies:
+    "@revenuecat/purchases-typescript-internal": "npm:17.9.0"
+  peerDependencies:
+    react: "*"
+    react-native: ">= 0.73.0"
+    react-native-purchases: 9.5.3
+    react-native-web: "*"
+  peerDependenciesMeta:
+    react-native-web:
+      optional: true
+  checksum: 10c0/b8d98b3c549e5463e6937c38b92a815ff93bccaeb029ceb79bfe10f6c228cb0989bd613826e98ac47e507343eae4c79df15f39cd32af10b8a408929731a1c14b
   languageName: node
   linkType: hard
 
@@ -14228,7 +14223,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"wrangler@npm:^4.40.2":
+"wrangler@npm:^4.42.1":
   version: 4.42.1
   resolution: "wrangler@npm:4.42.1"
   dependencies:
@@ -14516,7 +14511,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"zod@npm:^4.0.0, zod@npm:^4.1.9":
+"zod@npm:^4.0.0, zod@npm:^4.1.12":
   version: 4.1.12
   resolution: "zod@npm:4.1.12"
   checksum: 10c0/b64c1feb19e99d77075261eaf613e0b2be4dfcd3551eff65ad8b4f2a079b61e379854d066f7d447491fcf193f45babd8095551a9d47973d30b46b6d8e2c46774

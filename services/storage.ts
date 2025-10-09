@@ -8,10 +8,6 @@ export const SETTINGS_KEYS = {
   SEARCH_MODE: "settings.searchMode",
   SUBSCRIPTION_STATUS: "subscription.status",
   SUBSCRIPTION_PRODUCT_ID: "subscription.productId",
-  TRIAL_END_DATE: "subscription.trialEndDate",
-  SUBSCRIPTION_PURCHASE_DATE: "subscription.purchaseDate",
-  AI_USAGE_COUNT: "subscription.aiUsageCount",
-  AI_USAGE_RESET_DATE: "subscription.aiUsageResetDate",
   REVENUECAT_USER_ID: "subscription.revenuecatUserId",
 };
 

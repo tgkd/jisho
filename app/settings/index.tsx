@@ -1,11 +1,5 @@
 import { useSQLiteContext } from "expo-sqlite";
-import {
-  Alert,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  View
-} from "react-native";
+import { Alert, ScrollView, StyleSheet, Switch, View } from "react-native";
 import { useMMKVBoolean, useMMKVString } from "react-native-mmkv";
 
 import { FuriganaText } from "@/components/FuriganaText";
@@ -107,7 +101,7 @@ export default function SettingsScreen() {
 
   const handleToggleRemoteApi = (value: boolean) => {
     if (value && !subscription.isPremium) {
-      subscription.showPaywall("Cloud AI Access");
+      subscription.showPaywall();
       return;
     }
     ai.setCurrentProvider(value ? "remote" : "local");
@@ -177,16 +171,11 @@ export default function SettingsScreen() {
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
               <ThemedText size="sm">
-                {subscription.isPremium
-                  ? "Premium ✨"
-                  : subscription.isTrial
-                  ? `Trial - ${subscription.trialDaysRemaining} days left`
-                  : "Free Plan"}
+                {subscription.isPremium ? "Premium ✨" : "Free Plan"}
               </ThemedText>
-              {!subscription.isPremium && subscription.dailyUsage.limit !== Infinity && (
+              {!subscription.isPremium && (
                 <ThemedText size="xs" type="secondary">
-                  {subscription.dailyUsage.count}/{subscription.dailyUsage.limit} AI queries
-                  used today
+                  Unlimited AI queries included
                 </ThemedText>
               )}
             </View>

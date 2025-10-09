@@ -1,4 +1,3 @@
-import { PaywallPrompt } from "@/components/PaywallPrompt";
 import {
   SubscriptionContext,
   SubscriptionContextValue,
@@ -8,14 +7,14 @@ import React, { ReactNode, useCallback, useEffect, useState } from "react";
 import { Platform } from "react-native";
 import Purchases, {
   CustomerInfo,
-  PurchasesPackage
+  LOG_LEVEL,
+  PurchasesPackage,
 } from "react-native-purchases";
+import RevenueCatUI, { PAYWALL_RESULT } from "react-native-purchases-ui";
 
-const TRIAL_DURATION_DAYS = 7;
-const FREE_AI_QUERIES_PER_DAY = 3;
 const ENTITLEMENT_ID = "Pro";
 
-export type SubscriptionStatus = "active" | "trial" | "inactive" | "expired";
+export type SubscriptionStatus = "active" | "trial" | "inactive";
 
 export interface SubscriptionInfo {
   status: SubscriptionStatus;
@@ -32,16 +31,6 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     isActive: false,
     isTrial: false,
   });
-  const [trialDaysRemaining, setTrialDaysRemaining] = useState<number | null>(
-    null
-  );
-  const [dailyUsage, setDailyUsage] = useState({
-    count: 0,
-    limit: FREE_AI_QUERIES_PER_DAY,
-    resetsAt: "",
-  });
-  const [paywallVisible, setPaywallVisible] = useState(false);
-  const [paywallFeature, setPaywallFeature] = useState<string | undefined>();
   const [packages, setPackages] = useState<PurchasesPackage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -52,81 +41,19 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     const productId = settingsStorage.getString(
       SETTINGS_KEYS.SUBSCRIPTION_PRODUCT_ID
     );
-    const purchaseDate = settingsStorage.getString(
-      SETTINGS_KEYS.SUBSCRIPTION_PURCHASE_DATE
-    );
-    const trialEndDate = settingsStorage.getString(
-      SETTINGS_KEYS.TRIAL_END_DATE
-    );
 
-    const currentStatus = status || "inactive";
+    const currentStatus =
+      status === "active" || status === "trial" ? status : "inactive";
     const isActive = currentStatus === "active" || currentStatus === "trial";
     const isTrial = currentStatus === "trial";
-
-    if (isTrial && trialEndDate) {
-      const trialEnd = new Date(trialEndDate);
-      if (new Date() > trialEnd) {
-        settingsStorage.set(SETTINGS_KEYS.SUBSCRIPTION_STATUS, "expired");
-        return {
-          status: "expired",
-          productId,
-          purchaseDate,
-          trialEndDate,
-          isActive: false,
-          isTrial: false,
-        };
-      }
-    }
 
     return {
       status: currentStatus,
       productId,
-      purchaseDate,
-      trialEndDate,
       isActive,
       isTrial,
     };
   }, []);
-
-  const getTrialDaysRemainingValue = useCallback((): number | null => {
-    const info = getLocalSubscriptionInfo();
-    if (!info.isTrial || !info.trialEndDate) {
-      return null;
-    }
-    const trialEnd = new Date(info.trialEndDate);
-    const now = new Date();
-    const diffMs = trialEnd.getTime() - now.getTime();
-    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-    return Math.max(0, diffDays);
-  }, [getLocalSubscriptionInfo]);
-
-  const getDailyAIUsageValue = useCallback(() => {
-    const info = getLocalSubscriptionInfo();
-    if (info.isActive) {
-      return { count: 0, limit: Infinity, resetsAt: "" };
-    }
-
-    const usageResetDate = settingsStorage.getString(
-      SETTINGS_KEYS.AI_USAGE_RESET_DATE
-    );
-    const today = new Date().toDateString();
-
-    if (usageResetDate !== today) {
-      settingsStorage.set(SETTINGS_KEYS.AI_USAGE_COUNT, 0);
-      settingsStorage.set(SETTINGS_KEYS.AI_USAGE_RESET_DATE, today);
-    }
-
-    const count = settingsStorage.getNumber(SETTINGS_KEYS.AI_USAGE_COUNT) || 0;
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(0, 0, 0, 0);
-
-    return {
-      count,
-      limit: FREE_AI_QUERIES_PER_DAY,
-      resetsAt: tomorrow.toISOString(),
-    };
-  }, [getLocalSubscriptionInfo]);
 
   const updateSubscriptionFromCustomerInfo = useCallback(
     (customerInfo: CustomerInfo) => {
@@ -135,24 +62,23 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
       if (hasActiveEntitlement) {
         const entitlement = customerInfo.entitlements.active[ENTITLEMENT_ID];
-        settingsStorage.set(SETTINGS_KEYS.SUBSCRIPTION_STATUS, "active");
+        const periodType = String(entitlement.periodType || "").toLowerCase();
+        const isTrial = periodType === "trial";
+
+        settingsStorage.set(
+          SETTINGS_KEYS.SUBSCRIPTION_STATUS,
+          isTrial ? "trial" : "active"
+        );
         settingsStorage.set(
           SETTINGS_KEYS.SUBSCRIPTION_PRODUCT_ID,
           entitlement.productIdentifier
         );
-        if (
-          !settingsStorage.getString(SETTINGS_KEYS.SUBSCRIPTION_PURCHASE_DATE)
-        ) {
-          settingsStorage.set(
-            SETTINGS_KEYS.SUBSCRIPTION_PURCHASE_DATE,
-            new Date().toISOString()
-          );
-        }
       } else {
         const localInfo = getLocalSubscriptionInfo();
-        if (localInfo.status === "active") {
+        if (localInfo.status !== "inactive") {
           settingsStorage.set(SETTINGS_KEYS.SUBSCRIPTION_STATUS, "inactive");
         }
+        settingsStorage.delete(SETTINGS_KEYS.SUBSCRIPTION_PRODUCT_ID);
       }
     },
     [getLocalSubscriptionInfo]
@@ -160,10 +86,10 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
   const refreshSubscription = useCallback(async () => {
     try {
+      Purchases.setLogLevel(LOG_LEVEL.ERROR);
       const customerInfo = await Purchases.getCustomerInfo();
       updateSubscriptionFromCustomerInfo(customerInfo);
 
-      // Update user ID on each refresh
       const userId = await Purchases.getAppUserID();
       if (userId) {
         settingsStorage.set(SETTINGS_KEYS.REVENUECAT_USER_ID, userId);
@@ -174,14 +100,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
     const info = getLocalSubscriptionInfo();
     setSubscriptionInfo(info);
-    setTrialDaysRemaining(getTrialDaysRemainingValue());
-    setDailyUsage(getDailyAIUsageValue());
-  }, [
-    getLocalSubscriptionInfo,
-    getTrialDaysRemainingValue,
-    getDailyAIUsageValue,
-    updateSubscriptionFromCustomerInfo,
-  ]);
+  }, [getLocalSubscriptionInfo, updateSubscriptionFromCustomerInfo]);
 
   useEffect(() => {
     let mounted = true;
@@ -228,50 +147,10 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     };
   }, [refreshSubscription]);
 
-  const startTrial = useCallback(() => {
-    const currentInfo = getLocalSubscriptionInfo();
-    if (currentInfo.trialEndDate) {
-      return false;
-    }
-
-    const trialEndDate = new Date();
-    trialEndDate.setDate(trialEndDate.getDate() + TRIAL_DURATION_DAYS);
-
-    settingsStorage.set(
-      SETTINGS_KEYS.TRIAL_END_DATE,
-      trialEndDate.toISOString()
-    );
-    settingsStorage.set(SETTINGS_KEYS.SUBSCRIPTION_STATUS, "trial");
-    settingsStorage.set(SETTINGS_KEYS.AI_USAGE_COUNT, 0);
-    settingsStorage.set(
-      SETTINGS_KEYS.AI_USAGE_RESET_DATE,
-      new Date().toDateString()
-    );
-
-    const info = getLocalSubscriptionInfo();
-    setSubscriptionInfo(info);
-    setTrialDaysRemaining(getTrialDaysRemainingValue());
-    setDailyUsage(getDailyAIUsageValue());
-
-    return true;
-  }, [
-    getLocalSubscriptionInfo,
-    getTrialDaysRemainingValue,
-    getDailyAIUsageValue,
-  ]);
-
   const upgrade = useCallback(
     (productId: string) => {
       settingsStorage.set(SETTINGS_KEYS.SUBSCRIPTION_STATUS, "active");
       settingsStorage.set(SETTINGS_KEYS.SUBSCRIPTION_PRODUCT_ID, productId);
-      if (
-        !settingsStorage.getString(SETTINGS_KEYS.SUBSCRIPTION_PURCHASE_DATE)
-      ) {
-        settingsStorage.set(
-          SETTINGS_KEYS.SUBSCRIPTION_PURCHASE_DATE,
-          new Date().toISOString()
-        );
-      }
       refreshSubscription();
     },
     [refreshSubscription]
@@ -279,57 +158,12 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
 
   const cancel = useCallback(() => {
     settingsStorage.set(SETTINGS_KEYS.SUBSCRIPTION_STATUS, "inactive");
+    settingsStorage.delete(SETTINGS_KEYS.SUBSCRIPTION_PRODUCT_ID);
     refreshSubscription();
   }, [refreshSubscription]);
 
-  const canUseAI = useCallback(() => {
-    const info = getLocalSubscriptionInfo();
-    if (info.isActive) {
-      return { allowed: true };
-    }
-
-    const usage = getDailyAIUsageValue();
-    if (usage.count >= usage.limit) {
-      return {
-        allowed: false,
-        reason: "Daily limit reached. Upgrade to Pro for unlimited access.",
-        remaining: 0,
-      };
-    }
-
-    return { allowed: true, remaining: usage.limit - usage.count };
-  }, [getLocalSubscriptionInfo, getDailyAIUsageValue]);
-
-  const trackAIUsage = useCallback(() => {
-    const info = getLocalSubscriptionInfo();
-    if (info.isActive) {
-      return;
-    }
-
-    const usageResetDate = settingsStorage.getString(
-      SETTINGS_KEYS.AI_USAGE_RESET_DATE
-    );
-    const today = new Date().toDateString();
-
-    if (usageResetDate !== today) {
-      settingsStorage.set(SETTINGS_KEYS.AI_USAGE_COUNT, 0);
-      settingsStorage.set(SETTINGS_KEYS.AI_USAGE_RESET_DATE, today);
-    }
-
-    const currentCount =
-      settingsStorage.getNumber(SETTINGS_KEYS.AI_USAGE_COUNT) || 0;
-    settingsStorage.set(SETTINGS_KEYS.AI_USAGE_COUNT, currentCount + 1);
-    setDailyUsage(getDailyAIUsageValue());
-  }, [getLocalSubscriptionInfo, getDailyAIUsageValue]);
-
-  const showPaywall = useCallback((feature?: string) => {
-    setPaywallFeature(feature);
-    setPaywallVisible(true);
-  }, []);
-
-  const hidePaywall = useCallback(() => {
-    setPaywallVisible(false);
-    setPaywallFeature(undefined);
+  const showPaywall = useCallback(async () => {
+    await RevenueCatUI.presentPaywall();
   }, []);
 
   const purchase = useCallback(
@@ -386,16 +220,9 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     subscriptionInfo,
     isPremium: subscriptionInfo.isActive,
     isTrial: subscriptionInfo.isTrial,
-    trialDaysRemaining,
-    dailyUsage,
-    startTrial,
     upgrade,
     cancel,
-    canUseAI,
-    trackAIUsage,
-    refreshSubscription,
     showPaywall,
-    hidePaywall,
     packages,
     isLoading,
     purchase,
@@ -405,11 +232,6 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   return (
     <SubscriptionContext.Provider value={contextValue}>
       {children}
-      <PaywallPrompt
-        visible={paywallVisible}
-        onClose={hidePaywall}
-        feature={paywallFeature}
-      />
     </SubscriptionContext.Provider>
   );
 }

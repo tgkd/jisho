@@ -1,5 +1,5 @@
 PODS:
-  - AppleLLM (0.9.0):
+  - AppleLLM (0.10.0):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -106,7 +106,7 @@ PODS:
     - ExpoModulesCore
   - ExpoSystemUI (6.0.7):
     - ExpoModulesCore
-  - ExpoUI (0.2.0-canary-20251003-7b9d7ff):
+  - ExpoUI (0.2.0-canary-20251009-9919e08):
     - ExpoModulesCore
   - FBLazyVector (0.81.4)
   - hermes-engine (0.81.4):
@@ -114,6 +114,9 @@ PODS:
   - hermes-engine/Pre-built (0.81.4)
   - PurchasesHybridCommon (17.9.0):
     - RevenueCat (= 5.41.0)
+  - PurchasesHybridCommonUI (17.9.0):
+    - PurchasesHybridCommon (= 17.9.0)
+    - RevenueCatUI (= 5.41.0)
   - RCTDeprecation (0.81.4)
   - RCTRequired (0.81.4)
   - RCTTypeSafety (0.81.4):
@@ -1902,6 +1905,8 @@ PODS:
     - ReactNativeDependencies
   - ReactNativeDependencies (0.81.4)
   - RevenueCat (5.41.0)
+  - RevenueCatUI (5.41.0):
+    - RevenueCat (= 5.41.0)
   - RNGestureHandler (2.28.0):
     - hermes-engine
     - RCTRequired
@@ -1924,6 +1929,9 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
+  - RNPaywalls (9.5.3):
+    - PurchasesHybridCommonUI (= 17.9.0)
+    - React-Core
   - RNPurchases (9.5.3):
     - PurchasesHybridCommon (= 17.9.0)
     - React-Core
@@ -2216,6 +2224,7 @@ DEPENDENCIES:
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
   - ReactNativeDependencies (from `../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec`)
   - RNGestureHandler (from `../node_modules/react-native-gesture-handler`)
+  - RNPaywalls (from `../node_modules/react-native-purchases-ui`)
   - RNPurchases (from `../node_modules/react-native-purchases`)
   - RNReanimated (from `../node_modules/react-native-reanimated`)
   - RNScreens (from `../node_modules/react-native-screens`)
@@ -2225,7 +2234,9 @@ DEPENDENCIES:
 SPEC REPOS:
   trunk:
     - PurchasesHybridCommon
+    - PurchasesHybridCommonUI
     - RevenueCat
+    - RevenueCatUI
 
 EXTERNAL SOURCES:
   AppleLLM:
@@ -2415,6 +2426,8 @@ EXTERNAL SOURCES:
     :podspec: "../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec"
   RNGestureHandler:
     :path: "../node_modules/react-native-gesture-handler"
+  RNPaywalls:
+    :path: "../node_modules/react-native-purchases-ui"
   RNPurchases:
     :path: "../node_modules/react-native-purchases"
   RNReanimated:
@@ -2427,7 +2440,7 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon/yoga"
 
 SPEC CHECKSUMS:
-  AppleLLM: 5bdfc92651e01b5c5fe692f64d1dfff525c1b7af
+  AppleLLM: 386288109b2f0165c3fbd434bb9af01f1f33f0ad
   EXConstants: a95804601ee4a6aa7800645f9b070d753b1142b3
   Expo: 24375439ae3be9e01cdd3ab8e03967d453e66d3e
   ExpoAsset: 9ba6fbd677fb8e241a3899ac00fa735bc911eadf
@@ -2448,10 +2461,11 @@ SPEC CHECKSUMS:
   ExpoSQLite: 7fa091ba5562474093fef09be644161a65e11b3f
   ExpoSymbols: 1ae04ce686de719b9720453b988d8bc5bf776c68
   ExpoSystemUI: 6cd74248a2282adf6dec488a75fa532d69dee314
-  ExpoUI: 0375662ea183850a2d4ec5f987d8f7d9e9e2e39d
+  ExpoUI: 51d95298742db06a43ffb2a89164dd27c7c88940
   FBLazyVector: 9e0cd874afd81d9a4d36679daca991b58b260d42
   hermes-engine: 35c763d57c9832d0eef764316ca1c4d043581394
   PurchasesHybridCommon: f497ca753fd7dd00fb0fbb1548acc384bd01b86b
+  PurchasesHybridCommonUI: 9dcc87d9517853fa371a7d3665651b4d47f610ad
   RCTDeprecation: 7487d6dda857ccd4cb3dd6ecfccdc3170e85dcbc
   RCTRequired: 54128b7df8be566881d48c7234724a78cb9b6157
   RCTTypeSafety: d2b07797a79e45d7b19e1cd2f53c79ab419fe217
@@ -2521,7 +2535,9 @@ SPEC CHECKSUMS:
   ReactCommon: 149b6c05126f2e99f2ed0d3c63539369546f8cae
   ReactNativeDependencies: ed6d1e64802b150399f04f1d5728ec16b437251e
   RevenueCat: a094ccf2d12c4778144d3a0560a8b9f6bd3a84aa
+  RevenueCatUI: cf8d8da5c06163877b66a90114f7fb2de27eac37
   RNGestureHandler: 2914750df066d89bf9d8f48a10ad5f0051108ac3
+  RNPaywalls: 8407c7e18ed8eb353f0f6f777602e37a086cb6f6
   RNPurchases: 4d4a53989e23bb9e80e8aca79b8d14314f8a5824
   RNReanimated: d87360cba850e1df46f5b74d6ee74653a520b631
   RNScreens: d8d6f1792f6e7ac12b0190d33d8d390efc0c1845

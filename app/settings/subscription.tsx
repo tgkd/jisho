@@ -18,14 +18,10 @@ export default function SubscriptionScreen() {
   const subscription = useSubscription();
   const {
     isPremium,
-    isTrial,
-    trialDaysRemaining,
-    dailyUsage,
     packages,
     isLoading,
     purchase,
     restore,
-    startTrial,
   } = subscription;
 
   const [showTestInfo, setShowTestInfo] = React.useState(false);
@@ -62,15 +58,6 @@ export default function SubscriptionScreen() {
     }
   };
 
-  const handleStartTrial = () => {
-    const success = startTrial();
-    if (success) {
-      Alert.alert("Trial Started", "Enjoy 7 days of Premium features for free!");
-    } else {
-      Alert.alert("Trial Unavailable", "You have already used your free trial.");
-    }
-  };
-
   const handleManageSubscription = () => {
     Linking.openURL("https://apps.apple.com/account/subscriptions");
   };
@@ -92,22 +79,6 @@ export default function SubscriptionScreen() {
       );
     }
 
-    if (isTrial && trialDaysRemaining !== null) {
-      return (
-        <Card>
-          <View style={styles.statusContainer}>
-            <IconSymbol name="clock.fill" size={48} color={Colors.light.tint} />
-            <ThemedText size="lg" style={styles.statusTitle}>
-              Trial Active
-            </ThemedText>
-            <ThemedText size="sm" type="secondary" style={styles.statusDescription}>
-              {trialDaysRemaining} {trialDaysRemaining === 1 ? "day" : "days"} remaining
-            </ThemedText>
-          </View>
-        </Card>
-      );
-    }
-
     return (
       <Card>
         <View style={styles.statusContainer}>
@@ -116,7 +87,7 @@ export default function SubscriptionScreen() {
             Free Plan
           </ThemedText>
           <ThemedText size="sm" type="secondary" style={styles.statusDescription}>
-            {dailyUsage.count}/{dailyUsage.limit} AI queries used today
+            Unlimited AI queries included
           </ThemedText>
         </View>
       </Card>
@@ -161,18 +132,6 @@ export default function SubscriptionScreen() {
 
     return (
       <Card>
-        {!isTrial && (
-          <HapticTab
-            onPress={handleStartTrial}
-            style={[styles.actionButton, styles.primaryButton]}
-          >
-            <IconSymbol name="gift.fill" size={20} color="#fff" />
-            <ThemedText size="sm" style={styles.primaryButtonText}>
-              Start 7-Day Free Trial
-            </ThemedText>
-          </HapticTab>
-        )}
-
         {lifetimePackage && (
           <HapticTab
             onPress={() => handlePurchase(lifetimePackage)}
