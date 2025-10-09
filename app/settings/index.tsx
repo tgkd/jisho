@@ -164,29 +164,6 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        <HapticTab
-          onPress={() => router.push("/settings/subscription")}
-          style={styles.subscriptionCard}
-        >
-          <View style={styles.row}>
-            <View style={{ flex: 1 }}>
-              <ThemedText size="sm">
-                {subscription.isPremium ? "Premium ✨" : "Free Plan"}
-              </ThemedText>
-              {!subscription.isPremium && (
-                <ThemedText size="xs" type="secondary">
-                  Unlimited AI queries included
-                </ThemedText>
-              )}
-            </View>
-            <IconSymbol
-              name="chevron.right"
-              size={16}
-              color={Colors.light.textSecondary}
-            />
-          </View>
-        </HapticTab>
-
         <View style={styles.settingItem}>
           <ThemedText size="sm">{"AI Features"}</ThemedText>
           <ThemedText size="xs" style={styles.description}>
@@ -234,14 +211,24 @@ export default function SettingsScreen() {
         </HapticTab>
       </Card>
 
-      <HapticTab
-        onPress={() => router.push("/settings/about")}
-        style={styles.aboutBtn}
-      >
-        <ThemedText size="sm" type="secondary">
-          {"About"}
-        </ThemedText>
-      </HapticTab>
+      <View style={styles.settingItem}>
+        <HapticTab
+          onPress={() => router.push("/settings/about")}
+          style={styles.aboutBtn}
+        >
+          <ThemedText size="sm" type="secondary">
+            {"About"}
+          </ThemedText>
+        </HapticTab>
+        <HapticTab
+          onPress={() => router.push("/settings/subscription")}
+          style={styles.aboutBtn}
+        >
+          <ThemedText size="sm" type="secondary">
+            {"Subscription"}
+          </ThemedText>
+        </HapticTab>
+      </View>
     </ScrollView>
   );
 }

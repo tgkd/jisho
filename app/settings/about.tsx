@@ -1,6 +1,5 @@
 import { Linking, ScrollView, StyleSheet, View } from "react-native";
 
-import { HapticTab } from "@/components/HapticTab";
 import { ThemedText } from "@/components/ThemedText";
 import { Card } from "@/components/ui/Card";
 import { Colors } from "@/constants/Colors";

@@ -11,31 +11,27 @@ import {
   Linking,
   ScrollView,
   StyleSheet,
-  View
+  View,
 } from "react-native";
 
 export default function SubscriptionScreen() {
   const subscription = useSubscription();
-  const {
-    isPremium,
-    packages,
-    isLoading,
-    purchase,
-    restore,
-  } = subscription;
+  const { isPremium, packages, isLoading, purchase, restore } = subscription;
 
   const [showTestInfo, setShowTestInfo] = React.useState(false);
 
-  const monthlyPackage = packages.find(pkg =>
-    pkg.product.identifier.includes("Monthly") ||
-    pkg.packageType === "MONTHLY"
+  const monthlyPackage = packages.find(
+    (pkg) =>
+      pkg.product.identifier.includes("Monthly") ||
+      pkg.packageType === "MONTHLY"
   );
-  const lifetimePackage = packages.find(pkg =>
-    pkg.product.identifier.includes("Lifetime") ||
-    pkg.packageType === "LIFETIME"
+  const lifetimePackage = packages.find(
+    (pkg) =>
+      pkg.product.identifier.includes("Lifetime") ||
+      pkg.packageType === "LIFETIME"
   );
 
-  const handlePurchase = async (pkg: typeof packages[0]) => {
+  const handlePurchase = async (pkg: (typeof packages)[0]) => {
     if (!pkg) {
       Alert.alert("Error", "Product not available");
       return;
@@ -54,7 +50,10 @@ export default function SubscriptionScreen() {
     if (success) {
       Alert.alert("Success", "Your subscription has been restored!");
     } else {
-      Alert.alert("No Purchases Found", "No previous purchases found to restore.");
+      Alert.alert(
+        "No Purchases Found",
+        "No previous purchases found to restore."
+      );
     }
   };
 
@@ -67,11 +66,19 @@ export default function SubscriptionScreen() {
       return (
         <Card>
           <View style={styles.statusContainer}>
-            <IconSymbol name="checkmark.circle.fill" size={48} color={Colors.light.accent} />
+            <IconSymbol
+              name="checkmark.circle.fill"
+              size={48}
+              color={Colors.light.accent}
+            />
             <ThemedText size="lg" style={styles.statusTitle}>
               Premium Active
             </ThemedText>
-            <ThemedText size="sm" type="secondary" style={styles.statusDescription}>
+            <ThemedText
+              size="sm"
+              type="secondary"
+              style={styles.statusDescription}
+            >
               You have unlimited access to all premium features
             </ThemedText>
           </View>
@@ -82,11 +89,19 @@ export default function SubscriptionScreen() {
     return (
       <Card>
         <View style={styles.statusContainer}>
-          <IconSymbol name="star.circle" size={48} color={Colors.light.textSecondary} />
+          <IconSymbol
+            name="star.circle"
+            size={48}
+            color={Colors.light.textSecondary}
+          />
           <ThemedText size="lg" style={styles.statusTitle}>
             Free Plan
           </ThemedText>
-          <ThemedText size="sm" type="secondary" style={styles.statusDescription}>
+          <ThemedText
+            size="sm"
+            type="secondary"
+            style={styles.statusDescription}
+          >
             Unlimited AI queries included
           </ThemedText>
         </View>
@@ -94,36 +109,23 @@ export default function SubscriptionScreen() {
     );
   };
 
-  const renderBenefits = () => (
-    <Card>
-      <ThemedText size="md" style={styles.sectionTitle}>
-        Premium Benefits
-      </ThemedText>
-      <View style={styles.benefitItem}>
-        <IconSymbol name="sparkles" size={20} color={Colors.light.accent} />
-        <ThemedText size="sm">Unlimited cloud AI queries</ThemedText>
-      </View>
-      <View style={styles.benefitItem}>
-        <IconSymbol name="speaker.wave.3.fill" size={20} color={Colors.light.accent} />
-        <ThemedText size="sm">Natural voice pronunciation (cloud TTS)</ThemedText>
-      </View>
-      <View style={styles.benefitItem}>
-        <IconSymbol name="iphone" size={20} color={Colors.light.accent} />
-        <ThemedText size="sm">Or use on-device AI for free (no subscription needed)</ThemedText>
-      </View>
-    </Card>
-  );
-
   const renderActions = () => {
     if (isPremium) {
       return (
         <Card>
-          <HapticTab onPress={handleManageSubscription} style={styles.actionButton}>
+          <HapticTab
+            onPress={handleManageSubscription}
+            style={styles.actionButton}
+          >
             <IconSymbol name="gear" size={20} color={Colors.light.accent} />
             <ThemedText size="sm">Manage Subscription</ThemedText>
           </HapticTab>
           <HapticTab onPress={handleRestore} style={styles.actionButton}>
-            <IconSymbol name="arrow.clockwise" size={20} color={Colors.light.accent} />
+            <IconSymbol
+              name="arrow.clockwise"
+              size={20}
+              color={Colors.light.accent}
+            />
             <ThemedText size="sm">Restore Purchases</ThemedText>
           </HapticTab>
         </Card>
@@ -163,7 +165,8 @@ export default function SubscriptionScreen() {
               <>
                 <IconSymbol name="star.fill" size={20} color="#fff" />
                 <ThemedText size="sm" style={styles.primaryButtonText}>
-                  Monthly Subscription - {monthlyPackage.product.priceString}/month
+                  Monthly Subscription - {monthlyPackage.product.priceString}
+                  /month
                 </ThemedText>
               </>
             )}
@@ -171,13 +174,22 @@ export default function SubscriptionScreen() {
         )}
 
         {!monthlyPackage && !lifetimePackage && (
-          <ThemedText size="sm" type="secondary" textAlign="center" style={{ paddingVertical: 16 }}>
+          <ThemedText
+            size="sm"
+            type="secondary"
+            textAlign="center"
+            style={{ paddingVertical: 16 }}
+          >
             Loading subscription options...
           </ThemedText>
         )}
 
         <HapticTab onPress={handleRestore} style={styles.actionButton}>
-          <IconSymbol name="arrow.clockwise" size={20} color={Colors.light.accent} />
+          <IconSymbol
+            name="arrow.clockwise"
+            size={20}
+            color={Colors.light.accent}
+          />
           <ThemedText size="sm">Restore Purchases</ThemedText>
         </HapticTab>
       </Card>
@@ -190,103 +202,88 @@ export default function SubscriptionScreen() {
       contentContainerStyle={styles.container}
     >
       {renderStatusCard()}
-      {!isPremium && renderBenefits()}
       {renderActions()}
 
       <ThemedText size="xs" type="secondary" style={styles.disclaimer}>
-        Subscription automatically renews unless auto-renew is turned off at least 24 hours
-        before the end of the current period. Manage your subscription in App Store settings.
+        Subscription automatically renews unless auto-renew is turned off at
+        least 24 hours before the end of the current period. Manage your
+        subscription in App Store settings.
       </ThemedText>
 
       <HapticTab
         onPress={() => setShowTestInfo(!showTestInfo)}
         style={styles.actionButton}
       >
-        <IconSymbol
-          name={showTestInfo ? "chevron.up" : "chevron.down"}
-          size={16}
-          color={Colors.light.textSecondary}
-        />
         <ThemedText size="xs" type="secondary">
-          {showTestInfo ? 'Hide Test Info' : 'Show Test Info'}
+          {"Show Test Info"}
         </ThemedText>
       </HapticTab>
 
       {showTestInfo && (
-        <Card style={{ backgroundColor: '#f5f5f5', borderWidth: 1, borderColor: '#ddd' }}>
-        <ThemedText size="sm" style={{ fontWeight: '600', marginBottom: 12 }}>
-          🧪 Test Info
-        </ThemedText>
-
-        <View style={{ gap: 8 }}>
-          <ThemedText size="xs" type="secondary">
-            Packages loaded: {packages.length}
-          </ThemedText>
-
-          {packages.map((pkg, idx) => (
-            <View key={idx} style={{ paddingLeft: 8, paddingVertical: 4, backgroundColor: '#fff', borderRadius: 4 }}>
-              <ThemedText size="xs" style={{ fontWeight: '600' }}>
-                {pkg.product.title}
-              </ThemedText>
-              <ThemedText size="xs" type="secondary">
-                ID: {pkg.product.identifier}
-              </ThemedText>
-              <ThemedText size="xs" type="secondary">
-                Price: {pkg.product.priceString}
-              </ThemedText>
-              <ThemedText size="xs" type="secondary">
-                Type: {pkg.packageType}
-              </ThemedText>
-            </View>
-          ))}
-
-          {packages.length === 0 && (
+        <Card>
+          <View style={{ gap: 8 }}>
             <ThemedText size="xs" type="secondary">
-              No packages available yet...
+              Packages loaded: {packages.length}
             </ThemedText>
-          )}
-        </View>
 
-        <View style={{ marginTop: 16, gap: 8 }}>
-          <HapticTab
-            onPress={() => {
-              Alert.alert(
-                "Test Purchase",
-                `Monthly: ${monthlyPackage ? '✅ Found' : '❌ Not found'}\nLifetime: ${lifetimePackage ? '✅ Found' : '❌ Not found'}`
-              );
-            }}
-            style={[styles.actionButton, { backgroundColor: '#007AFF' }]}
-          >
-            <ThemedText size="xs" style={{ color: '#fff' }}>
-              Check Package Detection
-            </ThemedText>
-          </HapticTab>
+            {packages.map((pkg, idx) => (
+              <View
+                key={idx}
+                style={{
+                  paddingLeft: 8,
+                  paddingVertical: 4,
+                  backgroundColor: "#fff",
+                  borderRadius: 4,
+                }}
+              >
+                <ThemedText size="xs" style={{ fontWeight: "600" }}>
+                  {pkg.product.title}
+                </ThemedText>
+                <ThemedText size="xs" type="secondary">
+                  ID: {pkg.product.identifier}
+                </ThemedText>
+                <ThemedText size="xs" type="secondary">
+                  Price: {pkg.product.priceString}
+                </ThemedText>
+                <ThemedText size="xs" type="secondary">
+                  Type: {pkg.packageType}
+                </ThemedText>
+              </View>
+            ))}
 
-          {monthlyPackage && (
-            <HapticTab
-              onPress={() => handlePurchase(monthlyPackage)}
-              style={[styles.actionButton, { backgroundColor: '#34C759' }]}
-              disabled={isLoading}
-            >
-              <ThemedText size="xs" style={{ color: '#fff' }}>
-                {isLoading ? 'Processing...' : '💳 Test Subscribe (Monthly)'}
+            {packages.length === 0 && (
+              <ThemedText size="xs" type="secondary">
+                No packages available yet...
               </ThemedText>
-            </HapticTab>
-          )}
+            )}
+          </View>
 
-          {lifetimePackage && (
-            <HapticTab
-              onPress={() => handlePurchase(lifetimePackage)}
-              style={[styles.actionButton, { backgroundColor: '#FF9500' }]}
-              disabled={isLoading}
-            >
-              <ThemedText size="xs" style={{ color: '#fff' }}>
-                {isLoading ? 'Processing...' : '💳 Test Purchase (Lifetime)'}
-              </ThemedText>
-            </HapticTab>
-          )}
-        </View>
-      </Card>
+          <View style={{ marginTop: 16, gap: 8 }}>
+            {monthlyPackage && (
+              <HapticTab
+                onPress={() => handlePurchase(monthlyPackage)}
+                style={[styles.actionButton, { backgroundColor: "#34C759" }]}
+                disabled={isLoading}
+              >
+                <ThemedText size="xs" style={{ color: "#fff" }}>
+                  {isLoading ? "Processing..." : "Subscribe (Monthly)"}
+                </ThemedText>
+              </HapticTab>
+            )}
+
+            {lifetimePackage && (
+              <HapticTab
+                onPress={() => handlePurchase(lifetimePackage)}
+                style={[styles.actionButton, { backgroundColor: "#FF9500" }]}
+                disabled={isLoading}
+              >
+                <ThemedText size="xs" style={{ color: "#fff" }}>
+                  {isLoading ? "Processing..." : " Purchase (Lifetime)"}
+                </ThemedText>
+              </HapticTab>
+            )}
+          </View>
+        </Card>
       )}
     </ScrollView>
   );
