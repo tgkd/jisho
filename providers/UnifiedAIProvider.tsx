@@ -5,7 +5,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
-  useState,
+  useState
 } from "react";
 import { useMMKVString } from "react-native-mmkv";
 
@@ -13,10 +13,11 @@ import {
   AiExample,
   AiReadingPassage,
   ExplainRequestType,
+  getAiChat,
   getAiExamples,
   getAiExplanation,
   getAiReadingPassage,
-  getAiSound,
+  getAiSound
 } from "@/services/request";
 import { SETTINGS_KEYS } from "@/services/storage";
 import { useAudioPlayer } from "expo-audio";
@@ -30,6 +31,14 @@ export interface StreamingResponse {
   onComplete: (fullText: string, error?: string) => void;
   onError: (error: string) => void;
 }
+
+const PRACTICE_SYSTEM_PROMPTS: Record<JLPTLevel, string> = {
+  N5: "You are a friendly Japanese language teacher helping absolute beginners (JLPT N5 level). Use simple Japanese with hiragana when writing in Japanese. Focus on basic vocabulary and grammar patterns like です/ます forms. Always be encouraging and patient. When explaining, provide both Japanese text and English translations.",
+  N4: "You are a supportive Japanese language teacher for elementary students (JLPT N4 level). Use conversational Japanese appropriate for learners who understand basic grammar and can read hiragana and katakana. Introduce simple kanji gradually. Focus on everyday conversations and basic reading comprehension.",
+  N3: "You are a Japanese language teacher for intermediate students (JLPT N3 level). Use natural Japanese with common kanji appropriate for this level. Students can handle more complex sentence structures and should be familiar with て-form, た-form, and basic keigo. Provide challenging but accessible content.",
+  N2: "You are a Japanese language teacher for advanced students (JLPT N2 level). Use natural, moderately formal Japanese similar to what appears in newspapers and general articles. Students should be comfortable with advanced grammar patterns, a wide range of kanji, and various levels of politeness. Include nuanced expressions and cultural context.",
+  N1: "You are a Japanese language teacher for expert students (JLPT N1 level). Use sophisticated, native-level Japanese including complex grammar, advanced kanji, idioms, and formal/literary expressions. Students at this level should be able to understand abstract concepts and subtle nuances in the language. Challenge them with authentic Japanese content.",
+};
 
 class SubscriptionRequiredError extends Error {
   constructor(message: string) {
@@ -48,6 +57,12 @@ export interface UnifiedAIContextValue {
     signal?: AbortSignal
   ) => Promise<void>;
   chatWithMessages: (
+    messages: { role: "user" | "assistant"; content: string }[],
+    streaming: StreamingResponse,
+    signal?: AbortSignal
+  ) => Promise<void>;
+  chatWithPractice: (
+    level: JLPTLevel,
     messages: { role: "user" | "assistant"; content: string }[],
     streaming: StreamingResponse,
     signal?: AbortSignal
@@ -302,6 +317,86 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
     [currentProvider, localAI, checkRemoteAccess]
   );
 
+  const chatWithPractice = useCallback(
+    async (
+      level: JLPTLevel,
+      messages: { role: "user" | "assistant"; content: string }[],
+      streaming: StreamingResponse,
+      signal?: AbortSignal
+    ): Promise<void> => {
+      try {
+        const systemPrompt = PRACTICE_SYSTEM_PROMPTS[level];
+        const messagesWithSystem = [
+          { role: "assistant" as const, content: systemPrompt },
+          ...messages,
+        ];
+
+        if (currentProvider === "local") {
+          await localAI.chatWithMessages(
+            messagesWithSystem,
+            streaming.onChunk,
+            (fullResponse, error) => {
+              if (error) {
+                streaming.onError(error);
+              } else {
+                streaming.onComplete(fullResponse);
+              }
+            }
+          );
+        } else {
+          if (!checkRemoteAccess()) {
+            streaming.onError("Subscription required for practice chat");
+            return;
+          }
+
+          const fetchFn = getAiChat(signal);
+          const response = await fetchFn(messagesWithSystem);
+
+          if (!response.ok) {
+            throw new Error(`HTTP error: ${response.status}`);
+          }
+
+          const reader = response.body?.getReader();
+          if (!reader) {
+            const fullText = await response.text();
+            streaming.onChunk(fullText);
+            streaming.onComplete(fullText);
+            return;
+          }
+
+          const decoder = new TextDecoder();
+          let fullText = "";
+
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+
+              const chunk = decoder.decode(value, { stream: true });
+              fullText += chunk;
+              streaming.onChunk(chunk);
+            }
+
+            const remaining = decoder.decode();
+            if (remaining) {
+              fullText += remaining;
+              streaming.onChunk(remaining);
+            }
+
+            streaming.onComplete(fullText);
+          } catch (streamError) {
+            streaming.onError(`Stream reading error: ${streamError}`);
+          }
+        }
+      } catch (error) {
+        streaming.onError(
+          error instanceof Error ? error.message : "Unknown error"
+        );
+      }
+    },
+    [currentProvider, localAI, checkRemoteAccess]
+  );
+
   const generateSpeech = useCallback(
     async (
       text: string,
@@ -385,6 +480,7 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
     generateExamples,
     explainText,
     chatWithMessages,
+    chatWithPractice,
     generateSpeech,
     generateReadingPassage,
     speakText,

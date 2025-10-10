@@ -13,18 +13,20 @@ export default function PracticeLayout() {
         }}
       />
       <Stack.Screen
-        name="passages/[level]"
+        name="new"
         options={{
-          title: "Reading Passages",
+          title: "New Session",
           headerTransparent: true,
+          presentation: "modal",
         }}
       />
       <Stack.Screen
-        name="passage/[id]"
+        name="chat/[sessionId]"
         options={{
-          title: "Reading",
+          headerBackTitle: " ",
+          title: "Practice Session",
           headerTransparent: true,
-          headerLargeTitle: false,
+          presentation: "modal",
         }}
       />
     </Stack>

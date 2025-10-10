@@ -196,7 +196,9 @@ export default function ExploreScreen() {
         options={{
           title: params.word ? `Ask about ${params.word}` : "AI Chat",
           headerTitle: ({ children }) => (
-            <ThemedText type="title" style={{ flex: 1 }}>{children}</ThemedText>
+            <ThemedText type="title" style={{ flex: 1 }}>
+              {children}
+            </ThemedText>
           ),
           headerRight: () => (
             <HapticButton
@@ -221,6 +223,7 @@ export default function ExploreScreen() {
       <KeyboardAvoidingView
         behavior="translate-with-padding"
         keyboardVerticalOffset={32}
+        style={styles.inputContainer}
       >
         <ChatFooterView handleSubmit={handleSubmit} loading={isGenerating} />
       </KeyboardAvoidingView>
@@ -229,9 +232,6 @@ export default function ExploreScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
   list: {
     height: "100%",
   },
@@ -254,5 +254,9 @@ const styles = StyleSheet.create({
   },
   userMessage: {
     opacity: 0.8,
+  },
+  inputContainer: {
+    position: 'absolute',
+    bottom: 120
   },
 });

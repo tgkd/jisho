@@ -94,7 +94,7 @@ export default function RootLayout() {
 function Router() {
   const sub = useSubscription();
   return (
-    <NativeTabs minimizeBehavior="automatic">
+    <NativeTabs minimizeBehavior="onScrollDown">
       <NativeTabs.Trigger name="word" role="search">
         <Icon sf="magnifyingglass" drawable="custom_android_drawable" />
         <Label>Search</Label>
