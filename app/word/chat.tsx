@@ -7,13 +7,14 @@ import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import Markdown from "react-native-markdown-display";
 
 import { ChatFooterView } from "@/components/ChatFooter";
-import { HapticButton } from "@/components/HapticTab";
 import { PopupMenu, PopupMenuItem } from "@/components/PopupMenu";
 import { ThemedText } from "@/components/ThemedText";
 import { Card } from "@/components/ui/Card";
 import { Colors } from "@/constants/Colors";
 import { useMdStyles } from "@/hooks/useMdStyles";
+import { useThemeColor } from "@/hooks/useThemeColor";
 import { useUnifiedAI } from "@/providers/UnifiedAIProvider";
+import { Button, Host } from "@expo/ui/swift-ui";
 
 interface Message {
   role: "user" | "assistant";
@@ -33,6 +34,7 @@ export default function ExploreScreen() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [initialized, setInitialized] = useState<boolean>(false);
+  const defaultColor = useThemeColor({}, "text");
 
   const copyMessage = useCallback(async (content: string) => {
     await Clipboard.setStringAsync(content);
@@ -194,18 +196,20 @@ export default function ExploreScreen() {
     <>
       <Stack.Screen
         options={{
-          title: params.word ? `Ask about ${params.word}` : "AI Chat",
           headerTitle: ({ children }) => (
             <ThemedText type="title" style={{ flex: 1 }}>
               {children}
             </ThemedText>
           ),
           headerRight: () => (
-            <HapticButton
-              systemImage={"trash"}
-              onPress={clearMessages}
-              disabled={isGenerating || messages.length === 0}
-            />
+            <Host style={{ width: 35, height: 35 }}>
+              <Button
+                color={defaultColor}
+                systemImage={"trash"}
+                onPress={clearMessages}
+                disabled={isGenerating || messages.length === 0}
+              />
+            </Host>
           ),
         }}
       />
@@ -223,7 +227,6 @@ export default function ExploreScreen() {
       <KeyboardAvoidingView
         behavior="translate-with-padding"
         keyboardVerticalOffset={32}
-        style={styles.inputContainer}
       >
         <ChatFooterView handleSubmit={handleSubmit} loading={isGenerating} />
       </KeyboardAvoidingView>
@@ -254,9 +257,5 @@ const styles = StyleSheet.create({
   },
   userMessage: {
     opacity: 0.8,
-  },
-  inputContainer: {
-    position: 'absolute',
-    bottom: 120
   },
 });

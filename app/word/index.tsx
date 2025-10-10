@@ -15,11 +15,18 @@ import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
 import {
   DictionaryEntry,
-  HistoryEntry, KanjiEntry, KanjiHistoryEntry, searchDictionary,
-  searchKanji, WordHistoryEntry, WordMeaning
+  HistoryEntry,
+  KanjiEntry,
+  KanjiHistoryEntry,
+  searchDictionary,
+  searchKanji,
+  WordHistoryEntry,
+  WordMeaning,
 } from "@/services/database";
 import { getJpTokens } from "@/services/parse";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
+import { Button, Host } from "@expo/ui/swift-ui";
+import { useThemeColor } from "@/hooks/useThemeColor";
 
 type SearchResult = DictionaryEntry | KanjiEntry;
 
@@ -34,17 +41,18 @@ function isHistoryItem(
 }
 
 function isWordHistoryEntry(item: HistoryEntry): item is WordHistoryEntry {
-  return item.entryType === 'word';
+  return item.entryType === "word";
 }
 
 function isKanjiHistoryEntry(item: HistoryEntry): item is KanjiHistoryEntry {
-  return item.entryType === 'kanji';
+  return item.entryType === "kanji";
 }
 
 export default function HomeScreen() {
   const db = useSQLiteContext();
   const router = useRouter();
   const history = useSearchHistory();
+  const defaultColor = useThemeColor({}, "text");
 
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -305,7 +313,9 @@ export default function HomeScreen() {
           headerSearchBarOptions: {
             placement: "automatic",
             placeholder:
-              searchMode === "word" ? "Search by word..." : "Search by kanji...",
+              searchMode === "word"
+                ? "Search by word..."
+                : "Search by kanji...",
             onChangeText: (e) => handleChange(e.nativeEvent.text),
             ref: searchBarRef as React.RefObject<SearchBarCommands>,
             onCancelButtonPress: handleCancelButtonPress,
@@ -315,12 +325,15 @@ export default function HomeScreen() {
           headerTitle: () => <Text style={{ flex: 1 }} />,
           title: searchMode === "word" ? "Words" : "Kanji",
           headerRight: () => (
-            <HapticButton
-              onPress={toggleSearchMode}
-              systemImage={
-                searchMode === "word" ? "character" : "character.book.closed"
-              }
-            />
+            <Host style={{ width: 35, height: 35 }}>
+              <Button
+                color={defaultColor}
+                systemImage={
+                  searchMode === "word" ? "character" : "character.book.closed"
+                }
+                onPress={toggleSearchMode}
+              />
+            </Host>
           ),
         }}
       />
