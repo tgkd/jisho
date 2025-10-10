@@ -7,7 +7,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  View
+  View,
 } from "react-native";
 
 import { FuriganaText } from "@/components/FuriganaText";
@@ -32,13 +32,13 @@ import {
   getFuriganaForText,
   getWordExamples,
   saveAudioFile,
-  WordMeaning
+  WordMeaning,
 } from "@/services/database";
 import {
   cleanupJpReadings,
   deduplicateEn,
   findKanji,
-  formatEn
+  formatEn,
 } from "@/services/parse";
 import { createWordPrompt } from "@/services/request";
 
@@ -162,8 +162,14 @@ export default function WordDetailScreen() {
           <Card variant="grouped">
             <HapticTab
               onPress={() => {
-                const meanings = entry.meanings.map((m) => m.meaning).join("; ");
-                const initialPrompt = `Tell me about the Japanese word ${entry.word.kanji || entry.word.reading} (${entry.word.reading}). What does it mean and how is it used?`;
+                const meanings = entry.meanings
+                  .map((m) => m.meaning)
+                  .join("; ");
+                const initialPrompt = `Tell me about the Japanese word ${
+                  entry.word.kanji || entry.word.reading
+                } (${
+                  entry.word.reading
+                }). What does it mean and how is it used?`;
                 router.push({
                   pathname: "/word/chat",
                   params: {
@@ -177,7 +183,11 @@ export default function WordDetailScreen() {
               style={styles.askAIButton}
             >
               <View style={styles.askAIContent}>
-                <IconSymbol name="bubble.left.and.text.bubble.right" size={24} color={tintColor} />
+                <IconSymbol
+                  name="bubble.left.and.text.bubble.right"
+                  size={24}
+                  color={tintColor}
+                />
                 <View style={styles.askAIText}>
                   <ThemedText>Ask questions about this word</ThemedText>
                   <ThemedText type="secondary" size="sm">
@@ -262,20 +272,21 @@ function ExamplesView({
         {entry.examples.length === 0 ? (
           <ThemedText type="secondary">{"No examples found"}</ThemedText>
         ) : null}
+        {ai.isAvailable ? (
+          <Pressable
+            style={styles.examplesLoading}
+            disabled={ai.isGenerating}
+            onPress={handleFetchExamples}
+          >
+            {ai.isGenerating ? (
+              <ActivityIndicator size="small" />
+            ) : (
+              <ThemedText>✨🤖✨</ThemedText>
+            )}
+          </Pressable>
+        ) : null}
       </Card>
-      {ai.isAvailable ? (
-        <Pressable
-          style={styles.examplesLoading}
-          disabled={ai.isGenerating}
-          onPress={handleFetchExamples}
-        >
-          {ai.isGenerating ? (
-            <ActivityIndicator size="small" />
-          ) : (
-            <ThemedText>✨🤖✨</ThemedText>
-          )}
-        </Pressable>
-      ) : null}
+
       <KanjiListView
         kanjiChars={selectedExample}
         handleClose={() => setSelectedExample(null)}
@@ -421,7 +432,8 @@ const styles = StyleSheet.create({
   exampleTitle: {
     gap: 4,
     flexDirection: "column",
-    maxWidth: "90%",
+    flex: 1,
+    paddingRight: 32,
   },
   examplesLoading: {
     alignItems: "center",

@@ -6,11 +6,6 @@ import { z } from "zod";
 import { DictionaryEntry, ExampleSentence, WordMeaning } from "./database";
 import { settingsStorage, SETTINGS_KEYS } from "./storage";
 
-export enum ExplainRequestType {
-  V = "vocabulary",
-  G = "grammar",
-}
-
 export const aiExampleSchema = z.object({
   jp: z.string(),
   en: z.string(),
@@ -20,14 +15,6 @@ export const aiExampleSchema = z.object({
 export const aiExampleSchemaArray = z.array(aiExampleSchema);
 
 export type AiExample = z.infer<typeof aiExampleSchema>;
-
-export const aiReadingPassageSchema = z.object({
-  title: z.string(),
-  content: z.string(),
-  translation: z.string(),
-});
-
-export type AiReadingPassage = z.infer<typeof aiReadingPassageSchema>;
 
 export function createWordPrompt(
   e: {
@@ -54,7 +41,7 @@ export async function getAiExamples(
   }
 
   const resp = await fetch(
-    `${process.env.EXPO_PUBLIC_BASE_URL}/ask?prompt=${encodeURIComponent(
+    `${process.env.EXPO_PUBLIC_BASE_URL}/example?word=${encodeURIComponent(
       prompt
     )}`,
     {
@@ -71,7 +58,19 @@ export async function getAiExamples(
   return resp.json() as Promise<AiExample[]>;
 }
 
-export async function getAiSound(prompt: string) {
+/**
+ * Get audio file for text-to-speech synthesis.
+ * @param {string} prompt - Text to synthesize
+ * @param {string} [voice] - Voice identifier for OpenAI TTS (default: nova)
+ * @param {string} [lang] - Two-letter language code for Cloudflare AI (default: jp)
+ * @returns {Promise<File>} Downloaded audio file
+ * @throws {Error} If prompt is missing or download fails
+ */
+export async function getAiSound(
+  prompt: string,
+  voice?: string,
+  lang?: string
+) {
   if (!prompt) {
     throw new Error("No prompt provided");
   }
@@ -89,10 +88,14 @@ export async function getAiSound(prompt: string) {
   const filename = `audio_${sanitizedPrompt}_${timestamp}.mp3`;
   const targetFile = new File(Paths.cache, filename);
 
+  const queryParams = new URLSearchParams({
+    prompt: encodeURIComponent(prompt),
+  });
+  if (voice) queryParams.append("voice", voice);
+  if (lang) queryParams.append("lang", lang);
+
   const file = await File.downloadFileAsync(
-    `${process.env.EXPO_PUBLIC_BASE_URL}/sound?prompt=${encodeURIComponent(
-      prompt
-    )}`,
+    `${process.env.EXPO_PUBLIC_BASE_URL}/sound?${queryParams.toString()}`,
     targetFile,
     {
       headers,
@@ -134,7 +137,7 @@ export const aiExamplesQueryOptions = (prompt: string | null) =>
       }
 
       const resp = await fetch(
-        `${process.env.EXPO_PUBLIC_BASE_URL}/ask?prompt=${prompt}`,
+        `${process.env.EXPO_PUBLIC_BASE_URL}/example?word=${prompt}`,
         {
           signal,
           method: "GET",
@@ -150,32 +153,49 @@ export const aiExamplesQueryOptions = (prompt: string | null) =>
     },
   });
 
+/**
+ * Get AI explanation for text with streaming response.
+ * Uses POST /chat with mode="chat" as per API spec.
+ * @param {AbortSignal | null} [signal] - Optional abort signal
+ * @returns {Function} Function that takes text and returns streaming response
+ */
 export function getAiExplanation(signal?: AbortSignal | null) {
-  return function (prompt: string, type: ExplainRequestType) {
+  return function (prompt: string) {
     if (!prompt) {
       return Promise.resolve(new Response());
     }
     const defaultOptions = getDefaultOptions();
     const headers = {
       ...defaultOptions.headers,
+      "Content-Type": "application/json",
       Accept: "text/event-stream",
       "Cache-Control": "no-cache",
       Connection: "keep-alive",
     };
-    return fetch(
-      `${process.env.EXPO_PUBLIC_BASE_URL}/explain?prompt=${prompt}&type=${type}`,
-      {
-        signal: signal || undefined,
-        headers,
-        credentials: defaultOptions.credentials,
-      }
-    );
+    return fetch(`${process.env.EXPO_PUBLIC_BASE_URL}/chat`, {
+      method: "POST",
+      signal: signal || undefined,
+      headers,
+      credentials: defaultOptions.credentials,
+      body: JSON.stringify({
+        mode: "chat",
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
   };
 }
 
+/**
+ * Get AI chat response for conversational tutoring.
+ * @param {AbortSignal | null} [signal] - Optional abort signal
+ * @returns {Function} Function that takes messages and returns streaming response
+ */
 export function getAiChat(signal?: AbortSignal | null) {
   return function (
-    messages: { role: "user" | "assistant"; content: string }[]
+    messages: {
+      role: "user" | "assistant" | "system" | "developer";
+      content: string;
+    }[]
   ) {
     if (!messages.length) {
       return Promise.resolve(new Response());
@@ -195,33 +215,50 @@ export function getAiChat(signal?: AbortSignal | null) {
       signal: signal || undefined,
       headers,
       credentials: defaultOptions.credentials,
-      body: JSON.stringify({ messages }),
+      body: JSON.stringify({ messages, mode: "chat" }),
     });
   };
 }
 
-export async function getAiReadingPassage(
+/**
+ * Get AI-generated reading practice passage with streaming response.
+ * Uses POST /chat with mode="practice" as per API spec.
+ * @param {string} level - JLPT difficulty level (e.g., "N5", "N3", "jlpt n2")
+ * @param {AbortSignal} [signal] - Optional abort signal
+ * @returns {Promise<Response>} Streaming response with practice content
+ * @throws {Error} If level is missing or request fails
+ */
+export function getAiReadingPassage(
   level: string,
   signal?: AbortSignal
-): Promise<AiReadingPassage> {
+): Promise<Response> {
   if (!level) {
     throw new Error("No level provided");
   }
 
-  const resp = await fetch(
-    `${process.env.EXPO_PUBLIC_BASE_URL}/passage?level=${encodeURIComponent(
-      level
-    )}`,
-    {
-      signal,
-      method: "GET",
-      ...getDefaultOptions(),
-    }
-  );
+  const defaultOptions = getDefaultOptions();
+  const headers = {
+    ...defaultOptions.headers,
+    "Content-Type": "application/json",
+    Accept: "text/event-stream",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive",
+  };
 
-  if (!resp.ok) {
-    throw new Error("Network response was not ok");
-  }
-
-  return resp.json() as Promise<AiReadingPassage>;
+  return fetch(`${process.env.EXPO_PUBLIC_BASE_URL}/chat`, {
+    method: "POST",
+    signal: signal || undefined,
+    headers,
+    credentials: defaultOptions.credentials,
+    body: JSON.stringify({
+      mode: "practice",
+      lvl: level,
+      messages: [
+        {
+          role: "user",
+          content: "Generate a reading practice passage",
+        },
+      ],
+    }),
+  });
 }

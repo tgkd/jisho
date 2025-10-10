@@ -10,7 +10,6 @@ import React, { createContext, useCallback, useContext, useState } from "react";
 import {
   AiExample,
   aiExampleSchemaArray,
-  ExplainRequestType,
 } from "@/services/request";
 
 /**
@@ -28,7 +27,6 @@ export interface AIProviderValue {
   ) => Promise<void>;
   explainText: (
     text: string,
-    type: ExplainRequestType,
     onChunk: (text: string) => void,
     onComplete: (fullResponse: string, error?: string) => void
   ) => Promise<void>;
@@ -106,7 +104,6 @@ export function AppleAIProvider({ children }: { children: ReactNode }) {
   const explainText = useCallback(
     async (
       text: string,
-      type: ExplainRequestType,
       onChunk: (text: string) => void,
       onComplete: (fullResponse: string, error?: string) => void
     ) => {

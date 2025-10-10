@@ -5,19 +5,17 @@ import React, {
   useCallback,
   useContext,
   useEffect,
-  useState
+  useState,
 } from "react";
 import { useMMKVString } from "react-native-mmkv";
 
 import {
   AiExample,
-  AiReadingPassage,
-  ExplainRequestType,
   getAiChat,
   getAiExamples,
   getAiExplanation,
   getAiReadingPassage,
-  getAiSound
+  getAiSound,
 } from "@/services/request";
 import { SETTINGS_KEYS } from "@/services/storage";
 import { useAudioPlayer } from "expo-audio";
@@ -53,7 +51,6 @@ export interface UnifiedAIContextValue {
   generateExamples: (prompt: string) => Promise<AiExample[]>;
   explainText: (
     text: string,
-    type: ExplainRequestType,
     streaming: StreamingResponse,
     signal?: AbortSignal
   ) => Promise<void>;
@@ -72,7 +69,7 @@ export interface UnifiedAIContextValue {
     text: string,
     options?: { language?: string; rate?: number }
   ) => Promise<string | undefined>;
-  generateReadingPassage: (level: string) => Promise<AiReadingPassage>;
+  generateReadingPassage: (level: string) => Promise<string>;
   speakText: (text: string) => Promise<void>;
 
   // State management
@@ -156,13 +153,12 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
         }
       }
     },
-    [currentProvider, localAI, checkRemoteAccess, subscription]
+    [currentProvider, localAI, checkRemoteAccess]
   );
 
   const explainText = useCallback(
     async (
       text: string,
-      type: ExplainRequestType,
       streaming: StreamingResponse,
       signal?: AbortSignal
     ): Promise<void> => {
@@ -170,7 +166,6 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
         if (currentProvider === "local") {
           await localAI.explainText(
             text,
-            type,
             streaming.onChunk,
             (fullResponse, error) => {
               if (error) {
@@ -188,7 +183,7 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
 
           // Remote provider with streaming
           const fetchFn = getAiExplanation(signal);
-          const response = await fetchFn(text, type);
+          const response = await fetchFn(text);
 
           if (!response.ok) {
             throw new Error(`HTTP error: ${response.status}`);
@@ -432,7 +427,7 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
   );
 
   const generateReadingPassage = useCallback(
-    async (level: string): Promise<AiReadingPassage> => {
+    async (level: string): Promise<string> => {
       if (currentProvider === "local") {
         throw new Error("Reading passage generation not supported on local AI");
       }
@@ -445,8 +440,29 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
 
       setIsGenerating(true);
       try {
-        const passage = await getAiReadingPassage(level);
-        return passage;
+        const response = await getAiReadingPassage(level);
+
+        if (!response.ok) {
+          throw new Error(`HTTP error: ${response.status}`);
+        }
+
+        // Read the streaming response
+        const reader = response.body?.getReader();
+        if (!reader) {
+          return await response.text();
+        }
+
+        const decoder = new TextDecoder();
+        let fullText = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          fullText += chunk;
+        }
+
+        return fullText;
       } finally {
         setIsGenerating(false);
       }
