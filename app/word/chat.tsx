@@ -111,7 +111,7 @@ export default function ExploreScreen() {
           },
         });
       } catch (error) {
-        console.error("Search failed:", error);
+        console.error("Chat failed:", error);
         setIsGenerating(false);
       }
     },

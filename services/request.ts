@@ -54,7 +54,9 @@ export async function getAiExamples(
   }
 
   const resp = await fetch(
-    `${process.env.EXPO_PUBLIC_BASE_URL}/ask?prompt=${encodeURIComponent(prompt)}`,
+    `${process.env.EXPO_PUBLIC_BASE_URL}/ask?prompt=${encodeURIComponent(
+      prompt
+    )}`,
     {
       signal,
       method: "GET",
@@ -88,7 +90,9 @@ export async function getAiSound(prompt: string) {
   const targetFile = new File(Paths.cache, filename);
 
   const file = await File.downloadFileAsync(
-    `${process.env.EXPO_PUBLIC_BASE_URL}/sound?prompt=${encodeURIComponent(prompt)}`,
+    `${process.env.EXPO_PUBLIC_BASE_URL}/sound?prompt=${encodeURIComponent(
+      prompt
+    )}`,
     targetFile,
     {
       headers,
@@ -170,10 +174,13 @@ export function getAiExplanation(signal?: AbortSignal | null) {
 }
 
 export function getAiChat(signal?: AbortSignal | null) {
-  return function (messages: { role: "user" | "assistant"; content: string }[]) {
+  return function (
+    messages: { role: "user" | "assistant"; content: string }[]
+  ) {
     if (!messages.length) {
       return Promise.resolve(new Response());
     }
+
     const defaultOptions = getDefaultOptions();
     const headers = {
       ...defaultOptions.headers,
@@ -182,6 +189,7 @@ export function getAiChat(signal?: AbortSignal | null) {
       "Cache-Control": "no-cache",
       Connection: "keep-alive",
     };
+
     return fetch(`${process.env.EXPO_PUBLIC_BASE_URL}/chat`, {
       method: "POST",
       signal: signal || undefined,
@@ -201,7 +209,9 @@ export async function getAiReadingPassage(
   }
 
   const resp = await fetch(
-    `${process.env.EXPO_PUBLIC_BASE_URL}/passage?level=${encodeURIComponent(level)}`,
+    `${process.env.EXPO_PUBLIC_BASE_URL}/passage?level=${encodeURIComponent(
+      level
+    )}`,
     {
       signal,
       method: "GET",

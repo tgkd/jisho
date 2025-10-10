@@ -23,6 +23,7 @@ import { SETTINGS_KEYS } from "@/services/storage";
 import { useAudioPlayer } from "expo-audio";
 import { useAppleAI } from "./AppleAIProvider";
 import { useSubscription } from "./SubscriptionContext";
+import { JLPTLevel } from "@/services/database/practice-sessions";
 
 export type AIProviderType = "local" | "remote";
 
@@ -259,18 +260,9 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
             return;
           }
 
-          // Remote provider - send only last user message, backend handles history
-          const lastUserMessage = messages[messages.length - 1];
-          if (!lastUserMessage || lastUserMessage.role !== "user") {
-            streaming.onError("Invalid message format for remote provider");
-            return;
-          }
-
-          const fetchFn = getAiExplanation(signal);
-          const response = await fetchFn(
-            lastUserMessage.content,
-            ExplainRequestType.V
-          );
+          // Remote provider - send full message history to backend
+          const fetchFn = getAiChat(signal);
+          const response = await fetchFn(messages);
 
           if (!response.ok) {
             throw new Error(`HTTP error: ${response.status}`);
