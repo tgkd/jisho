@@ -7,7 +7,7 @@ export default function PracticeLayout() {
       <Stack.Screen
         name="index"
         options={{
-          title: "Practice",
+          title: "Reading Practice",
           headerLargeTitle: true,
           headerTransparent: true,
         }}
@@ -15,16 +15,16 @@ export default function PracticeLayout() {
       <Stack.Screen
         name="new"
         options={{
-          title: "New Session",
+          title: "New Reading Passage",
           headerTransparent: true,
           presentation: "modal",
         }}
       />
       <Stack.Screen
-        name="chat/[sessionId]"
+        name="[sessionId]"
         options={{
           headerBackTitle: " ",
-          title: "Practice Session",
+          title: "Reading Passage",
           headerTransparent: true,
           presentation: "modal",
         }}

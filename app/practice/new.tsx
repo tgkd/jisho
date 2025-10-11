@@ -3,13 +3,22 @@ import { ThemedText } from "@/components/ThemedText";
 import { Card } from "@/components/ui/Card";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { Colors } from "@/constants/Colors";
+import { useUnifiedAI } from "@/providers/UnifiedAIProvider";
 import {
   createSession,
+  updateSessionContent,
   type JLPTLevel
 } from "@/services/database/practice-sessions";
 import { useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
-import { Alert, ScrollView, StyleSheet, View } from "react-native";
+import { useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  View
+} from "react-native";
 
 interface LevelCardData {
   level: JLPTLevel;
@@ -54,14 +63,30 @@ const levels: LevelCardData[] = [
 export default function NewPracticeScreen() {
   const router = useRouter();
   const db = useSQLiteContext();
+  const ai = useUnifiedAI();
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [selectedLevel, setSelectedLevel] = useState<JLPTLevel | null>(null);
 
   const handleLevelPress = async (level: JLPTLevel) => {
+    if (isGenerating) return;
+
     try {
+      setIsGenerating(true);
+      setSelectedLevel(level);
+
       const sessionId = await createSession(db, level);
-      router.replace(`/practice/chat/${sessionId}` as any);
+
+      const content = await ai.generateReadingPassage(level);
+
+      await updateSessionContent(db, sessionId, content);
+
+      router.replace(`/practice/${sessionId}` as any);
     } catch (error) {
       console.error("Failed to create session:", error);
       Alert.alert("Error", "Failed to create practice session");
+    } finally {
+      setIsGenerating(false);
+      setSelectedLevel(null);
     }
   };
 
@@ -71,9 +96,9 @@ export default function NewPracticeScreen() {
       contentContainerStyle={styles.container}
     >
       <ThemedText size="xs" type="secondary" style={styles.note}>
-        Chat with an AI teacher adapted to your JLPT level. Practice
-        conversation, get explanations, and improve your Japanese skills
-        naturally.
+        Get AI-generated reading passages tailored to your JLPT level. Practice
+        reading comprehension and expand your vocabulary with content designed
+        for your learning stage.
       </ThemedText>
 
       <View style={styles.levelsContainer}>
@@ -82,8 +107,17 @@ export default function NewPracticeScreen() {
             key={item.level}
             onPress={() => handleLevelPress(item.level)}
             style={styles.levelCard}
+            disabled={isGenerating}
           >
-            <Card style={[styles.cardContent, { borderLeftColor: item.color }]}>
+            <Card
+              style={[
+                styles.cardContent,
+                { borderLeftColor: item.color },
+                isGenerating &&
+                  selectedLevel !== item.level &&
+                  styles.cardDisabled,
+              ]}
+            >
               <View style={styles.levelHeader}>
                 <View style={styles.levelTitleContainer}>
                   <ThemedText size="md" style={styles.levelTitle}>
@@ -93,11 +127,15 @@ export default function NewPracticeScreen() {
                     {item.description}
                   </ThemedText>
                 </View>
-                <IconSymbol
-                  name="chevron.right"
-                  size={20}
-                  color={Colors.light.textSecondary}
-                />
+                {isGenerating && selectedLevel === item.level ? (
+                  <ActivityIndicator size="small" color={Colors.light.tint} />
+                ) : (
+                  <IconSymbol
+                    name="chevron.right"
+                    size={20}
+                    color={Colors.light.textSecondary}
+                  />
+                )}
               </View>
             </Card>
           </HapticTab>
@@ -121,6 +159,9 @@ const styles = StyleSheet.create({
   },
   cardContent: {
     borderLeftWidth: 4,
+  },
+  cardDisabled: {
+    opacity: 0.5,
   },
   levelHeader: {
     flexDirection: "row",

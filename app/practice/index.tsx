@@ -33,7 +33,7 @@ export default function PracticeScreen() {
       setSessions(data);
     } catch (error) {
       console.error("Failed to load sessions:", error);
-      Alert.alert("Error", "Failed to load practice history");
+      Alert.alert("Error", "Failed to load reading practice history");
     } finally {
       setIsLoading(false);
     }
@@ -44,13 +44,13 @@ export default function PracticeScreen() {
   };
 
   const handleSessionPress = (sessionId: number) => {
-    router.push(`/practice/chat/${sessionId}` as any);
+    router.push(`/practice/${sessionId}` as any);
   };
 
   const handleDeleteSession = (sessionId: number) => {
     Alert.alert(
-      "Delete Session",
-      "Are you sure you want to delete this practice session? This action cannot be undone.",
+      "Delete Reading Passage",
+      "Are you sure you want to delete this reading passage? This action cannot be undone.",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -62,7 +62,7 @@ export default function PracticeScreen() {
               await loadSessions();
             } catch (error) {
               console.error("Failed to delete session:", error);
-              Alert.alert("Error", "Failed to delete session");
+              Alert.alert("Error", "Failed to delete reading passage");
             }
           },
         },
@@ -74,13 +74,14 @@ export default function PracticeScreen() {
     if (session.title) {
       return session.title;
     }
-    if (session.last_message) {
-      return (
-        session.last_message.substring(0, 50) +
-        (session.last_message.length > 50 ? "..." : "")
-      );
+    if (session.content_preview) {
+      const cleanText = session.content_preview
+        .replace(/[#*_~`\[\]()]/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+      return cleanText.substring(0, 24) + (cleanText.length > 24 ? "..." : "");
     }
-    return `${session.level} Practice Session`;
+    return `${session.level} Reading Practice`;
   };
 
   const renderListHeader = () => (
@@ -97,10 +98,10 @@ export default function PracticeScreen() {
             </View>
             <View style={styles.newChatTextContainer}>
               <ThemedText size="md" style={styles.newChatTitle}>
-                Start New Practice Session
+                New Reading Passage
               </ThemedText>
               <ThemedText size="sm" type="secondary">
-                Choose your JLPT level and begin practicing
+                Generate AI-powered reading practice for your level
               </ThemedText>
             </View>
             <IconSymbol
@@ -114,7 +115,7 @@ export default function PracticeScreen() {
 
       {sessions.length > 0 && (
         <ThemedText size="sm" type="secondary" style={styles.historyTitle}>
-          Previous Sessions
+          Reading History
         </ThemedText>
       )}
     </View>
@@ -122,19 +123,18 @@ export default function PracticeScreen() {
 
   const renderEmptyState = () => (
     <View style={styles.emptyStateContainer}>
-      {renderListHeader()}
       <Card>
         <View style={styles.emptyState}>
           <IconSymbol
-            name="bubble.left.and.bubble.right"
+            name="book.pages"
             size={48}
             color={Colors.light.textSecondary}
           />
           <ThemedText size="md" type="secondary" style={styles.emptyText}>
-            No practice sessions yet
+            No reading passages yet
           </ThemedText>
           <ThemedText size="sm" type="secondary" style={styles.emptyHint}>
-            Start your first practice session to begin learning
+            Generate your first reading passage to start practicing
           </ThemedText>
         </View>
       </Card>
@@ -149,15 +149,9 @@ export default function PracticeScreen() {
       <Card>
         <View style={styles.sessionHeader}>
           <View style={styles.sessionInfo}>
-            <View style={styles.sessionTitleRow}>
-              <Pill text={item.level} onPress={() => {}} />
-              <ThemedText size="xs" type="secondary">
-                {item.message_count} message
-                {item.message_count !== 1 ? "s" : ""}
-              </ThemedText>
-            </View>
+            <Pill text={item.level} onPress={() => {}} />
 
-            <ThemedText size="md" style={styles.sessionTitle} numberOfLines={1}>
+            <ThemedText size="md" style={styles.sessionTitle} numberOfLines={2}>
               {getSessionTitle(item)}
             </ThemedText>
           </View>
@@ -281,7 +275,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   sessionInfo: {
-    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
   },
   sessionTitleRow: {

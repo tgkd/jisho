@@ -1,7 +1,7 @@
 import {
   DarkTheme,
   DefaultTheme,
-  ThemeProvider,
+  ThemeProvider
 } from "@react-navigation/native";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { setAudioModeAsync } from "expo-audio";
@@ -15,7 +15,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import {
   configureReanimatedLogger,
-  ReanimatedLogLevel,
+  ReanimatedLogLevel
 } from "react-native-reanimated";
 import { AppleAIProvider } from "../providers/AppleAIProvider";
 import { UnifiedAIProvider } from "../providers/UnifiedAIProvider";
@@ -24,10 +24,10 @@ import { UnifiedAIProvider } from "../providers/UnifiedAIProvider";
 
 import { Loader } from "@/components/Loader";
 import { useColorScheme } from "@/hooks/useColorScheme";
+import { useSubscription } from "@/providers/SubscriptionContext";
 import { SubscriptionProvider } from "@/providers/SubscriptionProvider";
 import { migrateDbIfNeeded } from "@/services/database";
 import { queryClient } from "@/services/queryClient";
-import { useSubscription } from "@/providers/SubscriptionContext";
 
 const dbname = "db_20250927_130743.db";
 const DATABASE_PATH = "../assets/db/" + dbname;
@@ -102,7 +102,7 @@ function Router() {
 
       <NativeTabs.Trigger name="practice" hidden={!sub.isPremium}>
         <Icon sf="book" drawable="custom_android_drawable" />
-        <Label>Practice</Label>
+        <Label>Read</Label>
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="history">

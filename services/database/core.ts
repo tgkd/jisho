@@ -1,7 +1,7 @@
 import { SQLiteDatabase } from "expo-sqlite";
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
-  const DATABASE_VERSION = 17;
+  const DATABASE_VERSION = 18;
 
   try {
     // Test if database is corrupted by trying a simple query
@@ -427,6 +427,28 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
         console.log("✅ History table successfully migrated to include kanji readings");
       } catch (error) {
         console.error("Error migrating to version 17:", error);
+        throw error;
+      }
+    }
+
+    if (currentDbVersion < 18) {
+      try {
+        await db.execAsync(`
+          ALTER TABLE practice_sessions ADD COLUMN content TEXT;
+        `);
+        console.log("✅ Added content column to practice_sessions table");
+
+        await db.execAsync(`
+          DROP TABLE IF EXISTS practice_messages;
+        `);
+        console.log("✅ Dropped practice_messages table");
+
+        await db.execAsync(`PRAGMA user_version = 18`);
+        currentDbVersion = 18;
+
+        console.log("✅ Practice sessions simplified successfully");
+      } catch (error) {
+        console.error("Error migrating to version 18:", error);
         throw error;
       }
     }
