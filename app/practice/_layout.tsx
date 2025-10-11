@@ -1,27 +1,34 @@
 import { Stack } from "expo-router";
 import * as React from "react";
 
-export default function SettingsLayout() {
+export default function PracticeLayout() {
   return (
     <Stack>
       <Stack.Screen
         name="index"
         options={{
-          title: "Settings",
+          title: "Practice",
           headerLargeTitle: true,
           headerTransparent: true,
         }}
       />
       <Stack.Screen
-        name="about"
+        name="new"
         options={{
-          title: "About",
-          presentation: "modal",
+          title: "New Session",
           headerTransparent: true,
-          headerLargeTitle: true,
+          presentation: "modal",
         }}
       />
-
+      <Stack.Screen
+        name="chat/[sessionId]"
+        options={{
+          headerBackTitle: " ",
+          title: "Practice Session",
+          headerTransparent: true,
+          presentation: "modal",
+        }}
+      />
     </Stack>
   );
 }

@@ -28,9 +28,12 @@ export async function addKanjiToHistory(
     await db.runAsync("DELETE FROM history WHERE entry_type = 'kanji' AND kanji_id = ?", [kanji.id]);
 
     const meaning = kanji.meanings ? kanji.meanings.join(", ") : "";
+    const onReadings = kanji.onReadings ? JSON.stringify(kanji.onReadings) : null;
+    const kunReadings = kanji.kunReadings ? JSON.stringify(kanji.kunReadings) : null;
+    
     await db.runAsync(
-      "INSERT INTO history (entry_type, kanji_id, kanji_character, kanji_meaning, created_at) VALUES (?, ?, ?, ?, ?)",
-      ['kanji', kanji.id, kanji.character, meaning, new Date().toISOString()]
+      "INSERT INTO history (entry_type, kanji_id, kanji_character, kanji_meaning, kanji_on_readings, kanji_kun_readings, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      ['kanji', kanji.id, kanji.character, meaning, onReadings, kunReadings, new Date().toISOString()]
     );
   } catch (error) {
     console.error("Failed to add kanji to history:", error);
@@ -57,6 +60,8 @@ export async function getHistory(
       h.kanji_id,
       h.kanji_character,
       h.kanji_meaning,
+      h.kanji_on_readings,
+      h.kanji_kun_readings,
       w.word,
       w.reading,
       (SELECT meaning FROM meanings WHERE word_id = w.id LIMIT 1) as meaning
@@ -70,6 +75,9 @@ export async function getHistory(
 
   return result.map((e): HistoryEntry => {
     if (e.entry_type === 'kanji') {
+      const onReadings = e.kanji_on_readings ? JSON.parse(e.kanji_on_readings) : [];
+      const kunReadings = e.kanji_kun_readings ? JSON.parse(e.kanji_kun_readings) : [];
+      
       return {
         id: e.history_id || e.id,
         entryType: 'kanji',
@@ -77,6 +85,8 @@ export async function getHistory(
         kanjiId: e.kanji_id!,
         character: e.kanji_character!,
         meaning: e.kanji_meaning || "",
+        onReadings,
+        kunReadings,
       };
     } else {
       return {

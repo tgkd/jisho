@@ -1,11 +1,7 @@
 import { memo, useRef, useState } from "react";
-import {
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  View
-} from "react-native";
+import { StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 
 import { HapticTab } from "@/components/HapticTab";
 import { useThemeColor } from "@/hooks/useThemeColor";
@@ -15,9 +11,11 @@ const ChatFooterView = memo(
   ({
     handleSubmit,
     loading,
+    offsetBottom,
   }: {
     handleSubmit: (value: string) => Promise<void>;
     loading: boolean;
+    offsetBottom?: number;
   }) => {
     const instets = useSafeAreaInsets();
     const inputRef = useRef<TextInput>(null);
@@ -34,7 +32,12 @@ const ChatFooterView = memo(
     };
 
     return (
-      <View style={[styles.container, { paddingBottom: instets.bottom }]}>
+      <View
+        style={[
+          styles.container,
+          { paddingBottom: offsetBottom ?? instets.bottom },
+        ]}
+      >
         <View style={styles.inputRow}>
           <TouchableOpacity
             style={[styles.inputBubble, { backgroundColor: bg }]}

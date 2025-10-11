@@ -1,0 +1,142 @@
+import { HapticTab } from "@/components/HapticTab";
+import { ThemedText } from "@/components/ThemedText";
+import { Card } from "@/components/ui/Card";
+import { IconSymbol } from "@/components/ui/IconSymbol";
+import { Colors } from "@/constants/Colors";
+import {
+  createSession,
+  type JLPTLevel
+} from "@/services/database/practice-sessions";
+import { useRouter } from "expo-router";
+import { useSQLiteContext } from "expo-sqlite";
+import { Alert, ScrollView, StyleSheet, View } from "react-native";
+
+interface LevelCardData {
+  level: JLPTLevel;
+  title: string;
+  description: string;
+  color: string;
+}
+
+const levels: LevelCardData[] = [
+  {
+    level: "N5",
+    title: "JLPT N5",
+    description: "Basic level - everyday expressions and simple phrases",
+    color: "#4CAF50",
+  },
+  {
+    level: "N4",
+    title: "JLPT N4",
+    description: "Elementary level - basic conversations and texts",
+    color: "#2196F3",
+  },
+  {
+    level: "N3",
+    title: "JLPT N3",
+    description: "Intermediate level - everyday situations",
+    color: "#FF9800",
+  },
+  {
+    level: "N2",
+    title: "JLPT N2",
+    description: "Advanced level - newspapers and general topics",
+    color: "#F44336",
+  },
+  {
+    level: "N1",
+    title: "JLPT N1",
+    description: "Expert level - complex texts and abstract topics",
+    color: "#9C27B0",
+  },
+];
+
+export default function NewPracticeScreen() {
+  const router = useRouter();
+  const db = useSQLiteContext();
+
+  const handleLevelPress = async (level: JLPTLevel) => {
+    try {
+      const sessionId = await createSession(db, level);
+      router.replace(`/practice/chat/${sessionId}` as any);
+    } catch (error) {
+      console.error("Failed to create session:", error);
+      Alert.alert("Error", "Failed to create practice session");
+    }
+  };
+
+  return (
+    <ScrollView
+      contentInsetAdjustmentBehavior="automatic"
+      contentContainerStyle={styles.container}
+    >
+      <ThemedText size="xs" type="secondary" style={styles.note}>
+        Chat with an AI teacher adapted to your JLPT level. Practice
+        conversation, get explanations, and improve your Japanese skills
+        naturally.
+      </ThemedText>
+
+      <View style={styles.levelsContainer}>
+        {levels.map((item) => (
+          <HapticTab
+            key={item.level}
+            onPress={() => handleLevelPress(item.level)}
+            style={styles.levelCard}
+          >
+            <Card style={[styles.cardContent, { borderLeftColor: item.color }]}>
+              <View style={styles.levelHeader}>
+                <View style={styles.levelTitleContainer}>
+                  <ThemedText size="md" style={styles.levelTitle}>
+                    {item.title}
+                  </ThemedText>
+                  <ThemedText size="sm" type="secondary">
+                    {item.description}
+                  </ThemedText>
+                </View>
+                <IconSymbol
+                  name="chevron.right"
+                  size={20}
+                  color={Colors.light.textSecondary}
+                />
+              </View>
+            </Card>
+          </HapticTab>
+        ))}
+      </View>
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    paddingHorizontal: 16,
+    paddingVertical: 24,
+    gap: 24,
+  },
+  levelsContainer: {
+    gap: 12,
+  },
+  levelCard: {
+    borderRadius: 16,
+  },
+  cardContent: {
+    borderLeftWidth: 4,
+  },
+  levelHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  levelTitleContainer: {
+    flex: 1,
+    gap: 4,
+  },
+  levelTitle: {
+    fontWeight: "600",
+  },
+  note: {
+    textAlign: "center",
+    lineHeight: 18,
+  },
+});

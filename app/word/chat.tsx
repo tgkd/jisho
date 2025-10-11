@@ -1,19 +1,20 @@
 import { FlashList, FlashListRef } from "@shopify/flash-list";
 import * as Clipboard from "expo-clipboard";
-import { Stack } from "expo-router";
-import { useCallback, useRef, useState } from "react";
+import { Stack, useLocalSearchParams } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import Markdown from "react-native-markdown-display";
 
 import { ChatFooterView } from "@/components/ChatFooter";
-import { HapticButton } from "@/components/HapticTab";
 import { PopupMenu, PopupMenuItem } from "@/components/PopupMenu";
 import { ThemedText } from "@/components/ThemedText";
 import { Card } from "@/components/ui/Card";
 import { Colors } from "@/constants/Colors";
 import { useMdStyles } from "@/hooks/useMdStyles";
+import { useThemeColor } from "@/hooks/useThemeColor";
 import { useUnifiedAI } from "@/providers/UnifiedAIProvider";
+import { Button, Host } from "@expo/ui/swift-ui";
 
 interface Message {
   role: "user" | "assistant";
@@ -23,9 +24,17 @@ interface Message {
 export default function ExploreScreen() {
   const markdownStyles = useMdStyles();
   const ai = useUnifiedAI();
+  const params = useLocalSearchParams<{
+    word?: string;
+    reading?: string;
+    meanings?: string;
+    initialPrompt?: string;
+  }>();
   const scrollRef = useRef<FlashListRef<Message>>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [initialized, setInitialized] = useState<boolean>(false);
+  const defaultColor = useThemeColor({}, "text");
 
   const copyMessage = useCallback(async (content: string) => {
     await Clipboard.setStringAsync(content);
@@ -42,7 +51,6 @@ export default function ExploreScreen() {
       try {
         setIsGenerating(true);
 
-        // Add user message and placeholder assistant message to UI
         const userMessage: Message = { role: "user", content: text };
         const placeholderAssistant: Message = {
           role: "assistant",
@@ -56,7 +64,6 @@ export default function ExploreScreen() {
         ];
         setMessages(updatedUIMessages);
 
-        // Send only messages up to the user message (no empty assistant message)
         const conversationMessages = [...messages, userMessage];
         const assistantMessageIndex = updatedUIMessages.length - 1;
         let accumulatedContent = "";
@@ -104,12 +111,19 @@ export default function ExploreScreen() {
           },
         });
       } catch (error) {
-        console.error("Search failed:", error);
+        console.error("Chat failed:", error);
         setIsGenerating(false);
       }
     },
     [ai, messages, isGenerating, scrollRef]
   );
+
+  useEffect(() => {
+    if (!initialized && params.word && params.initialPrompt) {
+      setInitialized(true);
+      handleSubmit(params.initialPrompt);
+    }
+  }, [initialized, params, handleSubmit]);
 
   const renderItem = useCallback(
     ({ item }: { item: Message }) => {
@@ -161,13 +175,13 @@ export default function ExploreScreen() {
       !messages.length ? (
         <View style={styles.emptyMsg}>
           <ThemedText textAlign="center" type="secondary">
-            {
-              "All messages are temporary and will disappear after closing the chat."
-            }
+            {params.word
+              ? `Ask me anything about ${params.word}!`
+              : "All messages are temporary and will disappear after closing the chat."}
           </ThemedText>
         </View>
       ) : null,
-    [messages]
+    [messages, params.word]
   );
 
   const clearMessages = () => {
@@ -175,6 +189,7 @@ export default function ExploreScreen() {
       return;
     }
     setMessages([]);
+    setInitialized(false);
   };
 
   return (
@@ -182,14 +197,19 @@ export default function ExploreScreen() {
       <Stack.Screen
         options={{
           headerTitle: ({ children }) => (
-            <ThemedText type="title" style={{ flex: 1 }}>{children}</ThemedText>
+            <ThemedText type="title" style={{ flex: 1 }}>
+              {children}
+            </ThemedText>
           ),
           headerRight: () => (
-            <HapticButton
-              systemImage={"trash"}
-              onPress={clearMessages}
-              disabled={isGenerating || messages.length === 0}
-            />
+            <Host style={{ width: 35, height: 35 }}>
+              <Button
+                color={defaultColor}
+                systemImage={"trash"}
+                onPress={clearMessages}
+                disabled={isGenerating || messages.length === 0}
+              />
+            </Host>
           ),
         }}
       />
@@ -215,9 +235,6 @@ export default function ExploreScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
   list: {
     height: "100%",
   },

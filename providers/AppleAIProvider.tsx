@@ -10,7 +10,6 @@ import React, { createContext, useCallback, useContext, useState } from "react";
 import {
   AiExample,
   aiExampleSchemaArray,
-  ExplainRequestType,
 } from "@/services/request";
 
 /**
@@ -28,7 +27,6 @@ export interface AIProviderValue {
   ) => Promise<void>;
   explainText: (
     text: string,
-    type: ExplainRequestType,
     onChunk: (text: string) => void,
     onComplete: (fullResponse: string, error?: string) => void
   ) => Promise<void>;
@@ -106,13 +104,13 @@ export function AppleAIProvider({ children }: { children: ReactNode }) {
   const explainText = useCallback(
     async (
       text: string,
-      type: ExplainRequestType,
       onChunk: (text: string) => void,
       onComplete: (fullResponse: string, error?: string) => void
     ) => {
       if (!isReady) {
-        console.warn("Apple AI not ready or not enabled for explaining text.");
-        onComplete("", "Apple AI not available");
+        console.warn("⚠️ [AppleAI] Apple AI not ready or not enabled for explaining text.");
+        const fallbackMessage = "Apple Intelligence is not available. Please enable it in iOS Settings or switch to the remote AI provider.";
+        onComplete(fallbackMessage);
         return;
       }
 
@@ -139,12 +137,20 @@ export function AppleAIProvider({ children }: { children: ReactNode }) {
           setCurrentResponse(fullResponse);
         }
 
+        // Handle empty responses (e.g., on simulator where Apple Intelligence doesn't work)
+        if (fullResponse.length === 0) {
+          const fallbackMessage = "Apple Intelligence is not available on the simulator. Please test on a physical device with Apple Intelligence enabled, or switch to the remote AI provider in settings.";
+          console.warn("⚠️ [AppleAI] Empty response - likely running on simulator");
+          onComplete(fallbackMessage);
+          return;
+        }
+
         onComplete(fullResponse);
       } catch (error) {
         if (error instanceof Error && error.name === "AbortError") {
-          console.log("Text explanation was aborted");
+          console.log("⚠️ [AppleAI] Text explanation was aborted");
         } else {
-          console.error("Error explaining text:", error);
+          console.error("🔴 [AppleAI] Error explaining text:", error);
           const errorMessage =
             error instanceof Error ? error.message : "Unknown error";
           setError(errorMessage);
@@ -166,8 +172,9 @@ export function AppleAIProvider({ children }: { children: ReactNode }) {
       onComplete: (fullResponse: string, error?: string) => void
     ) => {
       if (!isReady) {
-        console.warn("Apple AI not ready or not enabled for chat.");
-        onComplete("", "Apple AI not available");
+        console.warn("⚠️ [AppleAI] Apple AI not ready or not enabled for chat.");
+        const fallbackMessage = "Apple Intelligence is not available. Please enable it in iOS Settings or switch to the remote AI provider.";
+        onComplete(fallbackMessage);
         return;
       }
 
@@ -180,8 +187,10 @@ export function AppleAIProvider({ children }: { children: ReactNode }) {
       setAbortController(controller);
 
       try {
-        const { textStream } = await streamText({
-          model: apple(),
+        const appleModel = apple();
+
+        const result = await streamText({
+          model: appleModel,
           messages: [
             { role: "system", content: JP_EXPLANATION_SYSTEM_PROMPT },
             ...messages,
@@ -191,19 +200,30 @@ export function AppleAIProvider({ children }: { children: ReactNode }) {
           temperature: 0.1,
         });
 
+        const { textStream } = result;
+
         let fullResponse = "";
+
         for await (const chunk of textStream) {
           fullResponse += chunk;
           onChunk(chunk);
           setCurrentResponse(fullResponse);
         }
 
+        // Handle empty responses (e.g., on simulator where Apple Intelligence doesn't work)
+        if (fullResponse.length === 0) {
+          const fallbackMessage = "Apple Intelligence is not available on the simulator. Please test on a physical device with Apple Intelligence enabled, or switch to the remote AI provider in settings.";
+          console.warn("⚠️ [AppleAI] Empty response - likely running on simulator");
+          onComplete(fallbackMessage);
+          return;
+        }
+
         onComplete(fullResponse);
       } catch (error) {
         if (error instanceof Error && error.name === "AbortError") {
-          console.log("Chat was aborted");
+          console.log("⚠️ [AppleAI] Chat was aborted");
         } else {
-          console.error("Error in chat:", error);
+          console.error("🔴 [AppleAI] Error in chat:", error);
           const errorMessage =
             error instanceof Error ? error.message : "Unknown error";
           setError(errorMessage);

@@ -1,7 +1,7 @@
 import { SQLiteDatabase } from "expo-sqlite";
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
-  const DATABASE_VERSION = 12;
+  const DATABASE_VERSION = 17;
 
   try {
     // Test if database is corrupted by trying a simple query
@@ -285,6 +285,148 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
         console.log("✅ History table successfully migrated to support kanji entries");
       } catch (error) {
         console.error("Error migrating to version 12:", error);
+        throw error;
+      }
+    }
+
+    if (currentDbVersion < 13) {
+      try {
+        await db.execAsync(`
+          CREATE TABLE IF NOT EXISTS practice_passages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            level TEXT NOT NULL,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            translation TEXT,
+            created_at INTEGER NOT NULL,
+            UNIQUE(level, title)
+          );
+        `);
+
+        await db.execAsync(`
+          CREATE INDEX IF NOT EXISTS idx_practice_passages_level ON practice_passages(level);
+          CREATE INDEX IF NOT EXISTS idx_practice_passages_created_at ON practice_passages(created_at);
+        `);
+
+        await db.execAsync(`PRAGMA user_version = 13`);
+        currentDbVersion = 13;
+
+        console.log("✅ Practice passages table created successfully");
+      } catch (error) {
+        console.error("Error migrating to version 13:", error);
+        throw error;
+      }
+    }
+
+    if (currentDbVersion < 14) {
+      try {
+        await db.execAsync(`
+          CREATE TABLE IF NOT EXISTS audio_cache (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            text TEXT NOT NULL UNIQUE,
+            audio_data BLOB NOT NULL,
+            created_at INTEGER NOT NULL
+          );
+        `);
+
+        await db.execAsync(`
+          CREATE INDEX IF NOT EXISTS idx_audio_cache_text ON audio_cache(text);
+        `);
+
+        await db.execAsync(`PRAGMA user_version = 14`);
+        currentDbVersion = 14;
+
+        console.log("✅ Audio cache table created successfully");
+      } catch (error) {
+        console.error("Error migrating to version 14:", error);
+        throw error;
+      }
+    }
+
+    if (currentDbVersion < 15) {
+      try {
+        await db.execAsync(`
+          CREATE TABLE IF NOT EXISTS practice_sessions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            level TEXT NOT NULL,
+            title TEXT,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL
+          );
+        `);
+
+        await db.execAsync(`
+          CREATE INDEX IF NOT EXISTS idx_practice_sessions_level ON practice_sessions(level);
+          CREATE INDEX IF NOT EXISTS idx_practice_sessions_updated_at ON practice_sessions(updated_at);
+        `);
+
+        await db.execAsync(`PRAGMA user_version = 15`);
+        currentDbVersion = 15;
+
+        console.log("✅ Practice sessions table created successfully");
+      } catch (error) {
+        console.error("Error migrating to version 15:", error);
+        throw error;
+      }
+    }
+
+    if (currentDbVersion < 16) {
+      try {
+        await db.execAsync(`
+          CREATE TABLE IF NOT EXISTS practice_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id INTEGER NOT NULL,
+            role TEXT NOT NULL,
+            content TEXT NOT NULL,
+            timestamp INTEGER NOT NULL,
+            FOREIGN KEY (session_id) REFERENCES practice_sessions(id) ON DELETE CASCADE
+          );
+        `);
+
+        await db.execAsync(`
+          CREATE INDEX IF NOT EXISTS idx_practice_messages_session ON practice_messages(session_id);
+        `);
+
+        await db.execAsync(`PRAGMA user_version = 16`);
+        currentDbVersion = 16;
+
+        console.log("✅ Practice messages table created successfully");
+      } catch (error) {
+        console.error("Error migrating to version 16:", error);
+        throw error;
+      }
+    }
+
+    if (currentDbVersion < 17) {
+      try {
+        // Add kanji readings columns to history table
+        const historyColumns = await db.getAllAsync<{ name: string }>(
+          "PRAGMA table_info(history)"
+        );
+
+        const hasOnReadings = historyColumns?.some(
+          (column) => column.name === "kanji_on_readings"
+        );
+        const hasKunReadings = historyColumns?.some(
+          (column) => column.name === "kanji_kun_readings"
+        );
+
+        if (!hasOnReadings) {
+          await db.execAsync(`ALTER TABLE history ADD COLUMN kanji_on_readings TEXT`);
+          console.log("✅ Added kanji_on_readings column to history table");
+        }
+
+        if (!hasKunReadings) {
+          await db.execAsync(`ALTER TABLE history ADD COLUMN kanji_kun_readings TEXT`);
+          console.log("✅ Added kanji_kun_readings column to history table");
+        }
+
+        await db.execAsync(`PRAGMA user_version = 17`);
+        currentDbVersion = 17;
+
+        console.log("✅ History table successfully migrated to include kanji readings");
+      } catch (error) {
+        console.error("Error migrating to version 17:", error);
         throw error;
       }
     }

@@ -1,13 +1,14 @@
-import { apple } from "@react-native-ai/apple";
 import { Stack, useRouter } from "expo-router";
 import * as React from "react";
 
-import { HapticButton } from "@/components/HapticTab";
+import { useThemeColor } from "@/hooks/useThemeColor";
 import { useUnifiedAI } from "@/providers/UnifiedAIProvider";
+import { Button, Host } from "@expo/ui/swift-ui";
 
 export default function WordLayout() {
   const router = useRouter();
   const ai = useUnifiedAI();
+  const defaultColor = useThemeColor({}, "text");
 
   return (
     <Stack>
@@ -18,10 +19,13 @@ export default function WordLayout() {
           headerTransparent: true,
           headerLeft: () =>
             ai.isAvailable ? (
-              <HapticButton
-                systemImage={"message"}
-                onPress={() => router.push({ pathname: "/word/chat" })}
-              />
+              <Host style={{ width: 35, height: 35 }}>
+                <Button
+                  color={defaultColor}
+                  systemImage="message"
+                  onPress={() => router.navigate("/word/chat")}
+                />
+              </Host>
             ) : undefined,
         }}
       />

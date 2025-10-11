@@ -24,10 +24,12 @@ import { UnifiedAIProvider } from "../providers/UnifiedAIProvider";
 
 import { Loader } from "@/components/Loader";
 import { useColorScheme } from "@/hooks/useColorScheme";
+import { SubscriptionProvider } from "@/providers/SubscriptionProvider";
 import { migrateDbIfNeeded } from "@/services/database";
 import { queryClient } from "@/services/queryClient";
+import { useSubscription } from "@/providers/SubscriptionContext";
 
-const dbname = "db_20250927_130743.db"
+const dbname = "db_20250927_130743.db";
 const DATABASE_PATH = "../assets/db/" + dbname;
 
 SplashScreen.preventAutoHideAsync();
@@ -60,48 +62,59 @@ export default function RootLayout() {
   return (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
       <QueryClientProvider client={queryClient}>
-        <AppleAIProvider>
-          <UnifiedAIProvider>
-            <GestureHandlerRootView style={styles.container}>
-              <Suspense fallback={<Loader />}>
-                <SQLiteProvider
-                  databaseName={dbname}
-                  assetSource={{
-                    assetId: require(DATABASE_PATH),
-                  }}
-                  onInit={migrateDbIfNeeded}
-                  useSuspense
-                >
-                  <KeyboardProvider>
-                    <NativeTabs minimizeBehavior="automatic">
-                      <NativeTabs.Trigger name="word" role="search">
-                        <Icon
-                          sf="magnifyingglass"
-                          drawable="custom_android_drawable"
-                        />
-                        <Label>Search</Label>
-                      </NativeTabs.Trigger>
+        <SubscriptionProvider>
+          <AppleAIProvider>
+            <UnifiedAIProvider>
+              <GestureHandlerRootView style={styles.container}>
+                <Suspense fallback={<Loader />}>
+                  <SQLiteProvider
+                    databaseName={dbname}
+                    assetSource={{
+                      assetId: require(DATABASE_PATH),
+                    }}
+                    onInit={migrateDbIfNeeded}
+                    useSuspense
+                  >
+                    <KeyboardProvider>
+                      <Router />
+                    </KeyboardProvider>
 
-                      <NativeTabs.Trigger name="history">
-                        <Icon sf="clock" drawable="custom_android_drawable" />
-                        <Label>History</Label>
-                      </NativeTabs.Trigger>
-
-                      <NativeTabs.Trigger name="settings">
-                        <Icon sf="gear" drawable="custom_android_drawable" />
-                        <Label>Settings</Label>
-                      </NativeTabs.Trigger>
-                    </NativeTabs>
-                  </KeyboardProvider>
-
-                  <StatusBar style="auto" />
-                </SQLiteProvider>
-              </Suspense>
-            </GestureHandlerRootView>
-          </UnifiedAIProvider>
-        </AppleAIProvider>
+                    <StatusBar style="auto" />
+                  </SQLiteProvider>
+                </Suspense>
+              </GestureHandlerRootView>
+            </UnifiedAIProvider>
+          </AppleAIProvider>
+        </SubscriptionProvider>
       </QueryClientProvider>
     </ThemeProvider>
+  );
+}
+
+function Router() {
+  const sub = useSubscription();
+  return (
+    <NativeTabs minimizeBehavior="onScrollDown">
+      <NativeTabs.Trigger name="word" role="search">
+        <Icon sf="magnifyingglass" drawable="custom_android_drawable" />
+        <Label>Search</Label>
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="practice" hidden={!sub.isPremium}>
+        <Icon sf="book" drawable="custom_android_drawable" />
+        <Label>Practice</Label>
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="history">
+        <Icon sf="clock" drawable="custom_android_drawable" />
+        <Label>History</Label>
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="settings">
+        <Icon sf="gear" drawable="custom_android_drawable" />
+        <Label>Settings</Label>
+      </NativeTabs.Trigger>
+    </NativeTabs>
   );
 }
 

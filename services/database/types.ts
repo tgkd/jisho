@@ -56,6 +56,8 @@ export type DBHistoryEntry = {
   kanji_id: number | null;
   kanji_character: string | null;
   kanji_meaning: string | null;
+  kanji_on_readings: string | null;
+  kanji_kun_readings: string | null;
 };
 
 export type BaseHistoryEntry = {
@@ -76,6 +78,8 @@ export type KanjiHistoryEntry = BaseHistoryEntry & {
   kanjiId: number;
   character: string;
   meaning: string;
+  onReadings: string[];
+  kunReadings: string[];
 };
 
 export type HistoryEntry = WordHistoryEntry | KanjiHistoryEntry;
