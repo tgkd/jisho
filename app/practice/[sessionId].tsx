@@ -1,13 +1,24 @@
+import { HapticTab } from "@/components/HapticTab";
 import { ThemedText } from "@/components/ThemedText";
+import { IconSymbol } from "@/components/ui/IconSymbol";
 import { useMdStyles } from "@/hooks/useMdStyles";
+import { useThemeColor } from "@/hooks/useThemeColor";
+import { useUnifiedAI } from "@/providers/UnifiedAIProvider";
 import {
   getSession,
-  type PracticeSession
+  type PracticeSession,
 } from "@/services/database/practice-sessions";
+import { createChatPrompt, extractJapaneseFromPassage } from "@/services/parse";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  View,
+} from "react-native";
 import Markdown from "react-native-markdown-display";
 
 export default function PracticeSessionScreen() {
@@ -15,6 +26,8 @@ export default function PracticeSessionScreen() {
   const router = useRouter();
   const db = useSQLiteContext();
   const markdownStyles = useMdStyles();
+  const ai = useUnifiedAI();
+  const tintColor = useThemeColor({}, "tint");
 
   const [session, setSession] = useState<PracticeSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -38,6 +51,51 @@ export default function PracticeSessionScreen() {
       setIsLoading(false);
     }
   }, [db, sessionId, router]);
+
+  const handleReadAloud = async () => {
+    if (!session?.content) return;
+
+    if (ai.isPlayingSpeech) {
+      ai.stopSpeech();
+      return;
+    }
+
+    try {
+      const japaneseText = extractJapaneseFromPassage(session.content);
+
+      if (!japaneseText) {
+        Alert.alert("Error", "No Japanese text found in this passage");
+        return;
+      }
+
+      await ai.generateSpeech(japaneseText);
+    } catch (error) {
+      console.error("Speech generation failed:", error);
+      Alert.alert("Error", "Failed to read aloud");
+    }
+  };
+
+  const handleStartChat = () => {
+    if (!session?.content) return;
+
+    const japaneseText = extractJapaneseFromPassage(session.content);
+
+    if (!japaneseText) {
+      Alert.alert("Error", "No Japanese text found in this passage");
+      return;
+    }
+
+    const initialPrompt = createChatPrompt("passage", {
+      text: japaneseText,
+    });
+
+    router.push({
+      pathname: "/word/chat",
+      params: {
+        initialPrompt,
+      },
+    });
+  };
 
   useEffect(() => {
     loadSessionData();
@@ -73,9 +131,34 @@ export default function PracticeSessionScreen() {
       style={styles.container}
       contentContainerStyle={styles.contentContainer}
     >
-      <Markdown style={markdownStyles}>
-        {session.content}
-      </Markdown>
+      <View style={styles.actionsContainer}>
+        <HapticTab
+          onPress={ai.isPlayingSpeech ? ai.stopSpeech : handleReadAloud}
+          style={styles.actionButton}
+        >
+          <View style={styles.actionContent}>
+            <IconSymbol
+              name={ai.isPlayingSpeech ? "stop.circle" : "play.circle"}
+              size={24}
+              color={tintColor}
+            />
+            <ThemedText style={styles.actionText}>{"Audio"}</ThemedText>
+          </View>
+        </HapticTab>
+
+        <HapticTab onPress={handleStartChat} style={styles.actionButton}>
+          <View style={styles.actionContent}>
+            <IconSymbol
+              name="bubble.left.and.text.bubble.right"
+              size={24}
+              color={tintColor}
+            />
+            <ThemedText style={styles.actionText}>Start Chat</ThemedText>
+          </View>
+        </HapticTab>
+      </View>
+
+      <Markdown style={markdownStyles}>{session.content}</Markdown>
     </ScrollView>
   );
 }
@@ -92,5 +175,26 @@ const styles = StyleSheet.create({
   contentContainer: {
     paddingHorizontal: 16,
     paddingVertical: 24,
+  },
+  actionsContainer: {
+    flexDirection: "row",
+    marginBottom: 24,
+    gap: 12,
+  },
+  actionButton: {
+    flex: 1,
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  actionContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    paddingVertical: 16,
+  },
+  actionText: {
+    fontSize: 16,
+    fontWeight: "600",
   },
 });

@@ -119,7 +119,7 @@ export default function ExploreScreen() {
   );
 
   useEffect(() => {
-    if (!initialized && params.word && params.initialPrompt) {
+    if (!initialized && params.initialPrompt) {
       setInitialized(true);
       handleSubmit(params.initialPrompt);
     }

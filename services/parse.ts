@@ -5,7 +5,7 @@ import {
   isKanji,
   isKatakana,
   stripOkurigana,
-  tokenize,
+  tokenize
 } from "wanakana";
 import type { FuriganaSegment } from "./database/types";
 import segmenter from "./tsegmenter";
@@ -540,6 +540,89 @@ export function findKanji(text: string): string[] {
  */
 export function cleanupJpReadings(text: string): string {
   if (!text) return "";
-  // Remove content in square brackets (furigana readings)
   return text.replace(/\[[^\]]*\]/g, "");
+}
+
+export type ChatPromptType = "word" | "passage";
+
+interface WordPromptParams {
+  word: string;
+  reading: string;
+  kanji?: string;
+}
+
+interface PassagePromptParams {
+  text: string;
+}
+
+export function createChatPrompt(
+  type: ChatPromptType,
+  params: WordPromptParams | PassagePromptParams
+): string {
+  if (type === "word") {
+    const { reading, kanji } = params as WordPromptParams;
+    const displayWord = kanji || reading;
+    return `Tell me about the Japanese word ${displayWord} (${reading}). What does it mean and how is it used?`;
+  }
+
+  if (type === "passage") {
+    const { text } = params as PassagePromptParams;
+    return `Help me understand this Japanese text:\n\n${text}`;
+  }
+
+  return "";
+}
+
+export function extractJapaneseFromPassage(markdown: string): string {
+  if (!markdown) return "";
+
+  const lines = markdown.split("\n");
+  const japaneseLines: string[] = [];
+  let inJapaneseSection = false;
+
+  for (const line of lines) {
+    const trimmedLine = line.trim();
+
+    if (
+      /\[日本語\]|Japanese|nihongo/i.test(trimmedLine) &&
+      !isJapanese(trimmedLine)
+    ) {
+      inJapaneseSection = true;
+      continue;
+    }
+
+    if (
+      /\[English\]|\[Vocabulary\]|Vocabulary|Translation/i.test(trimmedLine) &&
+      !isJapanese(trimmedLine)
+    ) {
+      inJapaneseSection = false;
+      continue;
+    }
+
+    if (inJapaneseSection && trimmedLine) {
+      const hasJapanese = Array.from(trimmedLine).some((char) =>
+        isJapanese(char)
+      );
+      if (hasJapanese) {
+        japaneseLines.push(cleanupMdStr(trimmedLine));
+      }
+    }
+  }
+
+  if (japaneseLines.length > 0) {
+    return japaneseLines.join(" ");
+  }
+
+  const allJapaneseText = lines
+    .filter((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) return false;
+      const japChars = Array.from(trimmed).filter((char) => isJapanese(char));
+      return japChars.length > trimmed.length * 0.3;
+    })
+    .map((line) => cleanupMdStr(line))
+    .filter(Boolean)
+    .join(" ");
+
+  return allJapaneseText;
 }

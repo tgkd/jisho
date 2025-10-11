@@ -9,6 +9,7 @@ import React, {
 } from "react";
 import { useMMKVString } from "react-native-mmkv";
 
+import { JLPTLevel } from "@/services/database/practice-sessions";
 import {
   AiExample,
   getAiChat,
@@ -21,7 +22,6 @@ import { SETTINGS_KEYS } from "@/services/storage";
 import { useAudioPlayer } from "expo-audio";
 import { useAppleAI } from "./AppleAIProvider";
 import { useSubscription } from "./SubscriptionContext";
-import { JLPTLevel } from "@/services/database/practice-sessions";
 
 export type AIProviderType = "local" | "remote";
 
@@ -71,6 +71,8 @@ export interface UnifiedAIContextValue {
   ) => Promise<string | undefined>;
   generateReadingPassage: (level: string) => Promise<string>;
   speakText: (text: string) => Promise<void>;
+  stopSpeech: () => void;
+  isPlayingSpeech?: boolean;
 
   // State management
   isGenerating: boolean;
@@ -481,8 +483,12 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
     if (currentProvider === "local") {
       localAI.interrupt();
     }
-    // Note: Remote interruption would need AbortController support
   }, [currentProvider, localAI]);
+
+  const stopSpeech = useCallback(() => {
+    audioPlayer.pause();
+    Speech.stop();
+  }, [audioPlayer]);
 
   const contextValue: UnifiedAIContextValue = {
     generateExamples,
@@ -492,9 +498,11 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
     generateSpeech,
     generateReadingPassage,
     speakText,
+    stopSpeech,
     isGenerating,
     isAvailable,
     currentProvider,
+    isPlayingSpeech: audioPlayer.playing,
     setCurrentProvider: handleProviderChange,
     interrupt,
   };

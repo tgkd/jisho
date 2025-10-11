@@ -7,7 +7,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  View,
+  View
 } from "react-native";
 
 import { FuriganaText } from "@/components/FuriganaText";
@@ -32,13 +32,14 @@ import {
   getFuriganaForText,
   getWordExamples,
   saveAudioFile,
-  WordMeaning,
+  WordMeaning
 } from "@/services/database";
 import {
   cleanupJpReadings,
+  createChatPrompt,
   deduplicateEn,
   findKanji,
-  formatEn,
+  formatEn
 } from "@/services/parse";
 import { createWordPrompt } from "@/services/request";
 
@@ -105,6 +106,30 @@ export default function WordDetailScreen() {
     }
   };
 
+  const handleStartChat = () => {
+    if (!entry) return;
+
+    const initialPrompt = createChatPrompt("word", {
+      word: entry.word.word,
+      reading: entry.word.reading,
+      kanji: entry.word.kanji || undefined,
+    });
+
+    const meanings = entry.meanings
+      .map((m) => m.meaning)
+      .join("; ");
+
+    router.push({
+      pathname: "/word/chat",
+      params: {
+        word: entry.word.word,
+        reading: entry.word.reading,
+        meanings,
+        initialPrompt,
+      },
+    });
+  };
+
   if (isLoading) {
     return (
       <ThemedView style={styles.container}>
@@ -161,25 +186,7 @@ export default function WordDetailScreen() {
           </ThemedText>
           <Card variant="grouped">
             <HapticTab
-              onPress={() => {
-                const meanings = entry.meanings
-                  .map((m) => m.meaning)
-                  .join("; ");
-                const initialPrompt = `Tell me about the Japanese word ${
-                  entry.word.kanji || entry.word.reading
-                } (${
-                  entry.word.reading
-                }). What does it mean and how is it used?`;
-                router.push({
-                  pathname: "/word/chat",
-                  params: {
-                    word: entry.word.word,
-                    reading: entry.word.reading,
-                    meanings,
-                    initialPrompt,
-                  },
-                });
-              }}
+              onPress={handleStartChat}
               style={styles.askAIButton}
             >
               <View style={styles.askAIContent}>
