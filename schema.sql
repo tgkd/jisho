@@ -112,6 +112,8 @@ CREATE TABLE history (
     kanji_id INTEGER,
     kanji_character TEXT,
     kanji_meaning TEXT,
+    kanji_on_readings TEXT,
+    kanji_kun_readings TEXT,
     created_at TEXT NOT NULL,
     FOREIGN KEY (word_id) REFERENCES words (id)
 );

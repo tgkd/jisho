@@ -19,7 +19,7 @@ export const Colors = {
     tabIconSelected: tintColorLight,
     secondaryBackground: "#FFFFFF", // Changed to white for cards/inputs
     secondaryText: "#6C6C70",
-    separator: "gray",
+    separator: "rgba(60, 60, 67, 0.29)",
     groupedBackground: "#FFFFFF", // Changed to white for grouped content
     accent: tintColorLight,
     accentLight: "rgba(0, 122, 255, 0.15)", // iOS light gray
@@ -39,7 +39,7 @@ export const Colors = {
     tabIconSelected: tintColorDark,
     secondaryBackground: "#1C1C1E",
     secondaryText: "#EBEBF5",
-    separator: "gray",
+    separator: "rgba(84, 84, 88, 0.65)",
     groupedBackground: "#1C1C1E",
     accent: tintColorDark,
     link: tintColorDark,

@@ -294,6 +294,8 @@ function HistoryContent({
   isLast: boolean;
   onPress: () => void;
 }) {
+  const separatorColor = useThemeColor({}, "separator");
+
   return (
     <HapticTab onPress={onPress}>
       <ThemedView
@@ -328,11 +330,23 @@ function HistoryContent({
           </>
         ) : (
           <>
-            <ThemedText uiTextView={false}>
+            <View style={styles.kanjiHistoryRow}>
               <ThemedText type="defaultSemiBold" uiTextView={false}>
                 {item.character}
               </ThemedText>
-            </ThemedText>
+              <View style={styles.kanjiHistoryReadings}>
+                {item.onReadings?.length > 0 && (
+                  <ThemedText size="sm" type="secondary" uiTextView={false}>
+                    On: {item.onReadings.join(", ")}
+                  </ThemedText>
+                )}
+                {item.kunReadings?.length > 0 && (
+                  <ThemedText size="sm" type="secondary" uiTextView={false}>
+                    Kun: {item.kunReadings.join(", ")}
+                  </ThemedText>
+                )}
+              </View>
+            </View>
             <ThemedText
               type="secondary"
               style={styles.meaning}
@@ -346,7 +360,9 @@ function HistoryContent({
           </>
         )}
       </ThemedView>
-      {!isLast ? <View style={styles.separator} /> : null}
+      {!isLast ? (
+        <View style={[styles.separator, { backgroundColor: separatorColor }]} />
+      ) : null}
     </HapticTab>
   );
 }
@@ -362,6 +378,8 @@ function BookmarkContent({
   isLast: boolean;
   onPress: () => void;
 }) {
+  const separatorColor = useThemeColor({}, "separator");
+
   return (
     <>
       <HapticTab onPress={onPress}>
@@ -392,7 +410,9 @@ function BookmarkContent({
               : formatJp(item.reading)}
           </ThemedText>
         </ThemedView>
-        {!isLast ? <View style={styles.separator} /> : null}
+        {!isLast ? (
+          <View style={[styles.separator, { backgroundColor: separatorColor }]} />
+        ) : null}
       </HapticTab>
     </>
   );
@@ -412,6 +432,7 @@ function SearchContent({
   onPress: () => void;
 }) {
   const iconColor = useThemeColor({}, "secondaryText");
+  const separatorColor = useThemeColor({}, "separator");
   const details = (
     meanings && meanings.length > 0
       ? deduplicateEn(meanings.map((m) => formatEn(m.meaning, "none"))).filter(
@@ -465,7 +486,9 @@ function SearchContent({
           </View>
           <IconSymbol color={iconColor} name="chevron.right" size={16} />
         </ThemedView>
-        {isLast ? null : <View style={styles.separator} />}
+        {isLast ? null : (
+          <View style={[styles.separator, { backgroundColor: separatorColor }]} />
+        )}
       </HapticTab>
     </>
   );
@@ -483,6 +506,7 @@ function KanjiContent({
   onPress: () => void;
 }) {
   const iconColor = useThemeColor({}, "secondaryText");
+  const separatorColor = useThemeColor({}, "separator");
 
   return (
     <>
@@ -519,7 +543,9 @@ function KanjiContent({
           <IconSymbol color={iconColor} name="chevron.right" size={16} />
         </ThemedView>
       </HapticTab>
-      {isLast ? null : <View style={styles.separator} />}
+      {isLast ? null : (
+        <View style={[styles.separator, { backgroundColor: separatorColor }]} />
+      )}
     </>
   );
 }
@@ -567,7 +593,6 @@ const styles = StyleSheet.create({
   },
   separator: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: Colors.light.separator,
     marginHorizontal: 8,
   },
   firstRowStyle: {
@@ -634,5 +659,15 @@ const styles = StyleSheet.create({
     flexDirection: "column",
     gap: 2,
     maxWidth: "80%"
+  },
+  kanjiHistoryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+  kanjiHistoryReadings: {
+    flexDirection: "column",
+    gap: 2,
   },
 });
