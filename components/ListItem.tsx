@@ -635,12 +635,10 @@ const styles = StyleSheet.create({
   },
   readingText: {
     maxWidth: "50%",
-    textOverflow: "ellipsis",
   },
   detailsText: {
     marginTop: 4,
     width: "100%",
-    textOverflow: "ellipsis",
   },
   firstRadius: {
     borderTopLeftRadius: 24,
