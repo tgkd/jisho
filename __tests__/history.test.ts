@@ -9,6 +9,8 @@ interface DBHistoryEntry {
   kanji_id: number | null;
   kanji_character: string | null;
   kanji_meaning: string | null;
+  kanji_on_readings: string | null;
+  kanji_kun_readings: string | null;
   created_at: string;
 }
 
@@ -94,6 +96,34 @@ async function testAddToHistory(
   `, ['word', entry.wordId, now]);
 }
 
+async function testAddKanjiToHistory(
+  db: TestDatabase,
+  kanji: {
+    kanjiId: number;
+    character: string;
+    meanings: string[];
+    onReadings: string[];
+    kunReadings: string[];
+  }
+): Promise<void> {
+  const now = new Date().toISOString();
+
+  // Delete existing entry first (upsert pattern)
+  await db.run(`
+    DELETE FROM history WHERE entry_type = 'kanji' AND kanji_id = ?
+  `, [kanji.kanjiId]);
+
+  const meaning = kanji.meanings.join(", ");
+  const onReadings = JSON.stringify(kanji.onReadings);
+  const kunReadings = JSON.stringify(kanji.kunReadings);
+
+  // Insert new entry
+  await db.run(`
+    INSERT INTO history (entry_type, kanji_id, kanji_character, kanji_meaning, kanji_on_readings, kanji_kun_readings, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `, ['kanji', kanji.kanjiId, kanji.character, meaning, onReadings, kunReadings, now]);
+}
+
 async function testGetHistory(
   db: TestDatabase,
   limit: number = 50
@@ -107,6 +137,8 @@ async function testGetHistory(
       h.kanji_id,
       h.kanji_character,
       h.kanji_meaning,
+      h.kanji_on_readings,
+      h.kanji_kun_readings,
       h.created_at,
       w.word,
       w.reading,
@@ -192,6 +224,8 @@ describe('History Database Operations', () => {
       'kanji_id',
       'kanji_character',
       'kanji_meaning',
+      'kanji_on_readings',
+      'kanji_kun_readings',
       'created_at'
     ]));
   });
@@ -443,5 +477,135 @@ describe('History Database Operations', () => {
     // Verify all entries have meanings loaded
     const entriesWithMeanings = history.filter(h => h.meanings && h.meanings.length > 0);
     console.log(`${entriesWithMeanings.length}/${history.length} entries have meanings`);
+  });
+
+  test('add kanji entry to history with readings', async () => {
+    // Get a test kanji
+    const kanjiData = await db.get(`
+      SELECT id, character, meanings, on_readings, kun_readings
+      FROM kanji
+      WHERE character = '水'
+      LIMIT 1
+    `);
+
+    if (!kanjiData) {
+      console.log('No kanji data found - skipping test');
+      return;
+    }
+
+    const kanji = {
+      kanjiId: kanjiData.id,
+      character: kanjiData.character,
+      meanings: kanjiData.meanings ? JSON.parse(kanjiData.meanings) : [],
+      onReadings: kanjiData.on_readings ? JSON.parse(kanjiData.on_readings) : [],
+      kunReadings: kanjiData.kun_readings ? JSON.parse(kanjiData.kun_readings) : [],
+    };
+
+    await testAddKanjiToHistory(db, kanji);
+
+    const history = await testGetHistory(db);
+    expect(history.length).toBe(1);
+    expect(history[0].entry_type).toBe('kanji');
+    expect(history[0].kanji_id).toBe(kanji.kanjiId);
+    expect(history[0].kanji_character).toBe(kanji.character);
+    expect(history[0].kanji_on_readings).toBeTruthy();
+    expect(history[0].kanji_kun_readings).toBeTruthy();
+
+    // Verify readings can be parsed
+    const onReadings = JSON.parse(history[0].kanji_on_readings!);
+    const kunReadings = JSON.parse(history[0].kanji_kun_readings!);
+    expect(Array.isArray(onReadings)).toBe(true);
+    expect(Array.isArray(kunReadings)).toBe(true);
+
+    console.log('Added kanji history entry:', {
+      character: history[0].kanji_character,
+      onReadings,
+      kunReadings,
+      meaning: history[0].kanji_meaning,
+    });
+  });
+
+  test('add multiple kanji and word entries to history', async () => {
+    // Add a word entry
+    await testAddToHistory(db, { wordId: testWordIds[0] });
+
+    // Add a kanji entry
+    const kanjiData = await db.get(`
+      SELECT id, character, meanings, on_readings, kun_readings
+      FROM kanji
+      WHERE character = '日'
+      LIMIT 1
+    `);
+
+    if (kanjiData) {
+      const kanji = {
+        kanjiId: kanjiData.id,
+        character: kanjiData.character,
+        meanings: kanjiData.meanings ? JSON.parse(kanjiData.meanings) : [],
+        onReadings: kanjiData.on_readings ? JSON.parse(kanjiData.on_readings) : [],
+        kunReadings: kanjiData.kun_readings ? JSON.parse(kanjiData.kun_readings) : [],
+      };
+
+      await testAddKanjiToHistory(db, kanji);
+    }
+
+    const history = await testGetHistory(db);
+    expect(history.length).toBeGreaterThanOrEqual(1);
+
+    // Should have both types if kanji was added
+    if (kanjiData) {
+      expect(history.length).toBe(2);
+      const kanjiEntry = history.find(h => h.entry_type === 'kanji');
+      const wordEntry = history.find(h => h.entry_type === 'word');
+      expect(kanjiEntry).toBeDefined();
+      expect(wordEntry).toBeDefined();
+
+      console.log('Mixed history entries:', {
+        word: wordEntry?.word,
+        kanji: kanjiEntry?.kanji_character,
+      });
+    }
+  });
+
+  test('kanji history upsert behavior', async () => {
+    const kanjiData = await db.get(`
+      SELECT id, character, meanings, on_readings, kun_readings
+      FROM kanji
+      LIMIT 1
+    `);
+
+    if (!kanjiData) {
+      console.log('No kanji data found - skipping test');
+      return;
+    }
+
+    const kanji = {
+      kanjiId: kanjiData.id,
+      character: kanjiData.character,
+      meanings: kanjiData.meanings ? JSON.parse(kanjiData.meanings) : [],
+      onReadings: kanjiData.on_readings ? JSON.parse(kanjiData.on_readings) : [],
+      kunReadings: kanjiData.kun_readings ? JSON.parse(kanjiData.kun_readings) : [],
+    };
+
+    // Add first entry
+    await testAddKanjiToHistory(db, kanji);
+    let history = await testGetHistory(db);
+    expect(history.length).toBe(1);
+    const firstTimestamp = history[0].created_at;
+
+    // Add same kanji again (should replace)
+    await new Promise(resolve => setTimeout(resolve, 10));
+    await testAddKanjiToHistory(db, kanji);
+
+    history = await testGetHistory(db);
+    expect(history.length).toBe(1); // Should still be only one
+    expect(history[0].entry_type).toBe('kanji');
+    expect(history[0].kanji_id).toBe(kanji.kanjiId);
+
+    // Timestamp should be updated
+    const secondTimestamp = history[0].created_at;
+    expect(secondTimestamp).not.toBe(firstTimestamp);
+
+    console.log('Kanji upsert behavior verified - timestamp updated');
   });
 });

@@ -1,7 +1,7 @@
 import { SQLiteDatabase } from "expo-sqlite";
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
-  const DATABASE_VERSION = 16;
+  const DATABASE_VERSION = 17;
 
   try {
     // Test if database is corrupted by trying a simple query
@@ -393,6 +393,40 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
         console.log("✅ Practice messages table created successfully");
       } catch (error) {
         console.error("Error migrating to version 16:", error);
+        throw error;
+      }
+    }
+
+    if (currentDbVersion < 17) {
+      try {
+        // Add kanji readings columns to history table
+        const historyColumns = await db.getAllAsync<{ name: string }>(
+          "PRAGMA table_info(history)"
+        );
+
+        const hasOnReadings = historyColumns?.some(
+          (column) => column.name === "kanji_on_readings"
+        );
+        const hasKunReadings = historyColumns?.some(
+          (column) => column.name === "kanji_kun_readings"
+        );
+
+        if (!hasOnReadings) {
+          await db.execAsync(`ALTER TABLE history ADD COLUMN kanji_on_readings TEXT`);
+          console.log("✅ Added kanji_on_readings column to history table");
+        }
+
+        if (!hasKunReadings) {
+          await db.execAsync(`ALTER TABLE history ADD COLUMN kanji_kun_readings TEXT`);
+          console.log("✅ Added kanji_kun_readings column to history table");
+        }
+
+        await db.execAsync(`PRAGMA user_version = 17`);
+        currentDbVersion = 17;
+
+        console.log("✅ History table successfully migrated to include kanji readings");
+      } catch (error) {
+        console.error("Error migrating to version 17:", error);
         throw error;
       }
     }

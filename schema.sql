@@ -150,4 +150,4 @@ PRAGMA synchronous = NORMAL;
 PRAGMA temp_store = MEMORY;
 PRAGMA mmap_size = 268435456; -- 256MB
 PRAGMA cache_size = 10000;
-PRAGMA user_version = 12;
+PRAGMA user_version = 17;
