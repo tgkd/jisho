@@ -53,7 +53,14 @@ export default function PracticeSessionScreen() {
   }, [db, sessionId, router]);
 
   const handleReadAloud = async () => {
-    if (!session?.content) return;
+    if (!session) return;
+
+    const contentOutput =
+      session.content_output ?? session.content ?? session.content_text ?? "";
+
+    if (!contentOutput) {
+      return;
+    }
 
     if (ai.isPlayingSpeech) {
       ai.stopSpeech();
@@ -61,7 +68,8 @@ export default function PracticeSessionScreen() {
     }
 
     try {
-      const japaneseText = extractJapaneseFromPassage(session.content);
+      const japaneseText =
+        session.content_text || extractJapaneseFromPassage(contentOutput);
 
       if (!japaneseText) {
         Alert.alert("Error", "No Japanese text found in this passage");
@@ -76,9 +84,16 @@ export default function PracticeSessionScreen() {
   };
 
   const handleStartChat = () => {
-    if (!session?.content) return;
+    if (!session) return;
 
-    const japaneseText = extractJapaneseFromPassage(session.content);
+    const contentOutput =
+      session.content_output ?? session.content ?? session.content_text ?? "";
+    if (!contentOutput && !session.content_text) {
+      return;
+    }
+
+    const japaneseText =
+      session.content_text || extractJapaneseFromPassage(contentOutput);
 
     if (!japaneseText) {
       Alert.alert("Error", "No Japanese text found in this passage");
@@ -117,7 +132,10 @@ export default function PracticeSessionScreen() {
     );
   }
 
-  if (!session.content) {
+  const contentOutput =
+    session.content_output ?? session.content ?? session.content_text ?? "";
+
+  if (!contentOutput) {
     return (
       <View style={styles.centerContainer}>
         <ThemedText type="secondary">No content available</ThemedText>
@@ -158,7 +176,7 @@ export default function PracticeSessionScreen() {
         </HapticTab>
       </View>
 
-      <Markdown style={markdownStyles}>{session.content}</Markdown>
+      <Markdown style={markdownStyles}>{contentOutput}</Markdown>
     </ScrollView>
   );
 }

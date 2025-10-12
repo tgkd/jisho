@@ -1,7 +1,7 @@
 import { SQLiteDatabase } from "expo-sqlite";
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
-  const DATABASE_VERSION = 18;
+  const DATABASE_VERSION = 19;
 
   try {
     // Test if database is corrupted by trying a simple query
@@ -449,6 +449,57 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
         console.log("✅ Practice sessions simplified successfully");
       } catch (error) {
         console.error("Error migrating to version 18:", error);
+        throw error;
+      }
+    }
+
+    if (currentDbVersion < 19) {
+      try {
+        const sessionColumns = await db.getAllAsync<{ name: string }>(
+          "PRAGMA table_info(practice_sessions)"
+        );
+
+        const hasContentOutput = sessionColumns?.some(
+          (column) => column.name === "content_output"
+        );
+        const hasContentText = sessionColumns?.some(
+          (column) => column.name === "content_text"
+        );
+
+        if (!hasContentOutput) {
+          await db.execAsync(
+            `ALTER TABLE practice_sessions ADD COLUMN content_output TEXT;`
+          );
+          console.log(
+            "✅ Added content_output column to practice_sessions table"
+          );
+        }
+
+        if (!hasContentText) {
+          await db.execAsync(
+            `ALTER TABLE practice_sessions ADD COLUMN content_text TEXT;`
+          );
+          console.log(
+            "✅ Added content_text column to practice_sessions table"
+          );
+        }
+
+        await db.execAsync(`
+          UPDATE practice_sessions
+          SET content_output = CASE
+            WHEN (content_output IS NULL OR content_output = '') AND content IS NOT NULL THEN content
+            ELSE content_output
+          END
+        `);
+
+        await db.execAsync(`PRAGMA user_version = 19`);
+        currentDbVersion = 19;
+
+        console.log(
+          "✅ Practice sessions table updated with separate output/text columns"
+        );
+      } catch (error) {
+        console.error("Error migrating to version 19:", error);
         throw error;
       }
     }

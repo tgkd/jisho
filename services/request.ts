@@ -16,6 +16,11 @@ export const aiExampleSchemaArray = z.array(aiExampleSchema);
 
 export type AiExample = z.infer<typeof aiExampleSchema>;
 
+export interface AiReadingResponse {
+  output: string;
+  text: string;
+}
+
 export function createWordPrompt(
   e: {
     word: DictionaryEntry;
@@ -155,7 +160,7 @@ export const aiExamplesQueryOptions = (prompt: string | null) =>
 
 /**
  * Get AI explanation for text with streaming response.
- * Uses POST /chat with mode="chat" as per API spec.
+ * Uses POST /chat endpoint with message array payload.
  * @param {AbortSignal | null} [signal] - Optional abort signal
  * @returns {Function} Function that takes text and returns streaming response
  */
@@ -165,10 +170,12 @@ export function getAiExplanation(signal?: AbortSignal | null) {
       return Promise.resolve(new Response());
     }
     const defaultOptions = getDefaultOptions();
+    const baseHeaders =
+      (defaultOptions.headers as Record<string, string> | undefined) ?? {};
     const headers = {
-      ...defaultOptions.headers,
+      ...baseHeaders,
       "Content-Type": "application/json",
-      Accept: "text/event-stream",
+      Accept: "text/plain",
       "Cache-Control": "no-cache",
       Connection: "keep-alive",
     };
@@ -178,7 +185,6 @@ export function getAiExplanation(signal?: AbortSignal | null) {
       headers,
       credentials: defaultOptions.credentials,
       body: JSON.stringify({
-        mode: "chat",
         messages: [{ role: "user", content: prompt }],
       }),
     });
@@ -187,6 +193,7 @@ export function getAiExplanation(signal?: AbortSignal | null) {
 
 /**
  * Get AI chat response for conversational tutoring.
+ * Uses POST /chat endpoint with message array payload.
  * @param {AbortSignal | null} [signal] - Optional abort signal
  * @returns {Function} Function that takes messages and returns streaming response
  */
@@ -202,10 +209,12 @@ export function getAiChat(signal?: AbortSignal | null) {
     }
 
     const defaultOptions = getDefaultOptions();
+    const baseHeaders =
+      (defaultOptions.headers as Record<string, string> | undefined) ?? {};
     const headers = {
-      ...defaultOptions.headers,
+      ...baseHeaders,
       "Content-Type": "application/json",
-      Accept: "text/event-stream",
+      Accept: "text/plain",
       "Cache-Control": "no-cache",
       Connection: "keep-alive",
     };
@@ -215,50 +224,61 @@ export function getAiChat(signal?: AbortSignal | null) {
       signal: signal || undefined,
       headers,
       credentials: defaultOptions.credentials,
-      body: JSON.stringify({ messages, mode: "chat" }),
+      body: JSON.stringify({ messages }),
     });
   };
 }
 
 /**
- * Get AI-generated reading practice passage with streaming response.
- * Uses POST /chat with mode="practice" as per API spec.
+ * Get AI-generated reading practice passage.
+ * Uses GET /reading endpoint returning structured passage content.
  * @param {string} level - JLPT difficulty level (e.g., "N5", "N3", "jlpt n2")
  * @param {AbortSignal} [signal] - Optional abort signal
- * @returns {Promise<Response>} Streaming response with practice content
+ * @returns {Promise<AiReadingResponse>} Structured reading passage response
  * @throws {Error} If level is missing or request fails
  */
 export function getAiReadingPassage(
   level: string,
   signal?: AbortSignal
-): Promise<Response> {
+): Promise<AiReadingResponse> {
   if (!level) {
     throw new Error("No level provided");
   }
 
   const defaultOptions = getDefaultOptions();
-  const headers = {
-    ...defaultOptions.headers,
-    "Content-Type": "application/json",
-    Accept: "text/event-stream",
-    "Cache-Control": "no-cache",
-    Connection: "keep-alive",
+  const baseHeaders =
+    (defaultOptions.headers as Record<string, string> | undefined) ?? {};
+  const headers: Record<string, string> = {
+    ...baseHeaders,
+    Accept: "application/json",
   };
 
-  return fetch(`${process.env.EXPO_PUBLIC_BASE_URL}/chat`, {
-    method: "POST",
-    signal: signal || undefined,
-    headers,
-    credentials: defaultOptions.credentials,
-    body: JSON.stringify({
-      mode: "practice",
-      lvl: level,
-      messages: [
-        {
-          role: "user",
-          content: "Generate a reading practice passage",
-        },
-      ],
-    }),
+  const params = new URLSearchParams({ lvl: level });
+
+  return fetch(
+    `${process.env.EXPO_PUBLIC_BASE_URL}/reading?${params.toString()}`,
+    {
+      method: "GET",
+      signal: signal || undefined,
+      headers,
+      credentials: defaultOptions.credentials,
+    }
+  ).then(async (response) => {
+    if (!response.ok) {
+      throw new Error(`HTTP error: ${response.status}`);
+    }
+
+    const payload = (await response.json()) as Partial<AiReadingResponse>;
+    const output = (payload.output ?? "").trim();
+    const text = (payload.text ?? "").trim();
+
+    if (!output && !text) {
+      throw new Error("Reading passage response missing content");
+    }
+
+    return {
+      output,
+      text,
+    } satisfies AiReadingResponse;
   });
 }

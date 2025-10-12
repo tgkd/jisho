@@ -74,8 +74,14 @@ export default function PracticeScreen() {
     if (session.title) {
       return session.title;
     }
-    if (session.content_preview) {
-      const cleanText = session.content_preview
+    const preview =
+      session.content_preview ??
+      session.content_output ??
+      session.content ??
+      session.content_text;
+
+    if (preview) {
+      const cleanText = preview
         .replace(/[#*_~`\[\]()]/g, "")
         .replace(/\s+/g, " ")
         .trim();

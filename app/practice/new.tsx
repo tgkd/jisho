@@ -76,9 +76,9 @@ export default function NewPracticeScreen() {
 
       const sessionId = await createSession(db, level);
 
-      const content = await ai.generateReadingPassage(level);
+  const passage = await ai.generateReadingPassage(level);
 
-      await updateSessionContent(db, sessionId, content);
+  await updateSessionContent(db, sessionId, passage);
 
       router.replace(`/practice/${sessionId}` as any);
     } catch (error) {

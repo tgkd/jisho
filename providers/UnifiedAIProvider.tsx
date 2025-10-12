@@ -12,6 +12,7 @@ import { useMMKVString } from "react-native-mmkv";
 import { JLPTLevel } from "@/services/database/practice-sessions";
 import {
   AiExample,
+  AiReadingResponse,
   getAiChat,
   getAiExamples,
   getAiExplanation,
@@ -69,7 +70,7 @@ export interface UnifiedAIContextValue {
     text: string,
     options?: { language?: string; rate?: number }
   ) => Promise<string | undefined>;
-  generateReadingPassage: (level: string) => Promise<string>;
+  generateReadingPassage: (level: string) => Promise<AiReadingResponse>;
   speakText: (text: string) => Promise<void>;
   stopSpeech: () => void;
   isPlayingSpeech?: boolean;
@@ -429,7 +430,7 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
   );
 
   const generateReadingPassage = useCallback(
-    async (level: string): Promise<string> => {
+    async (level: string): Promise<AiReadingResponse> => {
       if (currentProvider === "local") {
         throw new Error("Reading passage generation not supported on local AI");
       }
@@ -442,29 +443,19 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
 
       setIsGenerating(true);
       try {
-        const response = await getAiReadingPassage(level);
+        const reading = await getAiReadingPassage(level);
 
-        if (!response.ok) {
-          throw new Error(`HTTP error: ${response.status}`);
+        const output = reading.output || reading.text;
+        const text = reading.text || reading.output;
+
+        if (!output && !text) {
+          throw new Error("Reading passage response missing content");
         }
 
-        // Read the streaming response
-        const reader = response.body?.getReader();
-        if (!reader) {
-          return await response.text();
-        }
-
-        const decoder = new TextDecoder();
-        let fullText = "";
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const chunk = decoder.decode(value, { stream: true });
-          fullText += chunk;
-        }
-
-        return fullText;
+        return {
+          output,
+          text,
+        };
       } finally {
         setIsGenerating(false);
       }
