@@ -163,8 +163,18 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   }, [refreshSubscription]);
 
   const showPaywall = useCallback(async () => {
-    await RevenueCatUI.presentPaywall();
-  }, []);
+    try {
+      const result = await RevenueCatUI.presentPaywall();
+
+      // Result contains information about what happened
+      // If user made a purchase or restored, refresh subscription
+      if (result && typeof result === 'object' && 'purchasedOrRestored' in result) {
+        await refreshSubscription();
+      }
+    } catch (error) {
+      console.error("Failed to show paywall:", error);
+    }
+  }, [refreshSubscription]);
 
   const purchase = useCallback(
     async (packageIdentifier: string) => {
@@ -223,6 +233,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     upgrade,
     cancel,
     showPaywall,
+    refreshSubscription,
     packages,
     isLoading,
     purchase,

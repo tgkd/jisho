@@ -10,6 +10,7 @@ export interface SubscriptionContextValue {
   upgrade: (productId: string) => void;
   cancel: () => void;
   showPaywall: () => void;
+  refreshSubscription: () => Promise<void>;
 
   packages: PurchasesPackage[];
   isLoading: boolean;

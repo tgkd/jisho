@@ -258,6 +258,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   emptyState: {
+    justifyContent: "center",
     alignItems: "center",
     paddingVertical: 32,
     gap: 12,
