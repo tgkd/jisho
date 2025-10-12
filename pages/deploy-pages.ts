@@ -42,7 +42,7 @@ function executeCommand(command: string, cwd: string = PROJECT_ROOT): void {
 /**
  * Main deployment function
  */
-async function deploy(): Promise<void> {
+async function deploy(isProduction: boolean = false): Promise<void> {
   console.log('🚀 Starting Cloudflare Pages deployment for Jisho...\n');
 
   try {
@@ -73,7 +73,8 @@ async function deploy(): Promise<void> {
     });
 
     // Step 4: Deploy using wrangler
-    const deployCommand = `wrangler pages deploy ${BUILD_DIR} --project-name=${PROJECT_NAME}`;
+    const branchFlag = isProduction ? '--branch=main' : '';
+    const deployCommand = `wrangler pages deploy ${BUILD_DIR} --project-name=${PROJECT_NAME} ${branchFlag}`.trim();
     executeCommand(deployCommand);
 
     console.log('\n🎉 Deployment completed successfully!');
@@ -102,7 +103,7 @@ if (isProduction) {
 }
 
 // Run deployment
-deploy().catch((error) => {
+deploy(isProduction).catch((error) => {
   console.error('💥 Unexpected error:', error);
   process.exit(1);
 });
