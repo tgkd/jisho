@@ -11,15 +11,17 @@ import {
 import { createChatPrompt, extractJapaneseFromPassage } from "@/services/parse";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   ScrollView,
   StyleSheet,
+  TouchableOpacity,
   View,
 } from "react-native";
-import Markdown from "react-native-markdown-display";
+import Markdown, { RenderRules } from "react-native-markdown-display";
+import { isJapanese } from "wanakana";
 
 export default function PracticeSessionScreen() {
   const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
@@ -31,6 +33,162 @@ export default function PracticeSessionScreen() {
 
   const [session, setSession] = useState<PracticeSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [playingIndex, setPlayingIndex] = useState<number | null>(null);
+
+  // Track which Japanese paragraph we're rendering (for indexing)
+  const japaneseParagraphCounter = useMemo(() => ({ current: -1 }), []);
+
+  /**
+   * Extract Japanese paragraphs from content text.
+   * Splits by double newlines and filters for Japanese content.
+   */
+  const japaneseParagraphs = useMemo(() => {
+    if (!session) return [];
+
+    const contentText = session.content_text ?? "";
+    if (!contentText) return [];
+
+    return contentText
+      .split("\n\n")
+      .map((p) => p.trim())
+      .filter((p) => {
+        if (!p) return false;
+        // Skip markdown headers
+        if (p.startsWith("#")) return false;
+        // Skip English/Vocabulary/Grammar section headers
+        if (/^(Vocabulary|Grammar|English|Translation)/i.test(p)) return false;
+        // Keep paragraphs with Japanese characters
+        const hasJapanese = Array.from(p).some((char) => isJapanese(char));
+        return hasJapanese;
+      })
+      .map((p) => {
+        // Remove markdown formatting for TTS
+        return p.replace(/[#*_`]/g, "").trim();
+      });
+  }, [session]);
+
+  const handlePlayParagraph = useCallback(
+    async (text: string, index: number) => {
+      if (playingIndex === index && ai.isPlayingSpeech) {
+        ai.stopSpeech();
+        setPlayingIndex(null);
+        return;
+      }
+
+      try {
+        setPlayingIndex(index);
+        await ai.generateSpeech(text);
+        setPlayingIndex(null);
+      } catch (error) {
+        console.error("Speech generation failed:", error);
+        Alert.alert("Error", "Failed to play paragraph");
+        setPlayingIndex(null);
+      }
+    },
+    [playingIndex, ai]
+  );
+
+  /**
+   * Extract text content from markdown AST node recursively.
+   */
+  const extractTextFromNode = useCallback((node: any): string => {
+    if (!node) return "";
+
+    if (typeof node === "string") return node;
+
+    // Try direct content property
+    if (node.content && typeof node.content === "string") {
+      return node.content;
+    }
+
+    // Recursively extract from children
+    if (Array.isArray(node.children)) {
+      return node.children.map(extractTextFromNode).join("");
+    }
+
+    // Check for text nodes
+    if (node.type === "text" && node.content) {
+      return node.content;
+    }
+
+    return "";
+  }, []);
+
+  /**
+   * Custom markdown rules to render play buttons inline with Japanese paragraphs.
+   */
+  const markdownRules: RenderRules = useMemo(
+    () => {
+      // Reset counter when rules are recreated
+      japaneseParagraphCounter.current = -1;
+
+      return {
+        paragraph: (node, children, parent, styles) => {
+          // Extract raw text from the node
+          const rawText = extractTextFromNode(node);
+
+          // Clean text for TTS (remove markdown formatting)
+          const cleanText = rawText.replace(/[#*_`]/g, "").trim();
+
+          // Check if this paragraph contains Japanese text
+          const hasJapanese =
+            cleanText && Array.from(cleanText).some((char) => isJapanese(char));
+
+          if (hasJapanese && cleanText) {
+            // Increment counter for each Japanese paragraph
+            japaneseParagraphCounter.current++;
+            const currentIndex = japaneseParagraphCounter.current;
+
+            const paragraphText = japaneseParagraphs[currentIndex] || cleanText;
+            const isPlaying =
+              playingIndex === currentIndex && ai.isPlayingSpeech;
+
+            return (
+              <View key={node.key} style={styles.paragraph}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "flex-start",
+                    gap: 8,
+                  }}
+                >
+                  <TouchableOpacity
+                    onPress={() => handlePlayParagraph(paragraphText, currentIndex)}
+                    style={{
+                      marginTop: 2,
+                    }}
+                  >
+                    <IconSymbol
+                      name={isPlaying ? "stop.circle.fill" : "play.circle"}
+                      size={20}
+                      color={tintColor}
+                    />
+                  </TouchableOpacity>
+                  <View style={{ flex: 1 }}>{children}</View>
+                </View>
+              </View>
+            );
+          }
+
+          // For non-Japanese paragraphs, render normally
+          return (
+            <View key={node.key} style={styles.paragraph}>
+              {children}
+            </View>
+          );
+        },
+      };
+    },
+    [
+      japaneseParagraphs,
+      playingIndex,
+      ai.isPlayingSpeech,
+      tintColor,
+      handlePlayParagraph,
+      extractTextFromNode,
+      japaneseParagraphCounter,
+    ]
+  );
 
   const loadSessionData = useCallback(async () => {
     try {
@@ -51,37 +209,6 @@ export default function PracticeSessionScreen() {
       setIsLoading(false);
     }
   }, [db, sessionId, router]);
-
-  const handleReadAloud = async () => {
-    if (!session) return;
-
-    const contentOutput =
-      session.content_output ?? session.content ?? session.content_text ?? "";
-
-    if (!contentOutput) {
-      return;
-    }
-
-    if (ai.isPlayingSpeech) {
-      ai.stopSpeech();
-      return;
-    }
-
-    try {
-      const japaneseText =
-        session.content_text || extractJapaneseFromPassage(contentOutput);
-
-      if (!japaneseText) {
-        Alert.alert("Error", "No Japanese text found in this passage");
-        return;
-      }
-
-      await ai.generateSpeech(japaneseText);
-    } catch (error) {
-      console.error("Speech generation failed:", error);
-      Alert.alert("Error", "Failed to read aloud");
-    }
-  };
 
   const handleStartChat = () => {
     if (!session) return;
@@ -149,21 +276,11 @@ export default function PracticeSessionScreen() {
       style={styles.container}
       contentContainerStyle={styles.contentContainer}
     >
-      <View style={styles.actionsContainer}>
-        <HapticTab
-          onPress={ai.isPlayingSpeech ? ai.stopSpeech : handleReadAloud}
-          style={styles.actionButton}
-        >
-          <View style={styles.actionContent}>
-            <IconSymbol
-              name={ai.isPlayingSpeech ? "stop.circle" : "play.circle"}
-              size={24}
-              color={tintColor}
-            />
-            <ThemedText style={styles.actionText}>{"Audio"}</ThemedText>
-          </View>
-        </HapticTab>
+      <Markdown style={markdownStyles} rules={markdownRules}>
+        {contentOutput}
+      </Markdown>
 
+      <View style={styles.actionsContainer}>
         <HapticTab onPress={handleStartChat} style={styles.actionButton}>
           <View style={styles.actionContent}>
             <IconSymbol
@@ -175,8 +292,6 @@ export default function PracticeSessionScreen() {
           </View>
         </HapticTab>
       </View>
-
-      <Markdown style={markdownStyles}>{contentOutput}</Markdown>
     </ScrollView>
   );
 }

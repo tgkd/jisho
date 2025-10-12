@@ -101,6 +101,11 @@ export default function NewPracticeScreen() {
         for your learning stage.
       </ThemedText>
 
+      <ThemedText size="xs" type="secondary" style={styles.disclaimer}>
+        ⚠️ AI-generated content may contain errors or inaccuracies. Please
+        verify important information with reliable sources.
+      </ThemedText>
+
       <View style={styles.levelsContainer}>
         {levels.map((item) => (
           <HapticTab
@@ -179,5 +184,10 @@ const styles = StyleSheet.create({
   note: {
     textAlign: "center",
     lineHeight: 18,
+  },
+  disclaimer: {
+    textAlign: "center",
+    lineHeight: 18,
+    opacity: 0.7,
   },
 });
