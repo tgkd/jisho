@@ -190,7 +190,7 @@ export default function SettingsScreen() {
           </ThemedText>
 
           <HapticTab
-            onPress={() => router.push("/subscription-info")}
+            onPress={() => router.push("/settings/subscription-info")}
             style={styles.subscriptionLink}
           >
             <IconSymbol

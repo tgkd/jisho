@@ -21,7 +21,15 @@ export default function SettingsLayout() {
           headerLargeTitle: true,
         }}
       />
-
+      <Stack.Screen
+        name="subscription-info"
+        options={{
+          title: "Premium Features",
+          presentation: "modal",
+          headerTransparent: true,
+          headerLargeTitle: true,
+        }}
+      />
     </Stack>
   );
 }
