@@ -1,14 +1,14 @@
 import {
   SubscriptionContext,
-  SubscriptionContextValue,
+  SubscriptionContextValue
 } from "@/providers/SubscriptionContext";
-import { SETTINGS_KEYS, settingsStorage } from "@/services/storage";
+import { settingsStorage, SETTINGS_KEYS } from "@/services/storage";
 import React, { ReactNode, useCallback, useEffect, useState } from "react";
 import { Platform } from "react-native";
 import Purchases, {
   CustomerInfo,
   LOG_LEVEL,
-  PurchasesPackage,
+  PurchasesPackage
 } from "react-native-purchases";
 import RevenueCatUI from "react-native-purchases-ui";
 
@@ -77,6 +77,12 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         const localInfo = getLocalSubscriptionInfo();
         if (localInfo.status !== "inactive") {
           settingsStorage.set(SETTINGS_KEYS.SUBSCRIPTION_STATUS, "inactive");
+          const currentProvider = settingsStorage.getString(
+            SETTINGS_KEYS.AI_PROVIDER_TYPE
+          );
+          if (currentProvider === "remote") {
+            settingsStorage.set(SETTINGS_KEYS.AI_PROVIDER_TYPE, "local");
+          }
         }
         settingsStorage.delete(SETTINGS_KEYS.SUBSCRIPTION_PRODUCT_ID);
       }

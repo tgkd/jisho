@@ -1,5 +1,6 @@
 import { useSubscription } from "@/providers/SubscriptionContext";
 import { Stack, useRouter } from "expo-router";
+import { Alert } from "react-native";
 import RevenueCatUI from "react-native-purchases-ui";
 
 /**
@@ -17,7 +18,11 @@ function Paywall() {
   const handlePurchaseCompleted = async () => {
     console.log("Purchase completed");
     await refreshSubscription();
-    router.back();
+    Alert.alert(
+      "Purchase Successful",
+      "Thank you for subscribing! You now have access to all premium features.",
+      [{ text: "OK", onPress: () => router.back() }]
+    );
   };
 
   /**
@@ -27,7 +32,24 @@ function Paywall() {
   const handleRestoreCompleted = async () => {
     console.log("Restore completed");
     await refreshSubscription();
-    router.back();
+    Alert.alert(
+      "Restore Successful",
+      "Your subscription has been restored successfully.",
+      [{ text: "OK", onPress: () => router.back() }]
+    );
+  };
+
+  /**
+   * Handle failed purchase restoration.
+   * Shows error message to user when no active subscription is found.
+   */
+  const handleRestoreFailed = ({ error }: { error: { message: string } }) => {
+    console.log("Restore failed:", error);
+    Alert.alert(
+      "Restore Failed",
+      "No active subscription found. Please make sure you're signed in with the same Apple ID used for the original purchase.",
+      [{ text: "OK" }]
+    );
   };
 
   return (
@@ -47,6 +69,7 @@ function Paywall() {
         }}
         onPurchaseCompleted={handlePurchaseCompleted}
         onRestoreCompleted={handleRestoreCompleted}
+        onRestoreError={handleRestoreFailed}
       />
     </>
   );

@@ -1,11 +1,11 @@
+import { useAudioPlayer } from "expo-audio";
 import * as Speech from "expo-speech";
 import React, {
   createContext,
   ReactNode,
   useCallback,
   useContext,
-  useEffect,
-  useState,
+  useState
 } from "react";
 import { useMMKVString } from "react-native-mmkv";
 
@@ -20,7 +20,6 @@ import {
   getAiSound,
 } from "@/services/request";
 import { SETTINGS_KEYS } from "@/services/storage";
-import { useAudioPlayer } from "expo-audio";
 import { useAppleAI } from "./AppleAIProvider";
 import { useSubscription } from "./SubscriptionContext";
 
@@ -97,17 +96,15 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
   const audioPlayer = useAudioPlayer(undefined, {
     keepAudioSessionActive: false,
   });
-  const [storedProvider, setStoredProvider] = useMMKVString(
+  const [currentProvider, setCurrentProvider] = useMMKVString(
     SETTINGS_KEYS.AI_PROVIDER_TYPE
   );
-  const [currentProvider, setCurrentProvider] = useState<AIProviderType>(
-    (storedProvider as AIProviderType) || "local"
-  );
+  const provider = (currentProvider as AIProviderType) || "local";
   const [isGenerating, setIsGenerating] = useState(false);
-  const isAvailable = localAI.isReady || currentProvider === "remote";
+  const isAvailable = localAI.isReady || provider === "remote";
 
   const checkRemoteAccess = useCallback((): boolean => {
-    if (currentProvider !== "remote") {
+    if (provider !== "remote") {
       return true;
     }
 
@@ -116,25 +113,11 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
       return false;
     }
     return true;
-  }, [currentProvider, subscription]);
-
-  // Update persistent storage when provider changes
-  const handleProviderChange = useCallback(
-    (provider: AIProviderType) => {
-      setCurrentProvider(provider);
-      setStoredProvider(provider);
-    },
-    [setStoredProvider]
-  );
-
-  // Track generating state
-  useEffect(() => {
-    setIsGenerating(localAI.isGenerating);
-  }, [localAI.isGenerating]);
+  }, [provider, subscription]);
 
   const generateExamples = useCallback(
     async (prompt: string): Promise<AiExample[]> => {
-      if (currentProvider === "local") {
+      if (provider === "local") {
         return new Promise((resolve) => {
           localAI.generateExamples(prompt, (examples) => {
             resolve(examples);
@@ -156,7 +139,7 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
         }
       }
     },
-    [currentProvider, localAI, checkRemoteAccess]
+    [provider, localAI, checkRemoteAccess]
   );
 
   const explainText = useCallback(
@@ -166,7 +149,7 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
       signal?: AbortSignal
     ): Promise<void> => {
       try {
-        if (currentProvider === "local") {
+        if (provider === "local") {
           await localAI.explainText(
             text,
             streaming.onChunk,
@@ -230,7 +213,7 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
         );
       }
     },
-    [currentProvider, localAI, checkRemoteAccess]
+    [provider, localAI, checkRemoteAccess]
   );
 
   const chatWithMessages = useCallback(
@@ -240,7 +223,7 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
       signal?: AbortSignal
     ): Promise<void> => {
       try {
-        if (currentProvider === "local") {
+        if (provider === "local") {
           await localAI.chatWithMessages(
             messages,
             streaming.onChunk,
@@ -304,7 +287,7 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
         );
       }
     },
-    [currentProvider, localAI, checkRemoteAccess]
+    [provider, localAI, checkRemoteAccess]
   );
 
   const chatWithPractice = useCallback(
@@ -321,7 +304,7 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
           ...messages,
         ];
 
-        if (currentProvider === "local") {
+        if (provider === "local") {
           await localAI.chatWithMessages(
             messagesWithSystem,
             streaming.onChunk,
@@ -384,7 +367,7 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
         );
       }
     },
-    [currentProvider, localAI, checkRemoteAccess]
+    [provider, localAI, checkRemoteAccess]
   );
 
   const generateSpeech = useCallback(
@@ -399,7 +382,7 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
       }
     ): Promise<string | undefined> => {
       try {
-        if (currentProvider === "remote") {
+        if (provider === "remote") {
           if (!checkRemoteAccess()) {
             throw new SubscriptionRequiredError(
               "Subscription required for cloud TTS"
@@ -412,7 +395,7 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
           return file.base64Sync();
         }
 
-        if (currentProvider === "local" && localAI.isReady) {
+        if (provider === "local" && localAI.isReady) {
           const b64 = localAI.generateSpeech(text);
           await audioPlayer.replace(`data:audio/wav;base64,${b64}`);
           await audioPlayer.play();
@@ -426,12 +409,12 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
         rate: options.rate,
       });
     },
-    [currentProvider, localAI, audioPlayer, checkRemoteAccess]
+    [provider, localAI, audioPlayer, checkRemoteAccess]
   );
 
   const generateReadingPassage = useCallback(
     async (level: string): Promise<AiReadingResponse> => {
-      if (currentProvider === "local") {
+      if (provider === "local") {
         throw new Error("Reading passage generation not supported on local AI");
       }
 
@@ -460,7 +443,7 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
         setIsGenerating(false);
       }
     },
-    [currentProvider, checkRemoteAccess]
+    [provider, checkRemoteAccess]
   );
 
   const speakText = useCallback(
@@ -471,10 +454,10 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
   );
 
   const interrupt = useCallback(() => {
-    if (currentProvider === "local") {
+    if (provider === "local") {
       localAI.interrupt();
     }
-  }, [currentProvider, localAI]);
+  }, [provider, localAI]);
 
   const stopSpeech = useCallback(() => {
     audioPlayer.pause();
@@ -490,11 +473,11 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
     generateReadingPassage,
     speakText,
     stopSpeech,
-    isGenerating,
+    isGenerating: isGenerating || localAI.isGenerating,
     isAvailable,
-    currentProvider,
+    currentProvider: provider,
     isPlayingSpeech: audioPlayer.playing,
-    setCurrentProvider: handleProviderChange,
+    setCurrentProvider,
     interrupt,
   };
 
