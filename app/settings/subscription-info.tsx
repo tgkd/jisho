@@ -1,6 +1,6 @@
 import { useSubscription } from "@/providers/SubscriptionContext";
-import { useRouter } from "expo-router";
-import { Linking, ScrollView, StyleSheet, View } from "react-native";
+import { useState } from "react";
+import { ActivityIndicator, Linking, ScrollView, StyleSheet, View } from "react-native";
 
 import { HapticTab } from "@/components/HapticTab";
 import { ThemedText } from "@/components/ThemedText";
@@ -9,8 +9,14 @@ import { IconSymbol } from "@/components/ui/IconSymbol";
 import { Colors } from "@/constants/Colors";
 
 export default function SubscriptionInfoScreen() {
-  const router = useRouter();
   const subscription = useSubscription();
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await subscription.refreshSubscription();
+    setRefreshing(false);
+  };
 
   return (
     <ScrollView
@@ -130,8 +136,8 @@ export default function SubscriptionInfoScreen() {
         </View>
       </Card>
 
-      {subscription.isPremium ? (
-        <Card>
+      <Card>
+        {subscription.isPremium ? (
           <View style={styles.premiumStatus}>
             <IconSymbol
               name="checkmark.circle.fill"
@@ -142,19 +148,38 @@ export default function SubscriptionInfoScreen() {
               You have access to all premium features
             </ThemedText>
           </View>
-        </Card>
-      ) : (
+        ) : (
+          <HapticTab
+            onPress={() => {
+              subscription.showPaywall();
+            }}
+            style={styles.subscribeButton}
+          >
+            <ThemedText size="md" style={styles.subscribeButtonText}>
+              Subscribe Now
+            </ThemedText>
+          </HapticTab>
+        )}
+
         <HapticTab
-          onPress={() => {
-            subscription.showPaywall();
-          }}
-          style={styles.subscribeButton}
+          onPress={handleRefresh}
+          style={styles.refreshButton}
+          disabled={refreshing}
         >
-          <ThemedText size="md" style={styles.subscribeButtonText}>
-            Subscribe Now
+          {refreshing ? (
+            <ActivityIndicator size="small" color={Colors.light.tint} />
+          ) : (
+            <IconSymbol
+              name="arrow.clockwise"
+              size={20}
+              color={Colors.light.tint}
+            />
+          )}
+          <ThemedText size="sm" style={styles.refreshButtonText}>
+            {refreshing ? "Refreshing..." : "Refresh Subscription Status"}
           </ThemedText>
         </HapticTab>
-      )}
+      </Card>
     </ScrollView>
   );
 }
@@ -247,5 +272,19 @@ const styles = StyleSheet.create({
   legalLinkText: {
     color: Colors.light.tint,
     fontWeight: "600",
+  },
+  refreshButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 12,
+    marginTop: 16,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Colors.light.separator,
+  },
+  refreshButtonText: {
+    color: Colors.light.tint,
+    fontWeight: "500",
   },
 });

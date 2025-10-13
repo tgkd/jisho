@@ -2,7 +2,7 @@ import {
   SubscriptionContext,
   SubscriptionContextValue,
 } from "@/providers/SubscriptionContext";
-import { SETTINGS_KEYS, settingsStorage } from "@/services/storage";
+import { settingsStorage, SETTINGS_KEYS } from "@/services/storage";
 import React, { ReactNode, useCallback, useEffect, useState } from "react";
 import { Platform } from "react-native";
 import Purchases, {
@@ -111,6 +111,12 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         });
         await Purchases.configure({ apiKey: key || "" });
 
+        Purchases.addCustomerInfoUpdateListener((customerInfo) => {
+          console.log(customerInfo);
+
+          updateSubscriptionState(customerInfo);
+        });
+
         const userId = await Purchases.getAppUserID();
 
         if (userId) {
@@ -130,7 +136,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     };
 
     initialize();
-  }, []);
+  }, [updateSubscriptionState, refreshSubscription]);
 
   const showPaywall = useCallback(async () => {
     try {
