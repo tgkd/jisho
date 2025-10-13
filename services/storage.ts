@@ -6,8 +6,6 @@ export const SETTINGS_KEYS = {
   SHOW_FURIGANA: "settings.showFurigana",
   AI_PROVIDER_TYPE: "settings.aiProviderType",
   SEARCH_MODE: "settings.searchMode",
-  SUBSCRIPTION_STATUS: "subscription.status",
-  SUBSCRIPTION_PRODUCT_ID: "subscription.productId",
   REVENUECAT_USER_ID: "subscription.revenuecatUserId",
 };
 

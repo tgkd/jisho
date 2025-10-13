@@ -139,9 +139,6 @@ export default function PracticeScreen() {
           <ThemedText size="md" type="secondary" style={styles.emptyText}>
             No reading passages yet
           </ThemedText>
-          <ThemedText size="sm" type="secondary" style={styles.emptyHint}>
-            Generate your first reading passage to start practicing
-          </ThemedText>
         </View>
       </Card>
     </View>

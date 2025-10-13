@@ -130,21 +130,7 @@ export default function SubscriptionInfoScreen() {
         </View>
       </Card>
 
-      {!subscription.isPremium && (
-        <HapticTab
-          onPress={() => {
-            router.back();
-            subscription.showPaywall();
-          }}
-          style={styles.subscribeButton}
-        >
-          <ThemedText size="md" style={styles.subscribeButtonText}>
-            Subscribe Now
-          </ThemedText>
-        </HapticTab>
-      )}
-
-      {subscription.isPremium && (
+      {subscription.isPremium ? (
         <Card>
           <View style={styles.premiumStatus}>
             <IconSymbol
@@ -157,6 +143,17 @@ export default function SubscriptionInfoScreen() {
             </ThemedText>
           </View>
         </Card>
+      ) : (
+        <HapticTab
+          onPress={() => {
+            subscription.showPaywall();
+          }}
+          style={styles.subscribeButton}
+        >
+          <ThemedText size="md" style={styles.subscribeButtonText}>
+            Subscribe Now
+          </ThemedText>
+        </HapticTab>
       )}
     </ScrollView>
   );
