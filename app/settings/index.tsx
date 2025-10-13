@@ -188,6 +188,20 @@ export default function SettingsScreen() {
               ? "✨ Using cloud AI - premium features enabled"
               : "📱 Using on-device Apple Intelligence (free)"}
           </ThemedText>
+
+          <HapticTab
+            onPress={() => router.push("/subscription-info")}
+            style={styles.subscriptionLink}
+          >
+            <IconSymbol
+              name="info.circle"
+              size={16}
+              color={Colors.light.tint}
+            />
+            <ThemedText size="sm" style={styles.linkText}>
+              {"Learn about Premium Features"}
+            </ThemedText>
+          </HapticTab>
         </View>
       </Card>
 
@@ -306,5 +320,15 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: Colors.light.accentLight,
     marginBottom: 16,
+  },
+  subscriptionLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 8,
+    marginTop: 4,
+  },
+  linkText: {
+    color: Colors.light.tint,
   },
 });

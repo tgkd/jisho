@@ -23,6 +23,12 @@ import {
 import Markdown, { RenderRules } from "react-native-markdown-display";
 import { isJapanese } from "wanakana";
 
+/**
+ * Renders the practice session passage with speech playback controls.
+ *
+ * @returns {JSX.Element} Scrollable practice session view.
+ * @throws {Error} Propagates data-loading errors from hooks when the SQLite layer fails.
+ */
 export default function PracticeSessionScreen() {
   const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
   const router = useRouter();
@@ -33,15 +39,12 @@ export default function PracticeSessionScreen() {
 
   const [session, setSession] = useState<PracticeSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [playingIndex, setPlayingIndex] = useState<number | null>(null);
+  const [speechState, setSpeechState] = useState<{
+    index: number | null;
+    phase: "idle" | "loading" | "playing";
+  }>({ index: null, phase: "idle" });
 
-  // Track which Japanese paragraph we're rendering (for indexing)
-  const japaneseParagraphCounter = useMemo(() => ({ current: -1 }), []);
-
-  /**
-   * Extract Japanese paragraphs from content text.
-   * Splits by double newlines and filters for Japanese content.
-   */
+  const { index: activeSpeechIndex, phase: activeSpeechPhase } = speechState;
   const japaneseParagraphs = useMemo(() => {
     if (!session) return [];
 
@@ -53,142 +56,156 @@ export default function PracticeSessionScreen() {
       .map((p) => p.trim())
       .filter((p) => {
         if (!p) return false;
-        // Skip markdown headers
         if (p.startsWith("#")) return false;
-        // Skip English/Vocabulary/Grammar section headers
         if (/^(Vocabulary|Grammar|English|Translation)/i.test(p)) return false;
-        // Keep paragraphs with Japanese characters
         const hasJapanese = Array.from(p).some((char) => isJapanese(char));
         return hasJapanese;
       })
       .map((p) => {
-        // Remove markdown formatting for TTS
         return p.replace(/[#*_`]/g, "").trim();
       });
   }, [session]);
 
   const handlePlayParagraph = useCallback(
     async (text: string, index: number) => {
-      if (playingIndex === index && ai.isPlayingSpeech) {
+      if (
+        activeSpeechIndex === index &&
+        (activeSpeechPhase === "loading" || activeSpeechPhase === "playing")
+      ) {
         ai.stopSpeech();
-        setPlayingIndex(null);
+        setSpeechState({ index: null, phase: "idle" });
         return;
       }
 
       try {
-        setPlayingIndex(index);
+        setSpeechState({ index, phase: "loading" });
         await ai.generateSpeech(text);
-        setPlayingIndex(null);
+        setSpeechState((current) => {
+          if (current.index !== index) {
+            return current;
+          }
+
+          if (ai.isPlayingSpeech) {
+            return { index, phase: "playing" };
+          }
+
+          return { index: null, phase: "idle" };
+        });
       } catch (error) {
         console.error("Speech generation failed:", error);
         Alert.alert("Error", "Failed to play paragraph");
-        setPlayingIndex(null);
+        setSpeechState({ index: null, phase: "idle" });
       }
     },
-    [playingIndex, ai]
+    [ai, activeSpeechIndex, activeSpeechPhase]
   );
 
-  /**
-   * Extract text content from markdown AST node recursively.
-   */
+  useEffect(() => {
+    setSpeechState((current) => {
+      if (ai.isPlayingSpeech) {
+        if (current.phase === "loading" && current.index !== null) {
+          return { index: current.index, phase: "playing" };
+        }
+        return current;
+      }
+
+      if (current.phase === "idle") {
+        return current;
+      }
+
+      return { index: null, phase: "idle" };
+    });
+  }, [ai.isPlayingSpeech]);
+
   const extractTextFromNode = useCallback((node: any): string => {
     if (!node) return "";
 
     if (typeof node === "string") return node;
 
-    // Try direct content property
     if (node.content && typeof node.content === "string") {
       return node.content;
     }
 
-    // Recursively extract from children
     if (Array.isArray(node.children)) {
       return node.children.map(extractTextFromNode).join("");
     }
 
-    // Check for text nodes
     if (node.type === "text" && node.content) {
       return node.content;
     }
 
     return "";
   }, []);
+  const markdownRules: RenderRules = useMemo(() => {
+    let paragraphIndex = -1;
 
-  /**
-   * Custom markdown rules to render play buttons inline with Japanese paragraphs.
-   */
-  const markdownRules: RenderRules = useMemo(
-    () => {
-      // Reset counter when rules are recreated
-      japaneseParagraphCounter.current = -1;
+    return {
+      paragraph: (node, children, _parent, renderStyles) => {
+        const rawText = extractTextFromNode(node);
+        const cleanText = rawText.replace(/[#*_`]/g, "").trim();
+        const hasJapanese =
+          cleanText && Array.from(cleanText).some((char) => isJapanese(char));
 
-      return {
-        paragraph: (node, children, parent, styles) => {
-          // Extract raw text from the node
-          const rawText = extractTextFromNode(node);
+        if (hasJapanese && cleanText) {
+          paragraphIndex++;
+          const currentIndex = paragraphIndex;
 
-          // Clean text for TTS (remove markdown formatting)
-          const cleanText = rawText.replace(/[#*_`]/g, "").trim();
+          const paragraphText = japaneseParagraphs[currentIndex] || cleanText;
+          const isLoading =
+            speechState.index === currentIndex &&
+            speechState.phase === "loading";
+          const isPlaying =
+            speechState.index === currentIndex &&
+            speechState.phase === "playing";
 
-          // Check if this paragraph contains Japanese text
-          const hasJapanese =
-            cleanText && Array.from(cleanText).some((char) => isJapanese(char));
-
-          if (hasJapanese && cleanText) {
-            // Increment counter for each Japanese paragraph
-            japaneseParagraphCounter.current++;
-            const currentIndex = japaneseParagraphCounter.current;
-
-            const paragraphText = japaneseParagraphs[currentIndex] || cleanText;
-            const isPlaying =
-              playingIndex === currentIndex && ai.isPlayingSpeech;
-
-            return (
-              <View key={node.key} style={styles.paragraph}>
-                <View
+          return (
+            <View key={node.key} style={renderStyles.paragraph}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "flex-start",
+                  gap: 8,
+                }}
+              >
+                <TouchableOpacity
+                  onPress={() =>
+                    handlePlayParagraph(paragraphText, currentIndex)
+                  }
                   style={{
-                    flexDirection: "row",
-                    alignItems: "flex-start",
-                    gap: 8,
+                    marginTop: 2,
                   }}
                 >
-                  <TouchableOpacity
-                    onPress={() => handlePlayParagraph(paragraphText, currentIndex)}
-                    style={{
-                      marginTop: 2,
-                    }}
-                  >
+                  {isLoading ? (
+                    <ActivityIndicator size="small" color={tintColor} />
+                  ) : (
                     <IconSymbol
                       name={isPlaying ? "stop.circle.fill" : "play.circle"}
                       size={20}
                       color={tintColor}
                     />
-                  </TouchableOpacity>
-                  <View style={{ flex: 1 }}>{children}</View>
-                </View>
+                  )}
+                </TouchableOpacity>
+                <View style={{ flex: 1 }}>{children}</View>
               </View>
-            );
-          }
-
-          // For non-Japanese paragraphs, render normally
-          return (
-            <View key={node.key} style={styles.paragraph}>
-              {children}
             </View>
           );
-        },
-      };
-    },
-    [
-      japaneseParagraphs,
-      playingIndex,
-      ai.isPlayingSpeech,
-      tintColor,
-      handlePlayParagraph,
-      extractTextFromNode,
-      japaneseParagraphCounter,
-    ]
-  );
+        }
+
+        return (
+          <View key={node.key} style={renderStyles.paragraph}>
+            {children}
+          </View>
+        );
+      },
+    };
+  }, [
+    japaneseParagraphs,
+    speechState.index,
+    speechState.phase,
+    tintColor,
+    handlePlayParagraph,
+    extractTextFromNode,
+  ]);
 
   const loadSessionData = useCallback(async () => {
     try {
