@@ -45,10 +45,10 @@ export async function getAiExamples(
     throw new Error("No prompt provided");
   }
 
+  const params = new URLSearchParams({ word: prompt });
+
   const resp = await fetch(
-    `${process.env.EXPO_PUBLIC_BASE_URL}/example?word=${encodeURIComponent(
-      prompt
-    )}`,
+    `${process.env.EXPO_PUBLIC_BASE_URL}/example?${params.toString()}`,
     {
       signal,
       method: "GET",
@@ -89,12 +89,11 @@ export async function getAiSound(
   }
 
   const timestamp = Date.now();
-  const sanitizedPrompt = prompt.slice(0, 20).replace(/[^a-zA-Z0-9]/g, "_");
-  const filename = `audio_${sanitizedPrompt}_${timestamp}.mp3`;
+  const filename = `audio_${timestamp}.mp3`;
   const targetFile = new File(Paths.cache, filename);
 
   const queryParams = new URLSearchParams({
-    prompt: encodeURIComponent(prompt),
+    prompt,
   });
   if (voice) queryParams.append("voice", voice);
   if (lang) queryParams.append("lang", lang);
@@ -141,8 +140,10 @@ export const aiExamplesQueryOptions = (prompt: string | null) =>
         throw new Error("No prompt provided");
       }
 
+      const params = new URLSearchParams({ word: prompt });
+
       const resp = await fetch(
-        `${process.env.EXPO_PUBLIC_BASE_URL}/example?word=${prompt}`,
+        `${process.env.EXPO_PUBLIC_BASE_URL}/example?${params.toString()}`,
         {
           signal,
           method: "GET",

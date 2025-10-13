@@ -45,26 +45,16 @@ export default function PracticeSessionScreen() {
   }>({ index: null, phase: "idle" });
 
   const { index: activeSpeechIndex, phase: activeSpeechPhase } = speechState;
+
+  // Pre-split clean Japanese text into paragraphs for speech playback
   const japaneseParagraphs = useMemo(() => {
-    if (!session) return [];
+    if (!session?.content_text) return [];
 
-    const contentText = session.content_text ?? "";
-    if (!contentText) return [];
-
-    return contentText
+    return session.content_text
       .split("\n\n")
       .map((p) => p.trim())
-      .filter((p) => {
-        if (!p) return false;
-        if (p.startsWith("#")) return false;
-        if (/^(Vocabulary|Grammar|English|Translation)/i.test(p)) return false;
-        const hasJapanese = Array.from(p).some((char) => isJapanese(char));
-        return hasJapanese;
-      })
-      .map((p) => {
-        return p.replace(/[#*_`]/g, "").trim();
-      });
-  }, [session]);
+      .filter((p) => p.length > 0);
+  }, [session?.content_text]);
 
   const handlePlayParagraph = useCallback(
     async (text: string, index: number) => {
@@ -150,7 +140,10 @@ export default function PracticeSessionScreen() {
           paragraphIndex++;
           const currentIndex = paragraphIndex;
 
-          const paragraphText = japaneseParagraphs[currentIndex] || cleanText;
+          // Use pre-split clean Japanese text if available, otherwise fall back to extracted text
+          const paragraphText =
+            japaneseParagraphs[currentIndex] || cleanText;
+
           const isLoading =
             speechState.index === currentIndex &&
             speechState.phase === "loading";

@@ -112,8 +112,6 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
         await Purchases.configure({ apiKey: key || "" });
 
         Purchases.addCustomerInfoUpdateListener((customerInfo) => {
-          console.log(customerInfo);
-
           updateSubscriptionState(customerInfo);
         });
 
