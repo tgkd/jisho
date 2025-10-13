@@ -75,29 +75,43 @@ export default function SubscriptionInfoScreen() {
 
         <View style={styles.disclaimerSection}>
           <ThemedText size="sm" style={styles.disclaimerText}>
-            <ThemedText size="sm" style={styles.disclaimerBold}>Third-Party AI Providers:</ThemedText>{" "}
-            Premium AI features are provided through third-party services. We do not control the output or accuracy of AI-generated content.
+            <ThemedText size="sm" style={styles.disclaimerBold}>
+              Third-Party AI Providers:
+            </ThemedText>{" "}
+            Premium AI features are provided through third-party services. We do
+            not control the output or accuracy of AI-generated content.
           </ThemedText>
         </View>
 
         <View style={styles.disclaimerSection}>
           <ThemedText size="sm" style={styles.disclaimerText}>
-            <ThemedText size="sm" style={styles.disclaimerBold}>No Warranty of Accuracy:</ThemedText>{" "}
-            AI-generated explanations, translations, and responses may contain errors, inaccuracies, or misleading information.
+            <ThemedText size="sm" style={styles.disclaimerBold}>
+              No Warranty of Accuracy:
+            </ThemedText>{" "}
+            AI-generated explanations, translations, and responses may contain
+            errors, inaccuracies, or misleading information.
           </ThemedText>
         </View>
 
         <View style={styles.disclaimerSection}>
           <ThemedText size="sm" style={styles.disclaimerText}>
-            <ThemedText size="sm" style={styles.disclaimerBold}>Educational Use Only:</ThemedText>{" "}
-            AI features are for educational and informational purposes only. Do not rely on them for professional, academic, business, legal, or medical contexts.
+            <ThemedText size="sm" style={styles.disclaimerBold}>
+              Educational Use Only:
+            </ThemedText>{" "}
+            AI features are for educational and informational purposes only. Do
+            not rely on them for professional, academic, business, legal, or
+            medical contexts.
           </ThemedText>
         </View>
 
         <View style={styles.disclaimerSection}>
           <ThemedText size="sm" style={styles.disclaimerText}>
-            <ThemedText size="sm" style={styles.disclaimerBold}>Your Responsibility:</ThemedText>{" "}
-            You are solely responsible for verifying AI-generated information with authoritative sources and evaluating its appropriateness for your use case.
+            <ThemedText size="sm" style={styles.disclaimerBold}>
+              Your Responsibility:
+            </ThemedText>{" "}
+            You are solely responsible for verifying AI-generated information
+            with authoritative sources and evaluating its appropriateness for
+            your use case.
           </ThemedText>
         </View>
 
@@ -107,31 +121,12 @@ export default function SubscriptionInfoScreen() {
             <ThemedText
               size="sm"
               style={styles.linkText}
-              onPress={() => Linking.openURL("https://jisho.pages.dev/terms.html")}
+              onPress={() => Linking.openURL("https://thetango.org/terms.html")}
             >
               Terms of Service
-            </ThemedText>
-            {" "}for complete details on AI feature limitations and liability.
+            </ThemedText>{" "}
+            for complete details on AI feature limitations and liability.
           </ThemedText>
-        </View>
-
-        <View style={styles.legalLinks}>
-          <HapticTab
-            onPress={() => Linking.openURL("https://jisho.pages.dev/terms.html")}
-            style={styles.legalLinkButton}
-          >
-            <ThemedText size="sm" style={styles.legalLinkText}>
-              Terms of Service
-            </ThemedText>
-          </HapticTab>
-          <HapticTab
-            onPress={() => Linking.openURL("https://jisho.pages.dev/privacy.html")}
-            style={styles.legalLinkButton}
-          >
-            <ThemedText size="sm" style={styles.legalLinkText}>
-              Privacy Policy
-            </ThemedText>
-          </HapticTab>
         </View>
       </Card>
 
