@@ -1,15 +1,24 @@
 import { useSubscription } from "@/providers/SubscriptionContext";
 import { useState } from "react";
-import { ActivityIndicator, Linking, ScrollView, StyleSheet, View } from "react-native";
+import {
+  ActivityIndicator,
+  Linking,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 import { HapticTab } from "@/components/HapticTab";
 import { ThemedText } from "@/components/ThemedText";
 import { Card } from "@/components/ui/Card";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { Colors } from "@/constants/Colors";
+import { useColorScheme } from "@/hooks/useColorScheme";
 
 export default function SubscriptionInfoScreen() {
   const subscription = useSubscription();
+  const colorScheme = useColorScheme() ?? "light";
   const [refreshing, setRefreshing] = useState(false);
 
   const handleRefresh = async () => {
@@ -30,12 +39,22 @@ export default function SubscriptionInfoScreen() {
         </ThemedText>
         <View style={styles.featureList}>
           <View style={styles.feature}>
-            <IconSymbol name="sparkles" size={24} color={Colors.light.tint} />
+            <IconSymbol
+              name="sparkles"
+              size={24}
+              color={Colors[colorScheme].tint}
+            />
             <View style={{ flex: 1 }}>
               <ThemedText size="md" style={styles.featureTitle}>
                 Cloud AI
               </ThemedText>
-              <ThemedText size="sm" style={styles.featureDescription}>
+              <ThemedText
+                size="sm"
+                style={{
+                  color: Colors[colorScheme].textSecondary,
+                  lineHeight: 20,
+                }}
+              >
                 Better voices, faster processing, and enhanced explanations
                 powered by advanced cloud AI
               </ThemedText>
@@ -43,12 +62,22 @@ export default function SubscriptionInfoScreen() {
           </View>
 
           <View style={styles.feature}>
-            <IconSymbol name="book.fill" size={24} color={Colors.light.tint} />
+            <IconSymbol
+              name="book.fill"
+              size={24}
+              color={Colors[colorScheme].tint}
+            />
             <View style={{ flex: 1 }}>
               <ThemedText size="md" style={styles.featureTitle}>
                 JLPT Practice Passages
               </ThemedText>
-              <ThemedText size="sm" style={styles.featureDescription}>
+              <ThemedText
+                size="sm"
+                style={{
+                  color: Colors[colorScheme].textSecondary,
+                  lineHeight: 20,
+                }}
+              >
                 Access comprehensive reading practice materials for all JLPT
                 levels (N5-N1)
               </ThemedText>
@@ -59,13 +88,19 @@ export default function SubscriptionInfoScreen() {
             <IconSymbol
               name="bubble.left.and.bubble.right.fill"
               size={24}
-              color={Colors.light.tint}
+              color={Colors[colorScheme].tint}
             />
             <View style={{ flex: 1 }}>
               <ThemedText size="md" style={styles.featureTitle}>
                 Practice Chat
               </ThemedText>
-              <ThemedText size="sm" style={styles.featureDescription}>
+              <ThemedText
+                size="sm"
+                style={{
+                  color: Colors[colorScheme].textSecondary,
+                  lineHeight: 20,
+                }}
+              >
                 Interactive AI-powered conversations tailored to your JLPT level
                 for immersive practice
               </ThemedText>
@@ -75,13 +110,16 @@ export default function SubscriptionInfoScreen() {
       </Card>
 
       <Card>
-        <ThemedText size="md" style={styles.disclaimerTitle}>
+        <ThemedText size="md" style={styles.featureTitle}>
           AI Features Disclaimer
         </ThemedText>
 
         <View style={styles.disclaimerSection}>
-          <ThemedText size="sm" style={styles.disclaimerText}>
-            <ThemedText size="sm" style={styles.disclaimerBold}>
+          <ThemedText
+            size="sm"
+            style={{ color: Colors[colorScheme].textSecondary, lineHeight: 20 }}
+          >
+            <ThemedText size="sm" style={styles.featureTitle}>
               Third-Party AI Providers:
             </ThemedText>{" "}
             Premium AI features are provided through third-party services. We do
@@ -90,8 +128,11 @@ export default function SubscriptionInfoScreen() {
         </View>
 
         <View style={styles.disclaimerSection}>
-          <ThemedText size="sm" style={styles.disclaimerText}>
-            <ThemedText size="sm" style={styles.disclaimerBold}>
+          <ThemedText
+            size="sm"
+            style={{ color: Colors[colorScheme].textSecondary, lineHeight: 20 }}
+          >
+            <ThemedText size="sm" style={styles.featureTitle}>
               No Warranty of Accuracy:
             </ThemedText>{" "}
             AI-generated explanations, translations, and responses may contain
@@ -100,8 +141,11 @@ export default function SubscriptionInfoScreen() {
         </View>
 
         <View style={styles.disclaimerSection}>
-          <ThemedText size="sm" style={styles.disclaimerText}>
-            <ThemedText size="sm" style={styles.disclaimerBold}>
+          <ThemedText
+            size="sm"
+            style={{ color: Colors[colorScheme].textSecondary, lineHeight: 20 }}
+          >
+            <ThemedText size="sm" style={styles.featureTitle}>
               Educational Use Only:
             </ThemedText>{" "}
             AI features are for educational and informational purposes only. Do
@@ -111,8 +155,11 @@ export default function SubscriptionInfoScreen() {
         </View>
 
         <View style={styles.disclaimerSection}>
-          <ThemedText size="sm" style={styles.disclaimerText}>
-            <ThemedText size="sm" style={styles.disclaimerBold}>
+          <ThemedText
+            size="sm"
+            style={{ color: Colors[colorScheme].textSecondary, lineHeight: 20 }}
+          >
+            <ThemedText size="sm" style={styles.featureTitle}>
               Your Responsibility:
             </ThemedText>{" "}
             You are solely responsible for verifying AI-generated information
@@ -122,11 +169,18 @@ export default function SubscriptionInfoScreen() {
         </View>
 
         <View style={styles.disclaimerSection}>
-          <ThemedText size="sm" style={styles.disclaimerText}>
+          <ThemedText
+            size="sm"
+            style={{ color: Colors[colorScheme].textSecondary, lineHeight: 20 }}
+          >
             See our full{" "}
             <ThemedText
               size="sm"
-              style={styles.linkText}
+              style={{
+                color: Colors[colorScheme].tint,
+                fontWeight: "600",
+                textDecorationLine: "underline",
+              }}
               onPress={() => Linking.openURL("https://thetango.org/terms.html")}
             >
               Terms of Service
@@ -142,9 +196,12 @@ export default function SubscriptionInfoScreen() {
             <IconSymbol
               name="checkmark.circle.fill"
               size={32}
-              color={Colors.light.tint}
+              color={Colors[colorScheme].tint}
             />
-            <ThemedText size="md" style={styles.premiumText}>
+            <ThemedText
+              size="md"
+              style={{ flex: 1, color: Colors[colorScheme].tint }}
+            >
               You have access to all premium features
             </ThemedText>
           </View>
@@ -153,7 +210,10 @@ export default function SubscriptionInfoScreen() {
             onPress={() => {
               subscription.showPaywall();
             }}
-            style={styles.subscribeButton}
+            style={[
+              styles.subscribeButton,
+              { backgroundColor: Colors[colorScheme].tint },
+            ]}
           >
             <ThemedText size="md" style={styles.subscribeButtonText}>
               Subscribe Now
@@ -161,24 +221,22 @@ export default function SubscriptionInfoScreen() {
           </HapticTab>
         )}
 
-        <HapticTab
+        <TouchableOpacity
           onPress={handleRefresh}
           style={styles.refreshButton}
           disabled={refreshing}
         >
           {refreshing ? (
-            <ActivityIndicator size="small" color={Colors.light.tint} />
+            <ActivityIndicator size="small" color={Colors[colorScheme].tint} />
           ) : (
             <IconSymbol
               name="arrow.clockwise"
               size={20}
-              color={Colors.light.tint}
+              color={Colors[colorScheme].text}
             />
           )}
-          <ThemedText size="sm" style={styles.refreshButtonText}>
-            {refreshing ? "Refreshing..." : "Refresh Subscription Status"}
-          </ThemedText>
-        </HapticTab>
+          <ThemedText size="sm">Refresh Subscription Status</ThemedText>
+        </TouchableOpacity>
       </Card>
     </ScrollView>
   );
@@ -189,10 +247,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 24,
     gap: 24,
-  },
-  header: {
-    gap: 12,
-    marginBottom: 8,
   },
   featureList: {
     marginTop: 16,
@@ -207,12 +261,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginBottom: 4,
   },
-  featureDescription: {
-    color: Colors.light.textSecondary,
-    lineHeight: 20,
-  },
   subscribeButton: {
-    backgroundColor: Colors.light.tint,
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 12,
@@ -229,49 +278,8 @@ const styles = StyleSheet.create({
     gap: 12,
     padding: 8,
   },
-  premiumText: {
-    flex: 1,
-    color: Colors.light.tint,
-  },
-  disclaimerText: {
-    color: Colors.light.textSecondary,
-    lineHeight: 20,
-  },
-  disclaimerTitle: {
-    fontWeight: "600",
-    color: Colors.light.text,
-    marginBottom: 12,
-  },
   disclaimerSection: {
     marginTop: 12,
-  },
-  disclaimerBold: {
-    fontWeight: "600",
-    color: Colors.light.text,
-  },
-  linkText: {
-    color: Colors.light.tint,
-    fontWeight: "600",
-    textDecorationLine: "underline",
-  },
-  legalLinks: {
-    marginTop: 16,
-    flexDirection: "row",
-    gap: 12,
-  },
-  legalLinkButton: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: Colors.light.tint,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  legalLinkText: {
-    color: Colors.light.tint,
-    fontWeight: "600",
   },
   refreshButton: {
     flexDirection: "row",
@@ -279,12 +287,5 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     paddingVertical: 12,
-    marginTop: 16,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: Colors.light.separator,
-  },
-  refreshButtonText: {
-    color: Colors.light.tint,
-    fontWeight: "500",
   },
 });

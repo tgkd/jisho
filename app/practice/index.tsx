@@ -13,7 +13,7 @@ import { FlashList, FlashListRef } from "@shopify/flash-list";
 import { useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Alert, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Alert, RefreshControl, StyleSheet, View } from "react-native";
 
 export default function PracticeScreen() {
   const router = useRouter();
@@ -21,23 +21,32 @@ export default function PracticeScreen() {
   const flashListRef = useRef<FlashListRef<SessionWithPreview>>(null);
   const [sessions, setSessions] = useState<SessionWithPreview[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  useEffect(() => {
-    loadSessions();
-  }, []);
-
-  const loadSessions = async () => {
+  const loadSessions = async (isRefresh = false) => {
     try {
-      setIsLoading(true);
+      if (isRefresh) {
+        setIsRefreshing(true);
+      } else {
+        setIsLoading(true);
+      }
       const data = await getAllSessions(db);
       setSessions(data);
     } catch (error) {
       console.error("Failed to load sessions:", error);
       Alert.alert("Error", "Failed to load reading practice history");
     } finally {
-      setIsLoading(false);
+      if (isRefresh) {
+        setIsRefreshing(false);
+      } else {
+        setIsLoading(false);
+      }
     }
   };
+
+  useEffect(() => {
+    loadSessions();
+  }, []);
 
   const handleNewChat = () => {
     router.push("/practice/new" as any);
@@ -204,6 +213,13 @@ export default function PracticeScreen() {
       ListEmptyComponent={renderEmptyState}
       ItemSeparatorComponent={() => <View style={styles.separator} />}
       contentContainerStyle={styles.container}
+      refreshControl={
+        <RefreshControl
+          refreshing={isRefreshing}
+          onRefresh={() => loadSessions(true)}
+          tintColor={Colors.light.tint}
+        />
+      }
     />
   );
 }

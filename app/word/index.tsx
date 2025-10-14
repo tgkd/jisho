@@ -3,7 +3,7 @@ import * as Clipboard from "expo-clipboard";
 import { Stack, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useRef, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SearchBarCommands } from "react-native-screens";
 
 import { HapticButton } from "@/components/HapticTab";
@@ -69,7 +69,6 @@ export default function HomeScreen() {
   const handleSearch = useDebouncedCallback(async (query: string) => {
     const text = query.trim();
 
-    // Cancel any pending search
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -81,18 +80,15 @@ export default function HomeScreen() {
       return;
     }
 
-    // Prevent concurrent searches
     if (isSearchingRef.current) {
       return;
     }
 
     isSearchingRef.current = true;
 
-    // Create new abort controller for this search
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
-    // Only process tokens for word search
     if (searchMode === "word") {
       const tokensRes = getJpTokens(text).map((t) => ({ id: t, label: t }));
       setTokens(tokensRes.length > 1 ? tokensRes : []);
@@ -106,18 +102,14 @@ export default function HomeScreen() {
           signal: controller.signal,
         });
 
-        // Check if this search was cancelled
         if (controller.signal.aborted) {
           return;
         }
 
-        // Safe state updates with guards
         if (!controller.signal.aborted && isSearchingRef.current) {
-          // Batch state updates to prevent FlatList transition issues
           const newResults = searchResults.words || [];
           const newMeanings = searchResults.meanings || new Map();
 
-          // Only update if data actually changed
           if (JSON.stringify(newResults) !== JSON.stringify(results)) {
             setResults(newResults);
             setMeaningsMap(newMeanings);
@@ -126,7 +118,6 @@ export default function HomeScreen() {
       } else {
         const kanjiResults = await searchKanji(db, text);
 
-        // Check if this search was cancelled
         if (controller.signal.aborted) {
           return;
         }
@@ -137,12 +128,10 @@ export default function HomeScreen() {
         }
       }
     } catch (error) {
-      // Don't log abort errors
       if (error instanceof Error && error.name !== "AbortError") {
         console.error("Search failed:", error);
       }
       if (!controller.signal.aborted && isSearchingRef.current) {
-        // Only clear results if we actually had results
         if (results.length > 0) {
           setResults([]);
         }
@@ -156,7 +145,6 @@ export default function HomeScreen() {
   }, 100);
 
   const handleChange = (text: string) => {
-    // Only set loading if we're actually going to search
     if (text.trim().length > 0) {
       setLoading(true);
     }
@@ -174,15 +162,12 @@ export default function HomeScreen() {
     const newMode = searchMode === "word" ? "kanji" : "word";
     setSearchMode(newMode);
 
-    // Keep the current search value and restart search in new mode
     const currentSearch = search;
     if (currentSearch.trim().length > 0) {
       setLoading(true);
-      // Clear previous results but keep search value
       setResults([]);
       setTokens([]);
       setMeaningsMap(new Map());
-      // Trigger search with current value in new mode
       handleSearch(currentSearch);
     } else {
       setResults([]);
@@ -208,7 +193,6 @@ export default function HomeScreen() {
     [router]
   );
 
-  // Determine what data to show
   const shouldShowRecentHistory =
     !search.trim().length && !results.length && !loading;
   const recentHistory = shouldShowRecentHistory
@@ -219,12 +203,10 @@ export default function HomeScreen() {
     : results;
 
   const handleCancelButtonPress = () => {
-    // Cancel any pending searches
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
 
-    // Reset searching state
     isSearchingRef.current = false;
 
     setSearch("");
@@ -263,9 +245,7 @@ export default function HomeScreen() {
           index={index}
           total={results?.length || 0}
           onPress={() => {
-            // Add to history when kanji is pressed
             history.addKanjiToHistory(item);
-            // Navigate to kanji detail
             router.navigate({
               pathname: "/word/kanji/[id]",
               params: { id: item.id.toString(), title: item.character },
@@ -302,6 +282,16 @@ export default function HomeScreen() {
     return (
       <View style={styles.emptyContainer}>
         <ThemedText type="secondary">{"No results found"}</ThemedText>
+        {searchMode === "kanji" && (
+          <TouchableOpacity
+            onPress={toggleSearchMode}
+            style={styles.switchButton}
+          >
+            <ThemedText size="sm" type="link">
+              {"Search as word instead"}
+            </ThemedText>
+          </TouchableOpacity>
+        )}
       </View>
     );
   };
@@ -343,6 +333,7 @@ export default function HomeScreen() {
         keyExtractor={(item) =>
           isHistoryItem(item) ? `history-${item.id}` : `result-${item.id}`
         }
+        style={styles.list}
         contentContainerStyle={styles.scrollContainer}
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
@@ -380,6 +371,9 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  list: {
+    flex: 1,
+  },
   loader: {
     paddingTop: 16,
   },
@@ -392,6 +386,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingTop: 32,
+  },
+  switchButton: {
+    marginTop: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
   },
   pasteButton: {
     position: "absolute",

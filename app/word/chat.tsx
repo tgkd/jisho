@@ -174,14 +174,17 @@ export default function ExploreScreen() {
     () =>
       !messages.length ? (
         <View style={styles.emptyMsg}>
-          <ThemedText textAlign="center" type="secondary">
-            {params.word
-              ? `Ask me anything about ${params.word}!`
-              : "All messages are temporary and will disappear after closing the chat."}
+          <ThemedText size="xs" type="secondary">
+            ⚠️ AI-generated content may contain errors or inaccuracies. Please
+            verify important information with reliable sources.
+          </ThemedText>
+          <ThemedText size="xs" type="secondary">
+            All messages are temporary and will disappear after closing the
+            chat.
           </ThemedText>
         </View>
       ) : null,
-    [messages, params.word]
+    [messages]
   );
 
   const clearMessages = () => {
@@ -248,6 +251,7 @@ const styles = StyleSheet.create({
     width: "100%",
     justifyContent: "center",
     alignItems: "center",
+    gap: 8,
   },
   chatItem: {
     gap: 8,

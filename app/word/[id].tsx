@@ -7,7 +7,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  View
+  View,
 } from "react-native";
 
 import { FuriganaText } from "@/components/FuriganaText";
@@ -32,14 +32,14 @@ import {
   getFuriganaForText,
   getWordExamples,
   saveAudioFile,
-  WordMeaning
+  WordMeaning,
 } from "@/services/database";
 import {
   cleanupJpReadings,
   createChatPrompt,
   deduplicateEn,
   findKanji,
-  formatEn
+  formatEn,
 } from "@/services/parse";
 import { createWordPrompt } from "@/services/request";
 
@@ -115,9 +115,7 @@ export default function WordDetailScreen() {
       kanji: entry.word.kanji || undefined,
     });
 
-    const meanings = entry.meanings
-      .map((m) => m.meaning)
-      .join("; ");
+    const meanings = entry.meanings.map((m) => m.meaning).join("; ");
 
     router.push({
       pathname: "/word/chat",
@@ -181,29 +179,21 @@ export default function WordDetailScreen() {
 
       {ai.isAvailable && (
         <>
-          <ThemedText type="title" style={styles.sectionTitle}>
-            {"AI Assistant"}
-          </ThemedText>
-          <Card variant="grouped">
-            <HapticTab
-              onPress={handleStartChat}
-              style={styles.askAIButton}
-            >
-              <View style={styles.askAIContent}>
+          <View style={styles.askAIButton}>
+            <HapticTab onPress={handleStartChat} style={styles.actionButton}>
+              <View style={styles.actionContent}>
                 <IconSymbol
                   name="bubble.left.and.text.bubble.right"
                   size={24}
                   color={tintColor}
                 />
-                <View style={styles.askAIText}>
-                  <ThemedText>Ask questions about this word</ThemedText>
-                  <ThemedText type="secondary" size="sm">
-                    Get explanations, examples, and usage tips
-                  </ThemedText>
-                </View>
+                <ThemedText style={styles.actionText}>Start Chat</ThemedText>
               </View>
             </HapticTab>
-          </Card>
+            <ThemedText type="secondary" size="sm">
+              Get explanations, examples, and usage tips
+            </ThemedText>
+          </View>
         </>
       )}
     </ScrollView>
@@ -455,7 +445,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   askAIButton: {
-    paddingVertical: 12,
+    marginTop: 12,
+    alignItems: "center",
   },
   askAIContent: {
     flexDirection: "row",
@@ -465,5 +456,21 @@ const styles = StyleSheet.create({
   askAIText: {
     flex: 1,
     gap: 4,
+  },
+  actionButton: {
+    flex: 1,
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  actionContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    paddingVertical: 16,
+  },
+  actionText: {
+    fontSize: 16,
+    fontWeight: "600",
   },
 });

@@ -1,7 +1,7 @@
 import {
   DarkTheme,
   DefaultTheme,
-  ThemeProvider
+  ThemeProvider,
 } from "@react-navigation/native";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { setAudioModeAsync } from "expo-audio";
@@ -15,7 +15,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import {
   configureReanimatedLogger,
-  ReanimatedLogLevel
+  ReanimatedLogLevel,
 } from "react-native-reanimated";
 import { AppleAIProvider } from "../providers/AppleAIProvider";
 import { UnifiedAIProvider } from "../providers/UnifiedAIProvider";
@@ -100,14 +100,14 @@ function Router() {
         <Label>Search</Label>
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="practice" hidden={!sub.isPremium}>
-        <Icon sf="book" drawable="custom_android_drawable" />
-        <Label>Read</Label>
-      </NativeTabs.Trigger>
-
       <NativeTabs.Trigger name="history">
         <Icon sf="clock" drawable="custom_android_drawable" />
         <Label>History</Label>
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="practice" hidden={!sub.isPremium}>
+        <Icon sf="book" drawable="custom_android_drawable" />
+        <Label>Read</Label>
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="settings">
