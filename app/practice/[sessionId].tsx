@@ -6,9 +6,14 @@ import { useThemeColor } from "@/hooks/useThemeColor";
 import { useUnifiedAI } from "@/providers/UnifiedAIProvider";
 import {
   getSession,
-  type PracticeSession,
+  updateSessionContent,
+  type PracticeSession
 } from "@/services/database/practice-sessions";
-import { createChatPrompt, extractJapaneseFromPassage } from "@/services/parse";
+import {
+  createChatPrompt,
+  extractJapaneseFromPassage,
+  extractJapaneseTextWithParagraphs
+} from "@/services/parse";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -18,7 +23,7 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import Markdown, { RenderRules } from "react-native-markdown-display";
 import { isJapanese } from "wanakana";
@@ -39,6 +44,8 @@ export default function PracticeSessionScreen() {
 
   const [session, setSession] = useState<PracticeSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isGeneratingContent, setIsGeneratingContent] = useState(false);
+  const [streamingContent, setStreamingContent] = useState<string>("");
   const [speechState, setSpeechState] = useState<{
     index: number | null;
     phase: "idle" | "loading" | "playing";
@@ -48,13 +55,21 @@ export default function PracticeSessionScreen() {
 
   // Pre-split clean Japanese text into paragraphs for speech playback
   const japaneseParagraphs = useMemo(() => {
-    if (!session?.content_text) return [];
+    let japaneseText = "";
 
-    return session.content_text
+    if (streamingContent) {
+      japaneseText = extractJapaneseTextWithParagraphs(streamingContent);
+    } else if (session?.content_text) {
+      japaneseText = session.content_text;
+    }
+
+    if (!japaneseText) return [];
+
+    return japaneseText
       .split("\n\n")
       .map((p) => p.trim())
       .filter((p) => p.length > 0);
-  }, [session?.content_text]);
+  }, [session?.content_text, streamingContent]);
 
   const handlePlayParagraph = useCallback(
     async (text: string, index: number) => {
@@ -200,6 +215,55 @@ export default function PracticeSessionScreen() {
     extractTextFromNode,
   ]);
 
+  const generateContent = useCallback(
+    async (level: string) => {
+      if (isGeneratingContent) return;
+
+      setIsGeneratingContent(true);
+      setStreamingContent("");
+
+      try {
+        await ai.generateReadingPassageStreaming(
+          level,
+          {
+            onChunk: (chunk: string) => {
+              setStreamingContent((prev) => prev + chunk);
+            },
+            onComplete: async (fullText: string) => {
+              const japaneseText =
+                extractJapaneseTextWithParagraphs(fullText);
+
+              await updateSessionContent(db, Number(sessionId), {
+                output: fullText,
+                text: japaneseText,
+              });
+
+              const updatedSession = await getSession(db, Number(sessionId));
+              if (updatedSession) {
+                setSession(updatedSession);
+              }
+
+              setStreamingContent("");
+              setIsGeneratingContent(false);
+            },
+            onError: (error: string) => {
+              console.error("Streaming error:", error);
+              Alert.alert("Error", "Failed to generate reading passage");
+              setIsGeneratingContent(false);
+              setStreamingContent("");
+            },
+          }
+        );
+      } catch (error) {
+        console.error("Failed to generate content:", error);
+        Alert.alert("Error", "Failed to generate reading passage");
+        setIsGeneratingContent(false);
+        setStreamingContent("");
+      }
+    },
+    [ai, db, sessionId, isGeneratingContent]
+  );
+
   const loadSessionData = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -211,6 +275,10 @@ export default function PracticeSessionScreen() {
       }
 
       setSession(sessionData);
+
+      if (!sessionData.content_output && !sessionData.content) {
+        await generateContent(sessionData.level);
+      }
     } catch (error) {
       console.error("Failed to load session:", error);
       Alert.alert("Error", "Failed to load practice session");
@@ -218,7 +286,7 @@ export default function PracticeSessionScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [db, sessionId, router]);
+  }, [db, sessionId, router, generateContent]);
 
   const handleStartChat = () => {
     if (!session) return;
@@ -272,7 +340,9 @@ export default function PracticeSessionScreen() {
   const contentOutput =
     session.content_output ?? session.content ?? session.content_text ?? "";
 
-  if (!contentOutput) {
+  const displayContent = streamingContent || contentOutput;
+
+  if (!displayContent && !isGeneratingContent) {
     return (
       <View style={styles.centerContainer}>
         <ThemedText type="secondary">No content available</ThemedText>
@@ -286,22 +356,35 @@ export default function PracticeSessionScreen() {
       style={styles.container}
       contentContainerStyle={styles.contentContainer}
     >
-      <Markdown style={markdownStyles} rules={markdownRules}>
-        {contentOutput}
-      </Markdown>
+      {isGeneratingContent && !streamingContent ? (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" />
+          <ThemedText type="secondary" style={{ marginTop: 16 }}>
+            Generating reading passage...
+          </ThemedText>
+        </View>
+      ) : (
+        <>
+          <Markdown style={markdownStyles} rules={markdownRules}>
+            {displayContent}
+          </Markdown>
 
-      <View style={styles.actionsContainer}>
-        <HapticTab onPress={handleStartChat} style={styles.actionButton}>
-          <View style={styles.actionContent}>
-            <IconSymbol
-              name="bubble.left.and.text.bubble.right"
-              size={24}
-              color={tintColor}
-            />
-            <ThemedText style={styles.actionText}>Start Chat</ThemedText>
-          </View>
-        </HapticTab>
-      </View>
+          {!isGeneratingContent && (
+            <View style={styles.actionsContainer}>
+              <HapticTab onPress={handleStartChat} style={styles.actionButton}>
+                <View style={styles.actionContent}>
+                  <IconSymbol
+                    name="bubble.left.and.text.bubble.right"
+                    size={24}
+                    color={tintColor}
+                  />
+                  <ThemedText style={styles.actionText}>Start Chat</ThemedText>
+                </View>
+              </HapticTab>
+            </View>
+          )}
+        </>
+      )}
     </ScrollView>
   );
 }

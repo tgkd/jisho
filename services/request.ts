@@ -16,11 +16,6 @@ export const aiExampleSchemaArray = z.array(aiExampleSchema);
 
 export type AiExample = z.infer<typeof aiExampleSchema>;
 
-export interface AiReadingResponse {
-  output: string;
-  text: string;
-}
-
 export function createWordPrompt(
   e: {
     word: DictionaryEntry;
@@ -231,17 +226,17 @@ export function getAiChat(signal?: AbortSignal | null) {
 }
 
 /**
- * Get AI-generated reading practice passage.
- * Uses GET /reading endpoint returning structured passage content.
+ * Get AI-generated reading practice passage with streaming response.
+ * Uses GET /reading endpoint with text/plain streaming.
  * @param {string} level - JLPT difficulty level (e.g., "N5", "N3", "jlpt n2")
  * @param {AbortSignal} [signal] - Optional abort signal
- * @returns {Promise<AiReadingResponse>} Structured reading passage response
+ * @returns {Promise<Response>} Streaming response
  * @throws {Error} If level is missing or request fails
  */
-export function getAiReadingPassage(
+export function getAiReadingPassageStreaming(
   level: string,
   signal?: AbortSignal
-): Promise<AiReadingResponse> {
+): Promise<Response> {
   if (!level) {
     throw new Error("No level provided");
   }
@@ -251,7 +246,9 @@ export function getAiReadingPassage(
     (defaultOptions.headers as Record<string, string> | undefined) ?? {};
   const headers: Record<string, string> = {
     ...baseHeaders,
-    Accept: "application/json",
+    Accept: "text/plain",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive",
   };
 
   const params = new URLSearchParams({ lvl: level });
@@ -264,22 +261,5 @@ export function getAiReadingPassage(
       headers,
       credentials: defaultOptions.credentials,
     }
-  ).then(async (response) => {
-    if (!response.ok) {
-      throw new Error(`HTTP error: ${response.status}`);
-    }
-
-    const payload = (await response.json()) as Partial<AiReadingResponse>;
-    const output = (payload.output ?? "").trim();
-    const text = (payload.text ?? "").trim();
-
-    if (!output && !text) {
-      throw new Error("Reading passage response missing content");
-    }
-
-    return {
-      output,
-      text,
-    } satisfies AiReadingResponse;
-  });
+  );
 }

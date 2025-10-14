@@ -12,12 +12,11 @@ import { useMMKVString } from "react-native-mmkv";
 import { JLPTLevel } from "@/services/database/practice-sessions";
 import {
   AiExample,
-  AiReadingResponse,
   getAiChat,
   getAiExamples,
   getAiExplanation,
-  getAiReadingPassage,
-  getAiSound,
+  getAiReadingPassageStreaming,
+  getAiSound
 } from "@/services/request";
 import { SETTINGS_KEYS } from "@/services/storage";
 import { useAppleAI } from "./AppleAIProvider";
@@ -69,7 +68,11 @@ export interface UnifiedAIContextValue {
     text: string,
     options?: { language?: string; rate?: number }
   ) => Promise<string | undefined>;
-  generateReadingPassage: (level: string) => Promise<AiReadingResponse>;
+  generateReadingPassageStreaming: (
+    level: string,
+    streaming: StreamingResponse,
+    signal?: AbortSignal
+  ) => Promise<void>;
   speakText: (text: string) => Promise<void>;
   stopSpeech: () => void;
   isPlayingSpeech?: boolean;
@@ -412,35 +415,66 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
     [provider, localAI, audioPlayer, checkRemoteAccess]
   );
 
-  const generateReadingPassage = useCallback(
-    async (level: string): Promise<AiReadingResponse> => {
-      if (provider === "local") {
-        throw new Error("Reading passage generation not supported on local AI");
-      }
-
-      if (!checkRemoteAccess()) {
-        throw new SubscriptionRequiredError(
-          "Subscription required for AI reading passages"
-        );
-      }
-
-      setIsGenerating(true);
+  const generateReadingPassageStreaming = useCallback(
+    async (
+      level: string,
+      streaming: StreamingResponse,
+      signal?: AbortSignal
+    ): Promise<void> => {
       try {
-        const reading = await getAiReadingPassage(level);
-
-        const output = reading.output || reading.text;
-        const text = reading.text || reading.output;
-
-        if (!output && !text) {
-          throw new Error("Reading passage response missing content");
+        if (provider === "local") {
+          streaming.onError(
+            "Reading passage generation not supported on local AI"
+          );
+          return;
         }
 
-        return {
-          output,
-          text,
-        };
-      } finally {
-        setIsGenerating(false);
+        if (!checkRemoteAccess()) {
+          streaming.onError("Subscription required for AI reading passages");
+          return;
+        }
+
+        const response = await getAiReadingPassageStreaming(level, signal);
+
+        if (!response.ok) {
+          throw new Error(`HTTP error: ${response.status}`);
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) {
+          const fullText = await response.text();
+          streaming.onChunk(fullText);
+          streaming.onComplete(fullText);
+          return;
+        }
+
+        const decoder = new TextDecoder();
+        let fullText = "";
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value, { stream: true });
+            fullText += chunk;
+            streaming.onChunk(chunk);
+          }
+
+          const remaining = decoder.decode();
+          if (remaining) {
+            fullText += remaining;
+            streaming.onChunk(remaining);
+          }
+
+          streaming.onComplete(fullText);
+        } catch (streamError) {
+          streaming.onError(`Stream reading error: ${streamError}`);
+        }
+      } catch (error) {
+        streaming.onError(
+          error instanceof Error ? error.message : "Unknown error"
+        );
       }
     },
     [provider, checkRemoteAccess]
@@ -470,7 +504,7 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
     chatWithMessages,
     chatWithPractice,
     generateSpeech,
-    generateReadingPassage,
+    generateReadingPassageStreaming,
     speakText,
     stopSpeech,
     isGenerating: isGenerating || localAI.isGenerating,

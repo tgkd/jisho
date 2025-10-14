@@ -573,6 +573,42 @@ export function createChatPrompt(
   return "";
 }
 
+export function extractJapaneseTextWithParagraphs(markdown: string): string {
+  if (!markdown) return "";
+
+  const lines = markdown.split("\n");
+  const japaneseLines: string[] = [];
+  let inJapaneseSection = false;
+
+  for (const line of lines) {
+    const trimmedLine = line.trim();
+
+    if (/###\s*日本語/i.test(trimmedLine)) {
+      inJapaneseSection = true;
+      continue;
+    }
+
+    if (/###\s*(English|Vocabulary|Grammar)/i.test(trimmedLine)) {
+      break;
+    }
+
+    if (inJapaneseSection) {
+      if (!trimmedLine) {
+        japaneseLines.push("");
+      } else {
+        const hasJapanese = Array.from(trimmedLine).some((char) =>
+          isJapanese(char)
+        );
+        if (hasJapanese) {
+          japaneseLines.push(cleanupMdStr(trimmedLine));
+        }
+      }
+    }
+  }
+
+  return japaneseLines.join("\n").trim();
+}
+
 export function extractJapaneseFromPassage(markdown: string): string {
   if (!markdown) return "";
 

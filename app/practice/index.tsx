@@ -7,7 +7,7 @@ import { Colors } from "@/constants/Colors";
 import {
   deleteSession,
   getAllSessions,
-  type SessionWithPreview,
+  type SessionWithPreview
 } from "@/services/database/practice-sessions";
 import { FlashList, FlashListRef } from "@shopify/flash-list";
 import { useRouter } from "expo-router";
@@ -83,9 +83,10 @@ export default function PracticeScreen() {
     if (preview) {
       const cleanText = preview
         .replace(/[#*_~`\[\]()]/g, "")
+        .replace(/topic:\s*/gi, "")
         .replace(/\s+/g, " ")
         .trim();
-      return cleanText.substring(0, 24) + (cleanText.length > 24 ? "..." : "");
+      return cleanText.substring(0, 12) + (cleanText.length > 12 ? "..." : "");
     }
     return `${session.level} Reading Practice`;
   };

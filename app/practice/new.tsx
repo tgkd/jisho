@@ -3,10 +3,8 @@ import { ThemedText } from "@/components/ThemedText";
 import { Card } from "@/components/ui/Card";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { Colors } from "@/constants/Colors";
-import { useUnifiedAI } from "@/providers/UnifiedAIProvider";
 import {
   createSession,
-  updateSessionContent,
   type JLPTLevel
 } from "@/services/database/practice-sessions";
 import { useRouter } from "expo-router";
@@ -63,7 +61,6 @@ const levels: LevelCardData[] = [
 export default function NewPracticeScreen() {
   const router = useRouter();
   const db = useSQLiteContext();
-  const ai = useUnifiedAI();
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedLevel, setSelectedLevel] = useState<JLPTLevel | null>(null);
 
@@ -75,10 +72,6 @@ export default function NewPracticeScreen() {
       setSelectedLevel(level);
 
       const sessionId = await createSession(db, level);
-
-  const passage = await ai.generateReadingPassage(level);
-
-  await updateSessionContent(db, sessionId, passage);
 
       router.replace(`/practice/${sessionId}` as any);
     } catch (error) {
