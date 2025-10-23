@@ -57,3 +57,4 @@ assets/db/db_3.db
 scripts/
 scripts_bkp/
 assets/db/
+furi/*
