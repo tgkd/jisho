@@ -7,13 +7,13 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  View,
+  View
 } from "react-native";
 
 import { FuriganaText } from "@/components/FuriganaText";
 import { HapticTab } from "@/components/HapticTab";
 import { HighlightText } from "@/components/HighlightText";
-import { KanjiDetails, KanjiListView } from "@/components/KanjiList";
+import { KanjiDetails } from "@/components/KanjiList";
 import { Loader } from "@/components/Loader";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -32,14 +32,14 @@ import {
   getFuriganaForText,
   getWordExamples,
   saveAudioFile,
-  WordMeaning,
+  WordMeaning
 } from "@/services/database";
 import {
   cleanupJpReadings,
   createChatPrompt,
   deduplicateEn,
   findKanji,
-  formatEn,
+  formatEn
 } from "@/services/parse";
 import { createWordPrompt } from "@/services/request";
 
@@ -234,7 +234,7 @@ function ExamplesView({
 }) {
   const db = useSQLiteContext();
   const ai = useUnifiedAI();
-  const [selectedExample, setSelectedExample] = useState<string[] | null>(null);
+  const router = useRouter();
 
   const handleFetchExamples = async () => {
     try {
@@ -263,7 +263,12 @@ function ExamplesView({
             e={e}
             word={entry.word.word}
             wordId={entry.word.id}
-            onKanjiPress={setSelectedExample}
+            onKanjiPress={(kanjiChars) =>
+              router.push({
+                pathname: "/word/kanji-list",
+                params: { kanji: kanjiChars.join(",") },
+              })
+            }
           />
         ))}
         {entry.examples.length === 0 ? (
@@ -283,11 +288,6 @@ function ExamplesView({
           </Pressable>
         ) : null}
       </Card>
-
-      <KanjiListView
-        kanjiChars={selectedExample}
-        handleClose={() => setSelectedExample(null)}
-      />
     </>
   );
 }

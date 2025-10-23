@@ -1,9 +1,11 @@
+import { Button, Host } from "@expo/ui/swift-ui";
+import { isLiquidGlassAvailable } from "expo-glass-effect";
 import { Stack, useRouter } from "expo-router";
 import * as React from "react";
+import { Platform } from "react-native";
 
 import { useThemeColor } from "@/hooks/useThemeColor";
 import { useUnifiedAI } from "@/providers/UnifiedAIProvider";
-import { Button, Host } from "@expo/ui/swift-ui";
 
 export default function WordLayout() {
   const router = useRouter();
@@ -51,6 +53,17 @@ export default function WordLayout() {
           title: "Chat",
           presentation: "modal",
           headerTransparent: true,
+        }}
+      />
+      <Stack.Screen
+        name="kanji-list"
+        options={{
+          title: "Kanji Details",
+          headerTransparent: true,
+          presentation:
+              isLiquidGlassAvailable()
+                ? "formSheet"
+                : "modal"
         }}
       />
     </Stack>
