@@ -10,6 +10,81 @@ import {
 import type { FuriganaSegment } from "./database/types";
 import segmenter from "./tsegmenter";
 
+/**
+ * Parses a JSON string into an array of FuriganaSegment objects.
+ * Validates each segment to ensure it has the required structure.
+ *
+ * @param raw - JSON string to parse
+ * @returns Array of validated FuriganaSegment objects, or empty array if parsing fails
+ */
+export function parseSegmentsFromJson(raw: string): FuriganaSegment[] {
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed
+      .map((segment) => {
+        if (!segment || typeof segment !== "object") {
+          return null;
+        }
+
+        const source = segment as Record<string, unknown>;
+        const ruby = typeof source.ruby === "string" ? source.ruby : null;
+        if (!ruby) {
+          return null;
+        }
+
+        const rtValue = source.rt;
+        const rt =
+          typeof rtValue === "string" && rtValue.trim().length > 0
+            ? rtValue.trim()
+            : undefined;
+
+        return { ruby, rt } as FuriganaSegment;
+      })
+      .filter((segment): segment is FuriganaSegment => segment !== null);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Extracts furigana segments from token string.
+ * Handles both JSON format and text breakdown format (e.g., "君(きみ)[01] は").
+ *
+ * @param tokens - Token string from database
+ * @returns Array of FuriganaSegment objects
+ */
+export function extractSegmentsFromTokens(tokens?: string | null): FuriganaSegment[] {
+  if (!tokens) {
+    return [];
+  }
+
+  const trimmed = tokens.trim();
+  if (!trimmed) {
+    return [];
+  }
+
+  // Try JSON parsing first
+  if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
+    const segments = parseSegmentsFromJson(trimmed);
+    if (segments.length > 0) {
+      return segments;
+    }
+  }
+
+  // Fall back to text breakdown parsing
+  const readingTokens = processJpExampleText(trimmed);
+  if (readingTokens.length === 0) {
+    return [];
+  }
+
+  const segments = buildFuriganaSegmentsFromTokens(readingTokens);
+  return segments;
+}
+
 type Marker = "numbered" | "bullet" | "dash" | "rows" | "none";
 
 type Divider = "comma" | "semicolon" | "dot" | "none";

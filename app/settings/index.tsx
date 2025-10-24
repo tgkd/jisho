@@ -44,25 +44,22 @@ export default function SettingsScreen() {
 
   const handleDatabaseReset = () => {
     Alert.alert(
-      "Reset Database",
-      "This will reset all database caches. This operation cannot be undone. Are you sure you want to continue?",
+      "Clear Cache",
+      "This will clear all cached data including audio and examples. This operation cannot be undone. Are you sure you want to continue?",
       [
         {
           text: "Cancel",
           style: "cancel",
         },
         {
-          text: "Reset",
+          text: "Clear",
           style: "destructive",
           onPress: async () => {
             try {
               await resetDatabase(db);
             } catch (error) {
               console.error("Failed to reset database:", error);
-              Alert.alert(
-                "Error",
-                "Failed to reset database. Please try again."
-              );
+              Alert.alert("Error", "Failed to clear cache. Please try again.");
             }
           },
         },
@@ -166,8 +163,11 @@ export default function SettingsScreen() {
 
         <View style={styles.settingItem}>
           <ThemedText size="sm">{"AI Features"}</ThemedText>
+
           <ThemedText size="xs" style={styles.description}>
-            {"Choose between on-device AI or cloud-powered AI"}
+            {ai.currentProvider === "remote"
+              ? "✨ Using cloud AI"
+              : "📱 Using on-device Apple Intelligence"}
           </ThemedText>
 
           <View style={styles.row}>
@@ -182,12 +182,6 @@ export default function SettingsScreen() {
               onValueChange={handleToggleRemoteApi}
             />
           </View>
-
-          <ThemedText size="xs" style={styles.description}>
-            {ai.currentProvider === "remote"
-              ? "✨ Using cloud AI - premium features enabled"
-              : "📱 Using on-device Apple Intelligence (free)"}
-          </ThemedText>
 
           <HapticTab
             onPress={() => router.push("/settings/subscription-info")}
@@ -221,7 +215,7 @@ export default function SettingsScreen() {
             size={20}
             color={Colors.light.error}
           />
-          <ThemedText style={styles.warn}>{"Reset Database"}</ThemedText>
+          <ThemedText style={styles.warn}>{"Clear Cache"}</ThemedText>
         </HapticTab>
       </Card>
 

@@ -23,14 +23,12 @@ import { UnifiedAIProvider } from "../providers/UnifiedAIProvider";
 // import { LocalAIProvider } from "../providers/LocalAIProvider";
 
 import { Loader } from "@/components/Loader";
+import { DATABASE_ASSET_ID, DATABASE_NAME } from "@/constants/Database";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { useSubscription } from "@/providers/SubscriptionContext";
 import { SubscriptionProvider } from "@/providers/SubscriptionProvider";
 import { migrateDbIfNeeded } from "@/services/database";
 import { queryClient } from "@/services/queryClient";
-
-const dbname = "db_20250927_130743.db";
-const DATABASE_PATH = "../assets/db/" + dbname;
 
 SplashScreen.preventAutoHideAsync();
 
@@ -68,9 +66,9 @@ export default function RootLayout() {
               <GestureHandlerRootView style={styles.container}>
                 <Suspense fallback={<Loader />}>
                   <SQLiteProvider
-                    databaseName={dbname}
+                    databaseName={DATABASE_NAME}
                     assetSource={{
-                      assetId: require(DATABASE_PATH),
+                      assetId: DATABASE_ASSET_ID,
                     }}
                     onInit={migrateDbIfNeeded}
                     useSuspense

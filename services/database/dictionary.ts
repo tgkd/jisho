@@ -1,4 +1,5 @@
 import { SQLiteDatabase } from "expo-sqlite";
+import { buildFuriganaSegmentsFromTokens, processJpExampleText } from "../parse";
 import { AiExample } from "../request";
 import {
   DBDictEntry,
@@ -7,8 +8,108 @@ import {
   DictionaryEntry,
   WordMeaning,
   ExampleSentence,
+  FuriganaSegment,
 } from "./types";
 import { dbWordToDictEntry } from "./utils";
+
+function isSegment(value: unknown): value is FuriganaSegment {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const segment = value as Record<string, unknown>;
+  const ruby = segment.ruby;
+  if (typeof ruby !== "string" || ruby.trim().length === 0) {
+    return false;
+  }
+
+  const rt = segment.rt;
+  if (rt !== undefined && typeof rt !== "string") {
+    return false;
+  }
+
+  return true;
+}
+
+function parseSegmentsFromJson(raw: string): FuriganaSegment[] | null {
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      return null;
+    }
+
+    const segments = parsed.filter(isSegment) as FuriganaSegment[];
+    return segments.length > 0 ? segments : null;
+  } catch (error) {
+    console.warn("Failed to parse example tokens JSON:", error);
+    return null;
+  }
+}
+
+function deriveExampleFurigana(tokens?: string | null): {
+  segments: FuriganaSegment[];
+  reading: string | null;
+} {
+  if (!tokens) {
+    return { segments: [], reading: null };
+  }
+
+  const trimmed = tokens.trim();
+  if (!trimmed) {
+    return { segments: [], reading: null };
+  }
+
+  if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
+    const jsonSegments = parseSegmentsFromJson(trimmed);
+    if (jsonSegments) {
+      const reading = jsonSegments
+        .map((segment) => segment.rt?.trim() || segment.ruby)
+        .join("")
+        .trim();
+
+      return {
+        segments: jsonSegments,
+        reading: reading.length > 0 ? reading : null,
+      };
+    }
+  }
+
+  const readingTokens = processJpExampleText(trimmed);
+  if (readingTokens.length === 0) {
+    return { segments: [], reading: null };
+  }
+
+  const segments = buildFuriganaSegmentsFromTokens(readingTokens);
+  const reading = readingTokens
+    .map((token) => token.reading?.trim() || token.form?.trim() || token.text?.trim() || "")
+    .filter(Boolean)
+    .join("")
+    .trim();
+
+  return {
+    segments,
+    reading: reading.length > 0 ? reading : null,
+  };
+}
+
+function mapDbExampleSentence(row: DBExampleSentence): ExampleSentence {
+  const tokens = row.tokens ?? null;
+  const { segments, reading } = deriveExampleFurigana(tokens);
+  const normalizedReading =
+    typeof row.reading === "string" && row.reading.trim().length > 0
+      ? row.reading
+      : reading;
+
+  return {
+    id: row.id,
+    tokens,
+    reading: normalizedReading ?? null,
+    segments,
+    japaneseText: row.japanese_text,
+    englishText: row.english_text,
+    exampleId: row.example_id || null,
+  };
+}
 
 export async function addExamplesList(
   wId: number,
@@ -104,12 +205,7 @@ export async function getWordExamples(
     );
 
     if (examplesByWordId && examplesByWordId.length > 0) {
-      return examplesByWordId.map((e) => ({
-        ...e,
-        japaneseText: e.japanese_text,
-        englishText: e.english_text,
-        exampleId: e.example_id || null,
-      }));
+      return examplesByWordId.map(mapDbExampleSentence);
     }
 
     const examplesByText = await db.getAllAsync<DBExampleSentence>(
@@ -131,12 +227,7 @@ export async function getWordExamples(
       [word.word, `%${word.word}%`, word.word, word.word, word.word]
     );
 
-    return examplesByText.map((e) => ({
-      ...e,
-      japaneseText: e.japanese_text,
-      englishText: e.english_text,
-      exampleId: e.example_id || null,
-    }));
+    return examplesByText.map(mapDbExampleSentence);
   } catch (error) {
     console.error("Failed to get examples:", error);
     return [];

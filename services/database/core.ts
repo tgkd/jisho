@@ -144,7 +144,9 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
         await db.execAsync(`ALTER TABLE examples ADD COLUMN word_id INTEGER`);
       }
 
-      await db.execAsync(`CREATE INDEX IF NOT EXISTS idx_example_word_id ON examples(word_id)`);
+      await db.execAsync(
+        `CREATE INDEX IF NOT EXISTS idx_example_word_id ON examples(word_id)`
+      );
 
       await db.execAsync(`PRAGMA user_version = 5`);
       currentDbVersion = 5;
@@ -282,7 +284,9 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
         await db.execAsync(`PRAGMA user_version = 12`);
         currentDbVersion = 12;
 
-        console.log("✅ History table successfully migrated to support kanji entries");
+        console.log(
+          "✅ History table successfully migrated to support kanji entries"
+        );
       } catch (error) {
         console.error("Error migrating to version 12:", error);
         throw error;
@@ -412,19 +416,25 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
         );
 
         if (!hasOnReadings) {
-          await db.execAsync(`ALTER TABLE history ADD COLUMN kanji_on_readings TEXT`);
+          await db.execAsync(
+            `ALTER TABLE history ADD COLUMN kanji_on_readings TEXT`
+          );
           console.log("✅ Added kanji_on_readings column to history table");
         }
 
         if (!hasKunReadings) {
-          await db.execAsync(`ALTER TABLE history ADD COLUMN kanji_kun_readings TEXT`);
+          await db.execAsync(
+            `ALTER TABLE history ADD COLUMN kanji_kun_readings TEXT`
+          );
           console.log("✅ Added kanji_kun_readings column to history table");
         }
 
         await db.execAsync(`PRAGMA user_version = 17`);
         currentDbVersion = 17;
 
-        console.log("✅ History table successfully migrated to include kanji readings");
+        console.log(
+          "✅ History table successfully migrated to include kanji readings"
+        );
       } catch (error) {
         console.error("Error migrating to version 17:", error);
         throw error;
@@ -433,10 +443,20 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
 
     if (currentDbVersion < 18) {
       try {
-        await db.execAsync(`
-          ALTER TABLE practice_sessions ADD COLUMN content TEXT;
-        `);
-        console.log("✅ Added content column to practice_sessions table");
+        const sessionColumns = await db.getAllAsync<{ name: string }>(
+          "PRAGMA table_info(practice_sessions)"
+        );
+
+        const hasContent = sessionColumns?.some(
+          (column) => column.name === "content"
+        );
+
+        if (!hasContent) {
+          await db.execAsync(`
+            ALTER TABLE practice_sessions ADD COLUMN content TEXT;
+          `);
+          console.log("✅ Added content column to practice_sessions table");
+        }
 
         await db.execAsync(`
           DROP TABLE IF EXISTS practice_messages;

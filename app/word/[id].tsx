@@ -12,7 +12,6 @@ import {
 
 import { FuriganaText } from "@/components/FuriganaText";
 import { HapticTab } from "@/components/HapticTab";
-import { HighlightText } from "@/components/HighlightText";
 import { KanjiDetails } from "@/components/KanjiList";
 import { Loader } from "@/components/Loader";
 import { ThemedText } from "@/components/ThemedText";
@@ -27,6 +26,7 @@ import {
   DictionaryEntry,
   ExampleSentence,
   FuriganaEntry,
+  FuriganaSegment,
   getAudioFile,
   getDictionaryEntry,
   getFuriganaForText,
@@ -38,6 +38,7 @@ import {
   cleanupJpReadings,
   createChatPrompt,
   deduplicateEn,
+  extractSegmentsFromTokens,
   findKanji,
   formatEn
 } from "@/services/parse";
@@ -310,6 +311,30 @@ function ExampleRow({
   const audioAvailable = ai.currentProvider === "remote";
   const [loading, setLoading] = useState(false);
 
+  const segments = useMemo<FuriganaSegment[]>(() => {
+    if (Array.isArray(e.segments) && e.segments.length > 0) {
+      return e.segments;
+    }
+
+    const extracted = extractSegmentsFromTokens(e.tokens);
+    return extracted;
+  }, [e.segments, e.tokens]);
+
+  const reading = useMemo(() => {
+    if (typeof e.reading === "string" && e.reading.trim().length > 0) {
+      return e.reading.trim();
+    }
+
+    if (segments.length === 0) {
+      return "";
+    }
+
+    const derived = segments
+      .map((segment) => segment.rt?.trim() || segment.ruby)
+      .join("");
+    return derived;
+  }, [e.reading, segments]);
+
   const fallbackToSpeech = async () => {
     try {
       await ai.generateSpeech(e.japaneseText);
@@ -354,7 +379,13 @@ function ExampleRow({
   return (
     <View>
       <View style={styles.exampleTitle}>
-        <HighlightText text={e.japaneseText} highlight={word} />
+        <FuriganaText
+          word={e.japaneseText}
+          reading={reading}
+          textStyle={styles.exampleJapanese}
+          furiganaStyle={styles.exampleFurigana}
+          segments={segments}
+        />
         <ThemedText size="sm" type="secondary">
           {e.englishText}
         </ThemedText>
@@ -431,6 +462,14 @@ const styles = StyleSheet.create({
     flexDirection: "column",
     flex: 1,
     paddingRight: 32,
+    alignItems: "flex-start",
+  },
+  exampleJapanese: {
+    fontSize: 16,
+    lineHeight: 22,
+  },
+  exampleFurigana: {
+    fontSize: 10,
   },
   examplesLoading: {
     alignItems: "center",

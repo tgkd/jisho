@@ -1,4 +1,4 @@
-import { MMKV } from "react-native-mmkv";
+import { createMMKV } from "react-native-mmkv";
 
 
 export const SETTINGS_KEYS = {
@@ -9,4 +9,4 @@ export const SETTINGS_KEYS = {
   REVENUECAT_USER_ID: "subscription.revenuecatUserId",
 };
 
-export const settingsStorage = new MMKV();
+export const settingsStorage = createMMKV();

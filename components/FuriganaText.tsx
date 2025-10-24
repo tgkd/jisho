@@ -73,10 +73,13 @@ export function FuriganaText({
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, !showFurigana && styles.containerNoFuri]}>
       <View style={[styles.wrapper, style]}>
         {pairs.map(([furigana, text], idx) => (
-          <View key={`${text}-${idx}`} style={[styles.pair, pairStyle]}>
+          <View
+            key={`${text}-${idx}`}
+            style={[styles.pair, !showFurigana && styles.pairNoFuri, pairStyle]}
+          >
             {showFurigana && furigana ? (
               <ThemedText size="xs" style={furiganaStyles}>
                 {furigana}
@@ -97,6 +100,9 @@ const styles = StyleSheet.create({
   container: {
     alignItems: "center",
   },
+  containerNoFuri: {
+    alignItems: "flex-start",
+  },
   wrapper: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -106,6 +112,9 @@ const styles = StyleSheet.create({
     flexDirection: "column",
     alignItems: "center",
     marginHorizontal: 1,
+  },
+  pairNoFuri: {
+    justifyContent: "flex-end",
   },
   furigana: {
     marginBottom: 2,
