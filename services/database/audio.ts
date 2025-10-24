@@ -30,7 +30,6 @@ async function audioFileBlobToFileUrl(
  * Persist a remote text-to-speech result in the audio cache table.
  *
  * @param db Expo SQLite database instance.
- * @param wordId Identifier of the word associated with the audio.
  * @param exampleId Identifier of the example sentence associated with the audio.
  * @param audioBase64 Base64-encoded audio data without a data URI prefix.
  * @param options Optional metadata overrides, such as the originating file path.
@@ -38,18 +37,17 @@ async function audioFileBlobToFileUrl(
  */
 export async function saveAudioFile(
   db: SQLiteDatabase,
-  wordId: number,
   exampleId: number,
   audioBase64: string,
   options?: { sourcePath?: string }
 ): Promise<number | null> {
   try {
     const resolvedPath =
-      options?.sourcePath ?? `inline://${wordId}/${exampleId}/${Date.now()}`;
+      options?.sourcePath ?? `inline://example/${exampleId}/${Date.now()}`;
 
     const result = await db.runAsync(
-      "INSERT INTO audio_blobs (file_path, word_id, example_id, audio_data, created_at) VALUES (?, ?, ?, ?, ?)",
-      [resolvedPath, wordId, exampleId, audioBase64, new Date().toISOString()]
+      "INSERT INTO audio_blobs (file_path, example_id, audio_data, created_at) VALUES (?, ?, ?, ?)",
+      [resolvedPath, exampleId, audioBase64, new Date().toISOString()]
     );
 
     return result.lastInsertRowId;
@@ -60,23 +58,21 @@ export async function saveAudioFile(
 }
 
 /**
- * Retrieve the most recently cached audio blob for a word/example pair.
+ * Retrieve the most recently cached audio blob for an example sentence.
  * Rehydrates the base64 payload into a temporary file so native audio players can consume it.
  *
  * @param db Expo SQLite database instance.
- * @param wordId Identifier of the word associated with the audio.
  * @param exampleId Identifier of the example sentence associated with the audio.
  * @returns Cached audio metadata including a playable file URI, or null when no cache entry exists.
  */
 export async function getAudioFile(
   db: SQLiteDatabase,
-  wordId: number,
   exampleId: number
 ): Promise<AudioFile | null> {
   try {
     const result = await db.getFirstAsync<DBAudio>(
-      "SELECT id, file_path, audio_data FROM audio_blobs WHERE word_id = ? AND example_id = ? ORDER BY created_at DESC LIMIT 1",
-      [wordId, exampleId]
+      "SELECT id, file_path, audio_data FROM audio_blobs WHERE example_id = ? ORDER BY created_at DESC LIMIT 1",
+      [exampleId]
     );
 
     if (result) {

@@ -1,4 +1,3 @@
-import { useAudioPlayer } from "expo-audio";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useMemo, useState } from "react";
@@ -27,11 +26,9 @@ import {
   ExampleSentence,
   FuriganaEntry,
   FuriganaSegment,
-  getAudioFile,
   getDictionaryEntry,
   getFuriganaForText,
   getWordExamples,
-  saveAudioFile,
   WordMeaning
 } from "@/services/database";
 import {
@@ -305,8 +302,6 @@ function ExampleRow({
   onKanjiPress?: (kanjiChars: string[]) => void;
 }) {
   const tintColor = useThemeColor({}, "tint");
-  const db = useSQLiteContext();
-  const player = useAudioPlayer(undefined, { keepAudioSessionActive: false });
   const ai = useUnifiedAI();
   const audioAvailable = ai.currentProvider === "remote";
   const [loading, setLoading] = useState(false);
@@ -351,20 +346,7 @@ function ExampleRow({
 
     try {
       setLoading(true);
-      const localAudio = await getAudioFile(db, wordId, e.id);
-
-      if (localAudio) {
-        player.replace(localAudio.filePath);
-        player.play();
-        return;
-      }
-
-      const fileBase64 = await ai.generateSpeech(
-        cleanupJpReadings(e.japaneseText)
-      );
-      if (fileBase64) {
-        await saveAudioFile(db, wordId, e.id, fileBase64);
-      }
+      await ai.generateSpeech(cleanupJpReadings(e.japaneseText));
     } catch (error) {
       console.error("Failed to play text:", error);
       await fallbackToSpeech();

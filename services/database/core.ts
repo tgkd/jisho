@@ -1,7 +1,7 @@
 import { SQLiteDatabase } from "expo-sqlite";
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
-  const DATABASE_VERSION = 19;
+  const DATABASE_VERSION = 20;
 
   try {
     // Test if database is corrupted by trying a simple query
@@ -520,6 +520,50 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
         );
       } catch (error) {
         console.error("Error migrating to version 19:", error);
+        throw error;
+      }
+    }
+
+    if (currentDbVersion < 20) {
+      try {
+        // Make word_id nullable in audio_blobs since audio is cached per example, not per word
+        // SQLite doesn't support ALTER COLUMN, so we need to recreate the table
+        await db.execAsync(`
+          CREATE TABLE audio_blobs_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            file_path TEXT NOT NULL,
+            word_id INTEGER,
+            example_id INTEGER,
+            audio_data BLOB NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (example_id) REFERENCES examples (id)
+          );
+        `);
+
+        // Copy existing data
+        await db.execAsync(`
+          INSERT INTO audio_blobs_new (id, file_path, word_id, example_id, audio_data, created_at)
+          SELECT id, file_path, word_id, example_id, audio_data, created_at
+          FROM audio_blobs;
+        `);
+
+        // Drop old table and rename new one
+        await db.execAsync(`DROP TABLE audio_blobs;`);
+        await db.execAsync(`ALTER TABLE audio_blobs_new RENAME TO audio_blobs;`);
+
+        // Recreate index only on example_id (word_id index no longer needed)
+        await db.execAsync(`
+          CREATE INDEX IF NOT EXISTS idx_audio_example_id ON audio_blobs(example_id);
+        `);
+
+        await db.execAsync(`PRAGMA user_version = 20`);
+        currentDbVersion = 20;
+
+        console.log(
+          "✅ Audio cache updated to use example_id only (word_id now nullable)"
+        );
+      } catch (error) {
+        console.error("Error migrating to version 20:", error);
         throw error;
       }
     }
