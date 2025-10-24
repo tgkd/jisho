@@ -17,7 +17,8 @@ export type DBExampleSentence = {
   japanese_text: string;
   english_text: string;
   example_id: string;
-  tokens?: string;
+  tokens?: string | null;
+  reading?: string | null;
 };
 
 export type ExampleSentence = Omit<
@@ -27,6 +28,8 @@ export type ExampleSentence = Omit<
   japaneseText: string;
   englishText: string;
   exampleId: string | null;
+  reading?: string | null;
+  segments?: FuriganaSegment[];
 };
 
 export type DBWordMeaning = {

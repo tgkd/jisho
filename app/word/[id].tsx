@@ -1,4 +1,3 @@
-import { useAudioPlayer } from "expo-audio";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useMemo, useState } from "react";
@@ -7,13 +6,12 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  View,
+  View
 } from "react-native";
 
 import { FuriganaText } from "@/components/FuriganaText";
 import { HapticTab } from "@/components/HapticTab";
-import { HighlightText } from "@/components/HighlightText";
-import { KanjiDetails, KanjiListView } from "@/components/KanjiList";
+import { KanjiDetails } from "@/components/KanjiList";
 import { Loader } from "@/components/Loader";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
@@ -27,19 +25,19 @@ import {
   DictionaryEntry,
   ExampleSentence,
   FuriganaEntry,
-  getAudioFile,
+  FuriganaSegment,
   getDictionaryEntry,
   getFuriganaForText,
   getWordExamples,
-  saveAudioFile,
-  WordMeaning,
+  WordMeaning
 } from "@/services/database";
 import {
   cleanupJpReadings,
   createChatPrompt,
   deduplicateEn,
+  extractSegmentsFromTokens,
   findKanji,
-  formatEn,
+  formatEn
 } from "@/services/parse";
 import { createWordPrompt } from "@/services/request";
 
@@ -234,7 +232,7 @@ function ExamplesView({
 }) {
   const db = useSQLiteContext();
   const ai = useUnifiedAI();
-  const [selectedExample, setSelectedExample] = useState<string[] | null>(null);
+  const router = useRouter();
 
   const handleFetchExamples = async () => {
     try {
@@ -263,7 +261,12 @@ function ExamplesView({
             e={e}
             word={entry.word.word}
             wordId={entry.word.id}
-            onKanjiPress={setSelectedExample}
+            onKanjiPress={(kanjiChars) =>
+              router.push({
+                pathname: "/word/kanji-list",
+                params: { kanji: kanjiChars.join(",") },
+              })
+            }
           />
         ))}
         {entry.examples.length === 0 ? (
@@ -283,11 +286,6 @@ function ExamplesView({
           </Pressable>
         ) : null}
       </Card>
-
-      <KanjiListView
-        kanjiChars={selectedExample}
-        handleClose={() => setSelectedExample(null)}
-      />
     </>
   );
 }
@@ -304,11 +302,33 @@ function ExampleRow({
   onKanjiPress?: (kanjiChars: string[]) => void;
 }) {
   const tintColor = useThemeColor({}, "tint");
-  const db = useSQLiteContext();
-  const player = useAudioPlayer(undefined, { keepAudioSessionActive: false });
   const ai = useUnifiedAI();
   const audioAvailable = ai.currentProvider === "remote";
   const [loading, setLoading] = useState(false);
+
+  const segments = useMemo<FuriganaSegment[]>(() => {
+    if (Array.isArray(e.segments) && e.segments.length > 0) {
+      return e.segments;
+    }
+
+    const extracted = extractSegmentsFromTokens(e.tokens);
+    return extracted;
+  }, [e.segments, e.tokens]);
+
+  const reading = useMemo(() => {
+    if (typeof e.reading === "string" && e.reading.trim().length > 0) {
+      return e.reading.trim();
+    }
+
+    if (segments.length === 0) {
+      return "";
+    }
+
+    const derived = segments
+      .map((segment) => segment.rt?.trim() || segment.ruby)
+      .join("");
+    return derived;
+  }, [e.reading, segments]);
 
   const fallbackToSpeech = async () => {
     try {
@@ -326,20 +346,7 @@ function ExampleRow({
 
     try {
       setLoading(true);
-      const localAudio = await getAudioFile(db, wordId, e.id);
-
-      if (localAudio) {
-        player.replace(localAudio.filePath);
-        player.play();
-        return;
-      }
-
-      const fileBase64 = await ai.generateSpeech(
-        cleanupJpReadings(e.japaneseText)
-      );
-      if (fileBase64) {
-        await saveAudioFile(db, wordId, e.id, fileBase64);
-      }
+      await ai.generateSpeech(cleanupJpReadings(e.japaneseText));
     } catch (error) {
       console.error("Failed to play text:", error);
       await fallbackToSpeech();
@@ -354,7 +361,13 @@ function ExampleRow({
   return (
     <View>
       <View style={styles.exampleTitle}>
-        <HighlightText text={e.japaneseText} highlight={word} />
+        <FuriganaText
+          word={e.japaneseText}
+          reading={reading}
+          textStyle={styles.exampleJapanese}
+          furiganaStyle={styles.exampleFurigana}
+          segments={segments}
+        />
         <ThemedText size="sm" type="secondary">
           {e.englishText}
         </ThemedText>
@@ -431,6 +444,14 @@ const styles = StyleSheet.create({
     flexDirection: "column",
     flex: 1,
     paddingRight: 32,
+    alignItems: "flex-start",
+  },
+  exampleJapanese: {
+    fontSize: 16,
+    lineHeight: 22,
+  },
+  exampleFurigana: {
+    fontSize: 10,
   },
   examplesLoading: {
     alignItems: "center",

@@ -131,14 +131,14 @@ CREATE INDEX idx_history_created_at ON history(created_at);
 CREATE TABLE audio_blobs (
     id INTEGER PRIMARY KEY,
     file_path TEXT NOT NULL,
-    word_id INTEGER NOT NULL,
+    word_id INTEGER,
     example_id INTEGER,
     audio_data BLOB NOT NULL,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (example_id) REFERENCES examples (id)
 );
 
-CREATE INDEX idx_audio_blobs_word_id ON audio_blobs(word_id);
-CREATE INDEX idx_audio_blobs_example_id ON audio_blobs(example_id);
+CREATE INDEX idx_audio_example_id ON audio_blobs(example_id);
 
 -- =============================================================================
 -- DATABASE CONFIGURATION

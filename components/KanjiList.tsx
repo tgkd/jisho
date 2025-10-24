@@ -1,49 +1,11 @@
 import { useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useState } from "react";
-import {
-  ScrollView,
-  StyleSheet,
-  useWindowDimensions,
-  View
-} from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import { HapticTab } from "@/components/HapticTab";
 import { ThemedText } from "@/components/ThemedText";
 import { getKanji, KanjiEntry } from "@/services/database";
-import { BottomSheet, Host } from "@expo/ui/swift-ui";
-import Animated from "react-native-reanimated";
-
-export function KanjiListView({
-  kanjiChars,
-  handleClose,
-}: {
-  kanjiChars: string[] | null;
-  handleClose: () => void;
-}) {
-  const { width, height: wHeight } = useWindowDimensions();
-
-  if (!kanjiChars) {
-    return null;
-  }
-
-  return (
-    <Host style={{ position: "absolute", width }}>
-      <BottomSheet
-        isOpened={kanjiChars !== null}
-        onIsOpenedChange={(o) => !o && handleClose()}
-      >
-        <Animated.View style={{ height: wHeight * 0.5, width }}>
-          <ScrollView contentContainerStyle={styles.kanjiList}>
-            {kanjiChars?.map((char, idx) => (
-              <KanjiDetails key={idx} character={char} />
-            ))}
-          </ScrollView>
-        </Animated.View>
-      </BottomSheet>
-    </Host>
-  );
-}
 
 export function KanjiDetails({ character }: { character: string }) {
   const router = useRouter();
@@ -56,7 +18,7 @@ export function KanjiDetails({ character }: { character: string }) {
       setDetails(result);
     };
     loadKanjiDetails();
-  }, []);
+  }, [character, db]);
 
   const goToKanji = () => {
     if (!details) {
@@ -107,16 +69,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     gap: 2,
   },
-  kanjiList: {
-    padding: 16,
-    gap: 4,
-  },
   kanjiDesc: {
     maxWidth: "90%",
-  },
-  kanjiButton: {
-    marginTop: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
   },
 });

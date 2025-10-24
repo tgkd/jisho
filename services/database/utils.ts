@@ -2,6 +2,7 @@ import { Directory, File, Paths } from "expo-file-system";
 import { SQLiteDatabase } from "expo-sqlite";
 import { Alert } from "react-native";
 import * as wanakana from "wanakana";
+import { DATABASE_NAME } from "@/constants/Database";
 import { DBDictEntry, DictionaryEntry, SearchDictionaryResult, SearchQuery, WordMeaning } from "./types";
 
 export function processSearchQuery(query: string): SearchQuery {
@@ -154,9 +155,9 @@ export async function resetDatabase(db: SQLiteDatabase): Promise<void> {
     await db.closeAsync();
 
     const sqliteDir = new Directory(Paths.document, "SQLite");
-    const dbFile = new File(sqliteDir, "jisho_2.db");
-    const walFile = new File(sqliteDir, "jisho_2.db-wal");
-    const shmFile = new File(sqliteDir, "jisho_2.db-shm");
+    const dbFile = new File(sqliteDir, DATABASE_NAME);
+    const walFile = new File(sqliteDir, `${DATABASE_NAME}-wal`);
+    const shmFile = new File(sqliteDir, `${DATABASE_NAME}-shm`);
 
     if (dbFile.exists) {
       console.log("Deleting database file...");
