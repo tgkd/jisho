@@ -91,10 +91,10 @@ export function ChatMessage({
               word={content}
               segments={furiganaSegments}
               reading=""
-              textStyle={[
-                styles.messageText,
-                isAssistant ? styles.assistantText : styles.userText,
-              ]}
+              textStyle={{
+                ...styles.messageText,
+                ...(isAssistant ? styles.assistantText : styles.userText),
+              }}
             />
           ) : (
             <ThemedText

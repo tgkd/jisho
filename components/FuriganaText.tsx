@@ -4,7 +4,6 @@ import { useMMKVBoolean } from "react-native-mmkv";
 
 import type { FuriganaSegment } from "@/services/database";
 import { SETTINGS_KEYS } from "@/services/storage";
-import { formatJp } from "../services/parse";
 import { ThemedText } from "./ThemedText";
 
 type Props = {
@@ -89,9 +88,6 @@ export function FuriganaText({
           </View>
         ))}
       </View>
-      {!showFurigana && reading ? (
-        <ThemedText type="secondary">{formatJp(reading, true)}</ThemedText>
-      ) : null}
     </View>
   );
 }
