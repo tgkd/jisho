@@ -21,9 +21,9 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - EXConstants (18.0.10):
+  - EXConstants (18.0.11):
     - ExpoModulesCore
-  - Expo (54.0.23):
+  - Expo (54.0.28):
     - ExpoModulesCore
     - hermes-engine
     - RCTRequired
@@ -48,30 +48,30 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - ExpoAsset (12.0.9):
+  - ExpoAsset (12.0.11):
     - ExpoModulesCore
-  - ExpoAudio (1.0.14):
+  - ExpoAudio (1.1.0):
     - ExpoModulesCore
-  - ExpoBlur (15.0.7):
+  - ExpoBlur (15.0.8):
     - ExpoModulesCore
-  - ExpoClipboard (8.0.7):
+  - ExpoClipboard (8.0.8):
     - ExpoModulesCore
-  - ExpoFileSystem (19.0.17):
+  - ExpoFileSystem (19.0.20):
     - ExpoModulesCore
-  - ExpoFont (14.0.9):
+  - ExpoFont (14.0.10):
     - ExpoModulesCore
-  - ExpoGlassEffect (0.1.7):
+  - ExpoGlassEffect (0.1.8):
     - ExpoModulesCore
-  - ExpoHaptics (15.0.7):
+  - ExpoHaptics (15.0.8):
     - ExpoModulesCore
-  - ExpoHead (6.0.14):
+  - ExpoHead (6.0.18):
     - ExpoModulesCore
     - RNScreens
-  - ExpoKeepAwake (15.0.7):
+  - ExpoKeepAwake (15.0.8):
     - ExpoModulesCore
-  - ExpoLinking (8.0.8):
+  - ExpoLinking (8.0.10):
     - ExpoModulesCore
-  - ExpoModulesCore (3.0.25):
+  - ExpoModulesCore (3.0.28):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -94,17 +94,17 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - ExpoNetwork (8.0.7):
+  - ExpoNetwork (8.0.8):
     - ExpoModulesCore
-  - ExpoSpeech (14.0.7):
+  - ExpoSpeech (14.0.8):
     - ExpoModulesCore
-  - ExpoSplashScreen (31.0.10):
+  - ExpoSplashScreen (31.0.12):
     - ExpoModulesCore
-  - ExpoSQLite (16.0.9):
+  - ExpoSQLite (16.0.10):
     - ExpoModulesCore
-  - ExpoSymbols (1.0.7):
+  - ExpoSymbols (1.0.8):
     - ExpoModulesCore
-  - ExpoSystemUI (6.0.8):
+  - ExpoSystemUI (6.0.9):
     - ExpoModulesCore
   - ExpoUI (0.2.0-canary-20251031-b135dff):
     - ExpoModulesCore
@@ -113,7 +113,7 @@ PODS:
     - hermes-engine/Pre-built (= 0.81.5)
   - hermes-engine/Pre-built (0.81.5)
   - MMKVCore (2.2.4)
-  - NitroMmkv (4.0.0):
+  - NitroMmkv (4.1.0):
     - hermes-engine
     - MMKVCore (= 2.2.4)
     - NitroModules
@@ -138,7 +138,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - NitroModules (0.31.6):
+  - NitroModules (0.31.10):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -161,11 +161,11 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - PurchasesHybridCommon (17.17.0):
-    - RevenueCat (= 5.47.0)
-  - PurchasesHybridCommonUI (17.17.0):
-    - PurchasesHybridCommon (= 17.17.0)
-    - RevenueCatUI (= 5.47.0)
+  - PurchasesHybridCommon (17.23.0):
+    - RevenueCat (= 5.50.0)
+  - PurchasesHybridCommonUI (17.23.0):
+    - PurchasesHybridCommon (= 17.23.0)
+    - RevenueCatUI (= 5.50.0)
   - RCTDeprecation (0.81.5)
   - RCTRequired (0.81.5)
   - RCTTypeSafety (0.81.5):
@@ -1559,7 +1559,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - react-native-uitextview (2.1.0-rc.0):
+  - react-native-uitextview (2.1.1):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -1931,9 +1931,9 @@ PODS:
     - React-utils (= 0.81.5)
     - ReactNativeDependencies
   - ReactNativeDependencies (0.81.5)
-  - RevenueCat (5.47.0)
-  - RevenueCatUI (5.47.0):
-    - RevenueCat (= 5.47.0)
+  - RevenueCat (5.50.0)
+  - RevenueCatUI (5.50.0):
+    - RevenueCat (= 5.50.0)
   - RNGestureHandler (2.28.0):
     - hermes-engine
     - RCTRequired
@@ -1956,11 +1956,11 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - RNPaywalls (9.6.5):
-    - PurchasesHybridCommonUI (= 17.17.0)
+  - RNPaywalls (9.6.10):
+    - PurchasesHybridCommonUI (= 17.23.0)
     - React-Core
-  - RNPurchases (9.6.5):
-    - PurchasesHybridCommon (= 17.17.0)
+  - RNPurchases (9.6.10):
+    - PurchasesHybridCommon (= 17.23.0)
     - React-Core
   - RNReanimated (4.1.5):
     - hermes-engine
@@ -2472,34 +2472,34 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   AppleLLM: ff10bb0e9603d952cf883228f56c56cb0a3289ad
-  EXConstants: fd688cef4e401dcf798a021cfb5d87c890c30ba3
-  Expo: fb09185d798c2876a4c5ca89a5c6b8b72b6dbecf
-  ExpoAsset: 9ba6fbd677fb8e241a3899ac00fa735bc911eadf
-  ExpoAudio: 6a923f661e3360a183503fd96728ff9010ae8afd
-  ExpoBlur: 2dd8f64aa31f5d405652c21d3deb2d2588b1852f
-  ExpoClipboard: af650d14765f19c60ce2a1eaf9dfe6445eff7365
-  ExpoFileSystem: b79eadbda7b7f285f378f95f959cc9313a1c9c61
-  ExpoFont: cf9d90ec1d3b97c4f513211905724c8171f82961
-  ExpoGlassEffect: 265fa3d75b46bc58262e4dfa513135fa9dfe4aac
-  ExpoHaptics: 807476b0c39e9d82b7270349d6487928ce32df84
-  ExpoHead: e317214fa14edeaf17748d39ec9e550a3d1194fb
-  ExpoKeepAwake: 1a2e820692e933c94a565ec3fbbe38ac31658ffe
-  ExpoLinking: f051f28e50ea9269ff539317c166adec81d9342d
-  ExpoModulesCore: aa1a8e103d41de84baa5d7c6b98314e2230f1eef
-  ExpoNetwork: b87392dcc24d49a595f186ca25cdcf7293d30275
-  ExpoSpeech: 18a7f92a932028e16d3df1891377a8b626ab5cc0
-  ExpoSplashScreen: cbb839de72110dea1851dd3e85080b7923af2540
-  ExpoSQLite: b312b02c8b77ab55951396e6cd13992f8db9215f
-  ExpoSymbols: 1ae04ce686de719b9720453b988d8bc5bf776c68
-  ExpoSystemUI: 2761aa6875849af83286364811d46e8ed8ea64c7
+  EXConstants: c378c1b344ff1ecfbad27b90f0e48d1d0ead8cbb
+  Expo: e502d1f8830a34019d835f182fdce94fdba458c2
+  ExpoAsset: 23a958e97d3d340919fe6774db35d563241e6c03
+  ExpoAudio: 9a9288fa00bd9a16509c7937648b81dcad3474ab
+  ExpoBlur: b90747a3f22a8b6ceffd9cb0dc41a4184efdc656
+  ExpoClipboard: b36b287d8356887844bb08ed5c84b5979bb4dd1e
+  ExpoFileSystem: 3592defb5faa3c5866a2900eae87ceec8cc0489f
+  ExpoFont: 35ac6191ed86bbf56b3ebd2d9154eda9fad5b509
+  ExpoGlassEffect: 8ce45eca31f12e949e23a4ee13e2bfb59e9b0785
+  ExpoHaptics: d3a6375d8dcc3a1083d003bc2298ff654fafb536
+  ExpoHead: 5d292008999eb420f3470dbcfbd597cc5e177540
+  ExpoKeepAwake: 55f75eca6499bb9e4231ebad6f3e9cb8f99c0296
+  ExpoLinking: f4c4a351523da72a6bfa7e1f4ca92aee1043a3ca
+  ExpoModulesCore: ded694f230d03c59d919efe243911622fa169834
+  ExpoNetwork: ee1fb67b0de59ab7f36794caf8242955dd8ae046
+  ExpoSpeech: d22b56570ccfab5a27112dc9691f1ac83537de26
+  ExpoSplashScreen: 76af87337650d06926aa7d0157fe98b4fddca336
+  ExpoSQLite: 7eedbe476870a5f18d6b89c817c4ac6f299830ad
+  ExpoSymbols: 349ee2b4d7d5ff3ea8436467914f8a67635aa354
+  ExpoSystemUI: 2ad325f361a2fcd96a464e8574e19935c461c9cc
   ExpoUI: 22d1fd99c22994c99fb9fbc54bbcb1492bda9ffb
   FBLazyVector: e95a291ad2dadb88e42b06e0c5fb8262de53ec12
   hermes-engine: 9f4dfe93326146a1c99eb535b1cb0b857a3cd172
   MMKVCore: f2dd4c9befea04277a55e84e7812f930537993df
-  NitroMmkv: 7fe66a61d5acab6516098a64f42af575595e7566
-  NitroModules: a672a4b7470810b8dae8fc2ff91eabaa2e1eff7d
-  PurchasesHybridCommon: fc38c0596d63ad06a3acab2937496fbf77f8af07
-  PurchasesHybridCommonUI: 015ce303055d9542a6da00905c14e445a9b88f9a
+  NitroMmkv: 4af10c70043b4c3cded3f16547627c7d9d8e3b8b
+  NitroModules: a71a5ab2911caf79e45170e6e12475b5260a12d0
+  PurchasesHybridCommon: e95a0b9bb01f6e9101d44f411343fb91030e26ae
+  PurchasesHybridCommonUI: 476200612e1f5be556ef20327d5da8886d657a3d
   RCTDeprecation: 943572d4be82d480a48f4884f670135ae30bf990
   RCTRequired: 8f3cfc90cc25cf6e420ddb3e7caaaabc57df6043
   RCTTypeSafety: 16a4144ca3f959583ab019b57d5633df10b5e97c
@@ -2535,7 +2535,7 @@ SPEC CHECKSUMS:
   React-microtasksnativemodule: f775db9e991c6f3b8ccbc02bfcde22770f96e23b
   react-native-keyboard-controller: 1ad78688f744e0ebdf3b04007b91089a254b80f9
   react-native-safe-area-context: 37e680fc4cace3c0030ee46e8987d24f5d3bdab2
-  react-native-uitextview: d24acf59b5d64c9f0ddcd86d23629655460c1f3f
+  react-native-uitextview: 6d95198d92dfc8f5450e81ca72e462c8cbc38ecf
   React-NativeModulesApple: 8969913947d5b576de4ed371a939455a8daf28aa
   React-oscompat: ce47230ed20185e91de62d8c6d139ae61763d09c
   React-perflogger: 02b010e665772c7dcb859d85d44c1bfc5ac7c0e4
@@ -2567,11 +2567,11 @@ SPEC CHECKSUMS:
   ReactCodegen: 7d4593f7591f002d137fe40cef3f6c11f13c88cc
   ReactCommon: 08810150b1206cc44aecf5f6ae19af32f29151a8
   ReactNativeDependencies: 71ce9c28beb282aa720ea7b46980fff9669f428a
-  RevenueCat: e9024be15991ff39bf6bd887def57693115ec8c5
-  RevenueCatUI: 5c59977655854eddd7588d52c0a6b156a5c9430e
+  RevenueCat: a5fcd0a12b5ec9bbddc0cf0dd20c14b7e6213df6
+  RevenueCatUI: d470454494ecc734ca9b416fea0704613c4cd7a2
   RNGestureHandler: 2914750df066d89bf9d8f48a10ad5f0051108ac3
-  RNPaywalls: cb3d0e0564c32bd02039100b5fc49870118d381c
-  RNPurchases: 60cc16dc28bab3e800fdc363b42c0579c8bc4ee3
+  RNPaywalls: 638800e62194330656c53c34257f3b7fabb17e2e
+  RNPurchases: 393312c7ac9cfb3852e3f14a91520d305fa05be6
   RNReanimated: 1442a577e066e662f0ce1cd1864a65c8e547aee0
   RNScreens: d8d6f1792f6e7ac12b0190d33d8d390efc0c1845
   RNWorklets: 76fce72926e28e304afb44f0da23b2d24f2c1fa0
