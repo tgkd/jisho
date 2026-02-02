@@ -15,6 +15,10 @@ import { useMdStyles } from "@/hooks/useMdStyles";
 import { useThemeColor } from "@/hooks/useThemeColor";
 import { useUnifiedAI } from "@/providers/UnifiedAIProvider";
 import { Button, Host } from "@expo/ui/swift-ui";
+import {
+  disabled,
+  labelStyle
+} from "@expo/ui/swift-ui/modifiers";
 
 interface Message {
   role: "user" | "assistant";
@@ -115,7 +119,7 @@ export default function ExploreScreen() {
         setIsGenerating(false);
       }
     },
-    [ai, messages, isGenerating, scrollRef]
+    [ai, messages, isGenerating, scrollRef],
   );
 
   useEffect(() => {
@@ -167,7 +171,7 @@ export default function ExploreScreen() {
         />
       );
     },
-    [markdownStyles, copyMessage]
+    [markdownStyles, copyMessage],
   );
 
   const renderEmpty = useCallback(
@@ -184,7 +188,7 @@ export default function ExploreScreen() {
           </ThemedText>
         </View>
       ) : null,
-    [messages]
+    [messages],
   );
 
   const clearMessages = () => {
@@ -207,10 +211,14 @@ export default function ExploreScreen() {
           headerRight: () => (
             <Host style={{ width: 35, height: 35 }}>
               <Button
-                color={defaultColor}
+                role="destructive"
+                label="Clear"
                 systemImage={"trash"}
                 onPress={clearMessages}
-                disabled={isGenerating || messages.length === 0}
+                modifiers={[
+                  labelStyle("iconOnly"),
+                  disabled(isGenerating || messages.length === 0),
+                ]}
               />
             </Host>
           ),

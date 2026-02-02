@@ -7,7 +7,7 @@ import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { ListItem } from "@/components/ListItem";
 import { ThemedText } from "@/components/ThemedText";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
-import { HistoryEntry, WordHistoryEntry, KanjiHistoryEntry } from "@/services/database";
+import { HistoryEntry, KanjiHistoryEntry, WordHistoryEntry } from "@/services/database";
 
 function isWordHistoryEntry(item: HistoryEntry): item is WordHistoryEntry {
   return item.entryType === 'word';

@@ -15,7 +15,7 @@ export interface Props {
 
 function PopupMenuImpl({ items, buttonView }: Props) {
   return (
-    <Host>
+    <Host matchContents>
       <ContextMenu>
         <ContextMenu.Items>
           {items.map((item, index) => (
@@ -23,14 +23,11 @@ function PopupMenuImpl({ items, buttonView }: Props) {
               key={index}
               systemImage={item.icon}
               onPress={item.onPress}
-            >
-              {item.label}
-            </Button>
+              label={item.label}
+            />
           ))}
         </ContextMenu.Items>
-        <ContextMenu.Trigger>
-          {buttonView}
-        </ContextMenu.Trigger>
+        <ContextMenu.Trigger>{buttonView}</ContextMenu.Trigger>
       </ContextMenu>
     </Host>
   );

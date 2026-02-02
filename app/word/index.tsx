@@ -6,13 +6,13 @@ import { useCallback, useRef, useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SearchBarCommands } from "react-native-screens";
 
-import { HapticButton } from "@/components/HapticTab";
 import { ListItem } from "@/components/ListItem";
 import { Loader } from "@/components/Loader";
 import TagsList from "@/components/TagsList";
 import { ThemedText } from "@/components/ThemedText";
 import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
+import { useThemeColor } from "@/hooks/useThemeColor";
 import {
   DictionaryEntry,
   HistoryEntry,
@@ -24,9 +24,9 @@ import {
   WordMeaning,
 } from "@/services/database";
 import { getJpTokens } from "@/services/parse";
-import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { Button, Host } from "@expo/ui/swift-ui";
-import { useThemeColor } from "@/hooks/useThemeColor";
+import { labelStyle, tint } from "@expo/ui/swift-ui/modifiers";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 
 type SearchResult = DictionaryEntry | KanjiEntry;
 
@@ -35,7 +35,7 @@ function isKanjiEntry(item: SearchResult | HistoryEntry): item is KanjiEntry {
 }
 
 function isHistoryItem(
-  item: SearchResult | HistoryEntry
+  item: SearchResult | HistoryEntry,
 ): item is HistoryEntry {
   return "entryType" in item;
 }
@@ -58,7 +58,7 @@ export default function HomeScreen() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [search, setSearch] = useState("");
   const [meaningsMap, setMeaningsMap] = useState<Map<number, WordMeaning[]>>(
-    new Map()
+    new Map(),
   );
   const searchBarRef = useRef<SearchBarCommands>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -190,7 +190,7 @@ export default function HomeScreen() {
         });
       }
     },
-    [router]
+    [router],
   );
 
   const shouldShowRecentHistory =
@@ -315,13 +315,14 @@ export default function HomeScreen() {
           headerTitle: () => <Text style={{ flex: 1 }} />,
           title: searchMode === "word" ? "Words" : "Kanji",
           headerRight: () => (
-            <Host style={{ width: 35, height: 35 }}>
+            <Host matchContents>
               <Button
-                color={defaultColor}
                 systemImage={
                   searchMode === "word" ? "character" : "character.book.closed"
                 }
+                label={searchMode === "word" ? "Kanji" : "Word"}
                 onPress={toggleSearchMode}
+                modifiers={[labelStyle("iconOnly"), tint(defaultColor)]}
               />
             </Host>
           ),

@@ -1,9 +1,6 @@
-import { useThemeColor } from "@/hooks/useThemeColor";
-import { Button, Button as ButtonPrimitive, Host } from "@expo/ui/swift-ui";
 import { BottomTabBarButtonProps } from "@react-navigation/bottom-tabs";
 import { PlatformPressable } from "@react-navigation/elements";
 import * as Haptics from "expo-haptics";
-import { StyleProp, View, ViewStyle } from "react-native";
 
 export function HapticTab(props: BottomTabBarButtonProps) {
   return (
@@ -53,27 +50,6 @@ export function getBtnSize(size?: "xs" | "sm" | "md" | "lg" | "xl") {
         outer: { width: 50, height: 50 },
       };
   }
-}
-
-export function HapticButton(
-  props: React.ComponentProps<typeof ButtonPrimitive> & {
-    style?: StyleProp<ViewStyle>;
-    size?: "xs" | "sm" | "md" | "lg" | "xl";
-  }
-) {
-  const { style, size, color, ...restProps } = props;
-  const defaultColor = useThemeColor({}, "text");
-  const { inner, outer } = getBtnSize(size);
-
-  return (
-    <Host style={{ ...outer }}>
-      <View>
-        <Host style={{ ...inner }}>
-          <Button color={color || defaultColor} {...restProps} />
-        </Host>
-      </View>
-    </Host>
-  );
 }
 
 export const HIT_SLOP = {

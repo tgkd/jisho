@@ -1,25 +1,21 @@
-import { useRef } from "react";
 import { router } from "expo-router";
+import { useRef } from "react";
 import { StyleSheet, View } from "react-native";
 import ReanimatedSwipeable, {
-  SwipeableMethods,
+  SwipeableMethods
 } from "react-native-gesture-handler/ReanimatedSwipeable";
 import Animated, {
   FadeIn,
   FadeOut,
   SharedValue,
-  useAnimatedStyle,
+  useAnimatedStyle
 } from "react-native-reanimated";
 
 import { Colors } from "@/constants/Colors";
 import { useThemeColor } from "@/hooks/useThemeColor";
 import {
   DictionaryEntry,
-  HistoryEntry,
-  WordHistoryEntry,
-  KanjiHistoryEntry,
-  KanjiEntry,
-  WordMeaning,
+  HistoryEntry, KanjiEntry, KanjiHistoryEntry, WordHistoryEntry, WordMeaning
 } from "@/services/database";
 import { deduplicateEn, formatEn, formatJp } from "@/services/parse";
 import { HapticTab } from "./HapticTab";
@@ -464,6 +460,7 @@ function SearchContent({
                 type="defaultSemiBold"
                 uiTextView={false}
                 numberOfLines={1}
+                ellipsizeMode="tail"
               >
                 {item.word}
               </ThemedText>
@@ -471,6 +468,7 @@ function SearchContent({
                 type="secondary"
                 uiTextView={false}
                 numberOfLines={1}
+                ellipsizeMode="tail"
                 style={styles.readingText}
               >
                 {formatJp(item.reading)}
@@ -616,7 +614,6 @@ const styles = StyleSheet.create({
     flexDirection: "column",
     alignItems: "flex-start",
     justifyContent: "center",
-    minWidth: 0,
   },
   item: {
     flexDirection: "row",
@@ -631,10 +628,9 @@ const styles = StyleSheet.create({
     justifyContent: "flex-start",
     gap: 8,
     width: "100%",
-    overflow: "hidden",
   },
   readingText: {
-    maxWidth: "50%",
+    maxWidth: "70%",
   },
   detailsText: {
     marginTop: 4,
@@ -656,7 +652,7 @@ const styles = StyleSheet.create({
   readings: {
     flexDirection: "column",
     gap: 2,
-    maxWidth: "80%"
+    maxWidth: "100%"
   },
   kanjiHistoryRow: {
     flexDirection: "row",

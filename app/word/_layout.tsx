@@ -2,10 +2,10 @@ import { Button, Host } from "@expo/ui/swift-ui";
 import { isLiquidGlassAvailable } from "expo-glass-effect";
 import { Stack, useRouter } from "expo-router";
 import * as React from "react";
-import { Platform } from "react-native";
 
 import { useThemeColor } from "@/hooks/useThemeColor";
 import { useUnifiedAI } from "@/providers/UnifiedAIProvider";
+import { labelStyle, tint } from "@expo/ui/swift-ui/modifiers";
 
 export default function WordLayout() {
   const router = useRouter();
@@ -21,10 +21,11 @@ export default function WordLayout() {
           headerTransparent: true,
           headerLeft: () =>
             ai.isAvailable ? (
-              <Host style={{ width: 35, height: 35 }}>
+              <Host matchContents>
                 <Button
-                  color={defaultColor}
+                  label="AI"
                   systemImage="message"
+                  modifiers={[labelStyle("iconOnly"), tint(defaultColor)]}
                   onPress={() => router.navigate("/word/chat")}
                 />
               </Host>
@@ -60,10 +61,7 @@ export default function WordLayout() {
         options={{
           title: "Kanji Details",
           headerTransparent: true,
-          presentation:
-              isLiquidGlassAvailable()
-                ? "formSheet"
-                : "modal"
+          presentation: isLiquidGlassAvailable() ? "formSheet" : "modal",
         }}
       />
     </Stack>

@@ -26,6 +26,13 @@
       "infoPlist": {
         "SKPaymentTransactionObserver": true
       }
+    },
+    "android": {
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ],
+      "package": "app.jisho.loc"
     }
   }
 }

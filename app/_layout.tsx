@@ -5,7 +5,7 @@ import {
 } from "@react-navigation/native";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { setAudioModeAsync } from "expo-audio";
-import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
+import { NativeTabs } from "expo-router/unstable-native-tabs";
 import * as SplashScreen from "expo-splash-screen";
 import { SQLiteProvider } from "expo-sqlite";
 import { StatusBar } from "expo-status-bar";
@@ -94,23 +94,23 @@ function Router() {
   return (
     <NativeTabs minimizeBehavior="onScrollDown">
       <NativeTabs.Trigger name="word" role="search">
-        <Icon sf="magnifyingglass" drawable="custom_android_drawable" />
-        <Label>Search</Label>
+        <NativeTabs.Trigger.Icon sf="magnifyingglass" drawable="custom_android_drawable" />
+        <NativeTabs.Trigger.Label>Search</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="history">
-        <Icon sf="clock" drawable="custom_android_drawable" />
-        <Label>History</Label>
+        <NativeTabs.Trigger.Icon sf="clock" drawable="custom_android_drawable" />
+        <NativeTabs.Trigger.Label>History</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="practice" hidden={!sub.isPremium}>
-        <Icon sf="book" drawable="custom_android_drawable" />
-        <Label>Read</Label>
+        <NativeTabs.Trigger.Icon sf="book" drawable="custom_android_drawable" />
+        <NativeTabs.Trigger.Label>Read</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="settings">
-        <Icon sf="gear" drawable="custom_android_drawable" />
-        <Label>Settings</Label>
+        <NativeTabs.Trigger.Icon sf="gear" drawable="custom_android_drawable" />
+        <NativeTabs.Trigger.Label>Settings</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );
