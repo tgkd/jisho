@@ -14,6 +14,7 @@ type Props = {
   pairStyle?: ViewStyle;
   style?: ViewStyle;
   segments?: FuriganaSegment[];
+  uiTextView?: boolean;
 };
 
 /**
@@ -30,6 +31,7 @@ export function FuriganaText({
   pairStyle,
   style,
   segments = [],
+  uiTextView,
 }: Props) {
   const [showFurigana = true] = useMMKVBoolean(SETTINGS_KEYS.SHOW_FURIGANA);
   const baseTextStyles = React.useMemo(() => {
@@ -68,7 +70,11 @@ export function FuriganaText({
   }, [segments]);
 
   if (pairs.length === 0) {
-    return <ThemedText style={baseTextStyles}>{word}</ThemedText>;
+    return (
+      <ThemedText style={baseTextStyles} uiTextView={uiTextView}>
+        {word}
+      </ThemedText>
+    );
   }
 
   return (
@@ -80,11 +86,13 @@ export function FuriganaText({
             style={[styles.pair, !showFurigana && styles.pairNoFuri, pairStyle]}
           >
             {showFurigana && furigana ? (
-              <ThemedText size="xs" style={furiganaStyles}>
+              <ThemedText size="xs" style={furiganaStyles} uiTextView={uiTextView}>
                 {furigana}
               </ThemedText>
             ) : null}
-            <ThemedText style={baseTextStyles}>{text}</ThemedText>
+            <ThemedText style={baseTextStyles} uiTextView={uiTextView}>
+              {text}
+            </ThemedText>
           </View>
         ))}
       </View>

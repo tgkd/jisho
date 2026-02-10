@@ -158,6 +158,7 @@ export default function WordDetailScreen() {
             segments={furigana?.segments}
             reading={entry.word.reading}
             textStyle={styles.word}
+            uiTextView
           />
         </HapticTab>
       </ThemedView>
@@ -166,7 +167,7 @@ export default function WordDetailScreen() {
         {details.map((m, idx) => (
           <View key={idx} style={styles.row}>
             <IconSymbol name="circle.fill" size={6} color={markColor} />
-            <ThemedText size="md">{m}</ThemedText>
+            <ThemedText size="md" uiTextView>{m}</ThemedText>
           </View>
         ))}
       </Card>
@@ -367,8 +368,9 @@ function ExampleRow({
           textStyle={styles.exampleJapanese}
           furiganaStyle={styles.exampleFurigana}
           segments={segments}
+          uiTextView
         />
-        <ThemedText size="sm" type="secondary">
+        <ThemedText size="sm" type="secondary" uiTextView>
           {e.englishText}
         </ThemedText>
       </View>

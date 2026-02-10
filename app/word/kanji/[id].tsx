@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from "expo-router";
-import { useSQLiteContext } from "expo-sqlite";
 import * as Speech from "expo-speech";
+import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 
@@ -75,7 +75,7 @@ export default function KanjiDetailScreen() {
             {entry.meanings.map((meaning, idx) => (
               <View key={idx} style={styles.row}>
                 <IconSymbol name="circle.fill" size={6} color={markColor} />
-                <ThemedText size="md">{meaning}</ThemedText>
+                <ThemedText size="md" uiTextView>{meaning}</ThemedText>
               </View>
             ))}
           </Card>
@@ -111,7 +111,7 @@ function ReadingsSection({ entry }: { entry: KanjiEntry }) {
             <View style={styles.readingList}>
               {entry.onReadings?.map((r, idx) => (
                 <View style={styles.reading} key={idx}>
-                  <ThemedText>{r}</ThemedText>
+                  <ThemedText uiTextView>{r}</ThemedText>
                   <HapticTab onPress={() => handleSpeech(r)}>
                     <IconSymbol
                       name="play.circle"
@@ -131,7 +131,7 @@ function ReadingsSection({ entry }: { entry: KanjiEntry }) {
             <View style={styles.readingList}>
               {entry.kunReadings?.map((r, idx) => (
                 <View style={styles.reading} key={idx}>
-                  <ThemedText>{r}</ThemedText>
+                  <ThemedText uiTextView>{r}</ThemedText>
                   <HapticTab onPress={() => handleSpeech(r)}>
                     <IconSymbol
                       name="play.circle"

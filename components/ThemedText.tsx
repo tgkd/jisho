@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { StyleSheet, Text, type TextProps } from "react-native";
+import { UITextView } from "react-native-uitextview";
 
 import { Colors } from "@/constants/Colors";
 import { useThemeColor } from "@/hooks/useThemeColor";
@@ -8,6 +9,7 @@ export type ThemedTextProps = TextProps & {
   lightColor?: string;
   darkColor?: string;
   selectable?: boolean;
+  uiTextView?: boolean;
   textAlign?: "auto" | "left" | "right" | "center" | "justify";
   size?: "lg" | "md" | "sm" | "xs";
   type?:
@@ -25,8 +27,10 @@ export function ThemedText({
   darkColor,
   type = "default",
   selectable = true,
+  uiTextView = false,
   textAlign,
   size,
+  children,
   ...rest
 }: ThemedTextProps) {
   const colorType = useMemo(() => {
@@ -49,8 +53,8 @@ export function ThemedText({
   const linkColor = useThemeColor(colorType, "link");
   const selectionHighlightColor = useThemeColor(
     {
-      light: "rgba(0, 122, 255, 0.3)", // iOS blue with opacity
-      dark: "rgba(64, 156, 255, 0.3)", // Lighter blue for dark mode
+      light: "rgba(0, 122, 255, 0.3)",
+      dark: "rgba(64, 156, 255, 0.3)",
     },
     "text"
   );
@@ -70,23 +74,47 @@ export function ThemedText({
     }
   }, [size]);
 
+  const useNativeTextView = uiTextView && selectable;
+  const safeChildren =
+    useNativeTextView && (children == null || children === "")
+      ? " "
+      : children;
+
+  const textStyle = [
+    { color },
+    type === "default" ? styles.default : undefined,
+    type === "title" ? styles.title : undefined,
+    type === "defaultSemiBold" ? styles.defaultSemiBold : undefined,
+    type === "subtitle" ? styles.subtitle : undefined,
+    type === "link" ? [styles.link, { color: linkColor }] : undefined,
+    textAlign ? { textAlign } : undefined,
+    size ? sizeStyle : undefined,
+    style,
+  ];
+
+  if (useNativeTextView) {
+    return (
+      <UITextView
+        style={textStyle}
+        selectable={selectable}
+        selectionColor={selectionHighlightColor}
+        uiTextView
+        {...rest}
+      >
+        {safeChildren}
+      </UITextView>
+    );
+  }
+
   return (
     <Text
-      style={[
-        { color },
-        type === "default" ? styles.default : undefined,
-        type === "title" ? styles.title : undefined,
-        type === "defaultSemiBold" ? styles.defaultSemiBold : undefined,
-        type === "subtitle" ? styles.subtitle : undefined,
-        type === "link" ? [styles.link, { color: linkColor }] : undefined,
-        textAlign ? { textAlign } : undefined,
-        size ? sizeStyle : undefined,
-        style,
-      ]}
+      style={textStyle}
       selectable={selectable}
       selectionColor={selectionHighlightColor}
       {...rest}
-    />
+    >
+      {children}
+    </Text>
   );
 }
 

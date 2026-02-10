@@ -2,14 +2,14 @@ import { FlashList, FlashListRef } from "@shopify/flash-list";
 import * as Clipboard from "expo-clipboard";
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, TouchableOpacity, View } from "react-native";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import Markdown from "react-native-markdown-display";
 
 import { ChatFooterView } from "@/components/ChatFooter";
-import { PopupMenu, PopupMenuItem } from "@/components/PopupMenu";
 import { ThemedText } from "@/components/ThemedText";
 import { Card } from "@/components/ui/Card";
+import { IconSymbol } from "@/components/ui/IconSymbol";
 import { Colors } from "@/constants/Colors";
 import { useMdStyles } from "@/hooks/useMdStyles";
 import { useThemeColor } from "@/hooks/useThemeColor";
@@ -25,7 +25,7 @@ interface Message {
   content: string;
 }
 
-export default function ExploreScreen() {
+export default function ChatScreen() {
   const markdownStyles = useMdStyles();
   const ai = useUnifiedAI();
   const params = useLocalSearchParams<{
@@ -35,10 +35,26 @@ export default function ExploreScreen() {
     initialPrompt?: string;
   }>();
   const scrollRef = useRef<FlashListRef<Message>>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const messagesRef = useRef<Message[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  const [initialized, setInitialized] = useState<boolean>(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [initialized, setInitialized] = useState(false);
   const defaultColor = useThemeColor({}, "text");
+
+  const updateMessages = useCallback((updater: (prev: Message[]) => Message[]) => {
+    setMessages((prev) => {
+      const next = updater(prev);
+      messagesRef.current = next;
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
 
   const copyMessage = useCallback(async (content: string) => {
     await Clipboard.setStringAsync(content);
@@ -52,6 +68,10 @@ export default function ExploreScreen() {
         return;
       }
 
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
       try {
         setIsGenerating(true);
 
@@ -61,28 +81,30 @@ export default function ExploreScreen() {
           content: "",
         };
 
+        const currentMessages = messagesRef.current;
         const updatedUIMessages: Message[] = [
-          ...messages,
+          ...currentMessages,
           userMessage,
           placeholderAssistant,
         ];
-        setMessages(updatedUIMessages);
+        updateMessages(() => updatedUIMessages);
 
-        const conversationMessages = [...messages, userMessage];
-        const assistantMessageIndex = updatedUIMessages.length - 1;
+        const conversationMessages = [...currentMessages, userMessage];
         let accumulatedContent = "";
 
         await ai.chatWithMessages(conversationMessages, {
           onChunk: (chunk: string) => {
             accumulatedContent += chunk;
-            setMessages((prev) => {
+            const content = accumulatedContent;
+            updateMessages((prev) => {
               const newMessages = [...prev];
-              newMessages[assistantMessageIndex] = {
+              newMessages[newMessages.length - 1] = {
                 role: "assistant",
-                content: accumulatedContent,
+                content,
               };
               return newMessages;
             });
+            scrollRef.current?.scrollToEnd({ animated: true });
           },
           onComplete: (_fullResponse: string, error?: string) => {
             setIsGenerating(false);
@@ -90,36 +112,37 @@ export default function ExploreScreen() {
 
             if (error) {
               console.error("AI error:", error);
-              setMessages((prev) => {
+              updateMessages((prev) => {
                 const newMessages = [...prev];
-                newMessages[assistantMessageIndex] = {
+                newMessages[newMessages.length - 1] = {
                   role: "assistant",
                   content: `Error: ${error}`,
                 };
                 return newMessages;
               });
-              return;
             }
           },
           onError: (error: string) => {
             console.error("AI error:", error);
             setIsGenerating(false);
-            setMessages((prev) => {
+            updateMessages((prev) => {
               const newMessages = [...prev];
-              newMessages[assistantMessageIndex] = {
+              newMessages[newMessages.length - 1] = {
                 role: "assistant",
                 content: `Error: ${error}`,
               };
               return newMessages;
             });
           },
-        });
+        }, controller.signal);
       } catch (error) {
-        console.error("Chat failed:", error);
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          console.error("Chat failed:", error);
+        }
         setIsGenerating(false);
       }
     },
-    [ai, messages, isGenerating, scrollRef],
+    [ai, isGenerating, updateMessages],
   );
 
   useEffect(() => {
@@ -131,47 +154,47 @@ export default function ExploreScreen() {
 
   const renderItem = useCallback(
     ({ item }: { item: Message }) => {
-      const menuItems: PopupMenuItem[] = [
-        {
-          label: "Copy",
-          icon: "doc.on.doc",
-          onPress: () => copyMessage(item.content),
-        },
-      ];
-
       return (
-        <PopupMenu
-          items={menuItems}
-          buttonView={
-            <Card
-              lightColor={
-                item.role === "user"
-                  ? Colors.light.background
-                  : Colors.light.secondaryBackground
-              }
-              darkColor={
-                item.role === "user"
-                  ? Colors.dark.background
-                  : Colors.dark.secondaryBackground
-              }
-            >
-              <View style={styles.chatItem}>
-                {item.role === "user" ? (
-                  <ThemedText type="defaultSemiBold" style={styles.userMessage}>
-                    {item.content}
-                  </ThemedText>
-                ) : (
-                  <Markdown style={markdownStyles}>
-                    {item.content || "..."}
-                  </Markdown>
-                )}
-              </View>
-            </Card>
-          }
-        />
+        <View>
+          <Card
+            lightColor={
+              item.role === "user"
+                ? Colors.light.background
+                : Colors.light.secondaryBackground
+            }
+            darkColor={
+              item.role === "user"
+                ? Colors.dark.background
+                : Colors.dark.secondaryBackground
+            }
+          >
+            <View style={styles.chatItem}>
+              {item.role === "user" ? (
+                <ThemedText type="defaultSemiBold" style={styles.userMessage}>
+                  {item.content}
+                </ThemedText>
+              ) : (
+                <Markdown style={markdownStyles}>
+                  {item.content || "..."}
+                </Markdown>
+              )}
+            </View>
+          </Card>
+          {item.role === "assistant" && item.content.length > 0 && (
+            <View style={styles.messageActions}>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => copyMessage(item.content)}
+                hitSlop={8}
+              >
+                <IconSymbol name="doc.on.doc" size={16} color={defaultColor} />
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
       );
     },
-    [markdownStyles, copyMessage],
+    [markdownStyles, copyMessage, defaultColor],
   );
 
   const renderEmpty = useCallback(
@@ -179,7 +202,7 @@ export default function ExploreScreen() {
       !messages.length ? (
         <View style={styles.emptyMsg}>
           <ThemedText size="xs" type="secondary">
-            ⚠️ AI-generated content may contain errors or inaccuracies. Please
+            AI-generated content may contain errors or inaccuracies. Please
             verify important information with reliable sources.
           </ThemedText>
           <ThemedText size="xs" type="secondary">
@@ -191,13 +214,14 @@ export default function ExploreScreen() {
     [messages],
   );
 
-  const clearMessages = () => {
+  const clearMessages = useCallback(() => {
     if (isGenerating) {
       return;
     }
-    setMessages([]);
+    abortRef.current?.abort();
+    updateMessages(() => []);
     setInitialized(false);
-  };
+  }, [isGenerating, updateMessages]);
 
   return (
     <>
@@ -227,13 +251,13 @@ export default function ExploreScreen() {
       <FlashList
         contentInsetAdjustmentBehavior="automatic"
         ref={scrollRef}
+        estimatedItemSize={120}
         style={styles.list}
         contentContainerStyle={styles.scrollContainer}
         keyboardDismissMode="on-drag"
         renderItem={renderItem}
         data={messages}
         ListEmptyComponent={renderEmpty}
-        ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
       />
       <KeyboardAvoidingView
         behavior="translate-with-padding"
@@ -264,8 +288,14 @@ const styles = StyleSheet.create({
   chatItem: {
     gap: 8,
   },
-  query: {
-    opacity: 0.8,
+  messageActions: {
+    flexDirection: "row",
+    paddingTop: 4,
+    paddingLeft: 4,
+  },
+  actionButton: {
+    width: 28,
+    height: 28,
   },
   userMessage: {
     opacity: 0.8,

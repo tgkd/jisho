@@ -45,6 +45,43 @@ class SubscriptionRequiredError extends Error {
   }
 }
 
+async function readResponseStream(
+  response: Response,
+  streaming: StreamingResponse
+): Promise<void> {
+  const reader = response.body?.getReader();
+  if (!reader) {
+    const fullText = await response.text();
+    streaming.onChunk(fullText);
+    streaming.onComplete(fullText);
+    return;
+  }
+
+  const decoder = new TextDecoder();
+  let fullText = "";
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value, { stream: true });
+      fullText += chunk;
+      streaming.onChunk(chunk);
+    }
+
+    const remaining = decoder.decode();
+    if (remaining) {
+      fullText += remaining;
+      streaming.onChunk(remaining);
+    }
+
+    streaming.onComplete(fullText);
+  } catch (streamError) {
+    streaming.onError(`Stream reading error: ${streamError}`);
+  }
+}
+
 export interface UnifiedAIContextValue {
   // Core AI operations
   generateExamples: (prompt: string) => Promise<AiExample[]>;
@@ -170,7 +207,6 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
             return;
           }
 
-          // Remote provider with streaming
           const fetchFn = getAiExplanation(signal);
           const response = await fetchFn(text);
 
@@ -178,37 +214,7 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
             throw new Error(`HTTP error: ${response.status}`);
           }
 
-          const reader = response.body?.getReader();
-          if (!reader) {
-            const fullText = await response.text();
-            streaming.onChunk(fullText);
-            streaming.onComplete(fullText);
-            return;
-          }
-
-          const decoder = new TextDecoder();
-          let fullText = "";
-
-          try {
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-
-              const chunk = decoder.decode(value, { stream: true });
-              fullText += chunk;
-              streaming.onChunk(chunk);
-            }
-
-            const remaining = decoder.decode();
-            if (remaining) {
-              fullText += remaining;
-              streaming.onChunk(remaining);
-            }
-
-            streaming.onComplete(fullText);
-          } catch (streamError) {
-            streaming.onError(`Stream reading error: ${streamError}`);
-          }
+          await readResponseStream(response, streaming);
         }
       } catch (error) {
         streaming.onError(
@@ -244,7 +250,6 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
             return;
           }
 
-          // Remote provider - send full message history to backend
           const fetchFn = getAiChat(signal);
           const response = await fetchFn(messages);
 
@@ -252,37 +257,7 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
             throw new Error(`HTTP error: ${response.status}`);
           }
 
-          const reader = response.body?.getReader();
-          if (!reader) {
-            const fullText = await response.text();
-            streaming.onChunk(fullText);
-            streaming.onComplete(fullText);
-            return;
-          }
-
-          const decoder = new TextDecoder();
-          let fullText = "";
-
-          try {
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-
-              const chunk = decoder.decode(value, { stream: true });
-              fullText += chunk;
-              streaming.onChunk(chunk);
-            }
-
-            const remaining = decoder.decode();
-            if (remaining) {
-              fullText += remaining;
-              streaming.onChunk(remaining);
-            }
-
-            streaming.onComplete(fullText);
-          } catch (streamError) {
-            streaming.onError(`Stream reading error: ${streamError}`);
-          }
+          await readResponseStream(response, streaming);
         }
       } catch (error) {
         streaming.onError(
@@ -332,37 +307,7 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
             throw new Error(`HTTP error: ${response.status}`);
           }
 
-          const reader = response.body?.getReader();
-          if (!reader) {
-            const fullText = await response.text();
-            streaming.onChunk(fullText);
-            streaming.onComplete(fullText);
-            return;
-          }
-
-          const decoder = new TextDecoder();
-          let fullText = "";
-
-          try {
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-
-              const chunk = decoder.decode(value, { stream: true });
-              fullText += chunk;
-              streaming.onChunk(chunk);
-            }
-
-            const remaining = decoder.decode();
-            if (remaining) {
-              fullText += remaining;
-              streaming.onChunk(remaining);
-            }
-
-            streaming.onComplete(fullText);
-          } catch (streamError) {
-            streaming.onError(`Stream reading error: ${streamError}`);
-          }
+          await readResponseStream(response, streaming);
         }
       } catch (error) {
         streaming.onError(
@@ -440,37 +385,7 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
           throw new Error(`HTTP error: ${response.status}`);
         }
 
-        const reader = response.body?.getReader();
-        if (!reader) {
-          const fullText = await response.text();
-          streaming.onChunk(fullText);
-          streaming.onComplete(fullText);
-          return;
-        }
-
-        const decoder = new TextDecoder();
-        let fullText = "";
-
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            const chunk = decoder.decode(value, { stream: true });
-            fullText += chunk;
-            streaming.onChunk(chunk);
-          }
-
-          const remaining = decoder.decode();
-          if (remaining) {
-            fullText += remaining;
-            streaming.onChunk(remaining);
-          }
-
-          streaming.onComplete(fullText);
-        } catch (streamError) {
-          streaming.onError(`Stream reading error: ${streamError}`);
-        }
+        await readResponseStream(response, streaming);
       } catch (error) {
         streaming.onError(
           error instanceof Error ? error.message : "Unknown error"
