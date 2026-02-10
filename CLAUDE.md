@@ -43,8 +43,8 @@ Jisho is a cross-platform Japanese dictionary mobile app built with Expo and Rea
 - `yarn test:db` - Run all database tests
 
 ### Build System
-- Uses **Yarn 4.10.2** as package manager
-- **Expo (v54)** with file-based routing via `expo-router`
+- Uses **Yarn 4.10.3** as package manager
+- **Expo (v55 canary)** with file-based routing via `expo-router`
 - **EAS Build** for production builds
 - **TypeScript** for type safety
 - **Jest** with expo preset for testing (see `jest.config.node.js` for Node.js tests)
@@ -173,7 +173,7 @@ The app supports both local and cloud AI through `UnifiedAIProvider`:
 - Supports both iOS and Android
 - Offline-first architecture with local dictionary data
 - Comprehensive Japanese language data from JMdict and Kanjidic
-- Database migrations managed via `migrateDbIfNeeded` (target user_version 19)
+- Database migrations managed via `migrateDbIfNeeded` (target user_version 20)
 - WAL mode enforced for SQLite operations
 - Use `retryDatabaseOperation` wrapper for all raw SQL to handle SQLITE_BUSY
 - Pull database connection from `useSQLiteContext()` and pass to `services/database/` helpers

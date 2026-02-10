@@ -305,18 +305,17 @@ function HistoryContent({
       >
         {isWordHistoryEntry(item) ? (
           <>
-            <ThemedText uiTextView={false}>
-              <ThemedText type="defaultSemiBold" uiTextView={false}>
+            <ThemedText>
+              <ThemedText type="defaultSemiBold">
                 {item.word + " "}
               </ThemedText>
-              <ThemedText size="sm" uiTextView={false}>
+              <ThemedText size="sm">
                 {formatJp(item.reading, false)}
               </ThemedText>
             </ThemedText>
             <ThemedText
               type="secondary"
               style={styles.meaning}
-              uiTextView={false}
             >
               {formatEn(item.meaning, "none", { truncateAll: 45 }).replace(
                 /[,;]\s*$/,
@@ -327,17 +326,17 @@ function HistoryContent({
         ) : (
           <>
             <View style={styles.kanjiHistoryRow}>
-              <ThemedText type="defaultSemiBold" uiTextView={false}>
+              <ThemedText type="defaultSemiBold">
                 {item.character}
               </ThemedText>
               <View style={styles.kanjiHistoryReadings}>
                 {item.onReadings?.length > 0 && (
-                  <ThemedText size="sm" type="secondary" uiTextView={false}>
+                  <ThemedText size="sm" type="secondary">
                     On: {item.onReadings.join(", ")}
                   </ThemedText>
                 )}
                 {item.kunReadings?.length > 0 && (
-                  <ThemedText size="sm" type="secondary" uiTextView={false}>
+                  <ThemedText size="sm" type="secondary">
                     Kun: {item.kunReadings.join(", ")}
                   </ThemedText>
                 )}
@@ -346,7 +345,6 @@ function HistoryContent({
             <ThemedText
               type="secondary"
               style={styles.meaning}
-              uiTextView={false}
             >
               {formatEn(item.meaning, "none", { truncateAll: 45 }).replace(
                 /[,;]\s*$/,
@@ -388,18 +386,17 @@ function BookmarkContent({
           lightColor={Colors.light.groupedBackground}
           darkColor={Colors.dark.groupedBackground}
         >
-          <ThemedText uiTextView={false}>
-            <ThemedText type="defaultSemiBold" uiTextView={false}>
+          <ThemedText>
+            <ThemedText type="defaultSemiBold">
               {item.word + " "}
             </ThemedText>
-            <ThemedText size="sm" uiTextView={false}>
+            <ThemedText size="sm">
               {formatJp(item.reading, false)}
             </ThemedText>
           </ThemedText>
           <ThemedText
             type="secondary"
             style={styles.meaning}
-            uiTextView={false}
           >
             {item.meaning
               ? formatEn(item.meaning, "none")
@@ -458,7 +455,6 @@ function SearchContent({
             <View style={styles.titleRow}>
               <ThemedText
                 type="defaultSemiBold"
-                uiTextView={false}
                 numberOfLines={1}
                 ellipsizeMode="tail"
               >
@@ -466,7 +462,6 @@ function SearchContent({
               </ThemedText>
               <ThemedText
                 type="secondary"
-                uiTextView={false}
                 numberOfLines={1}
                 ellipsizeMode="tail"
                 style={styles.readingText}
@@ -476,7 +471,6 @@ function SearchContent({
             </View>
             <ThemedText
               type="secondary"
-              uiTextView={false}
               style={styles.detailsText}
             >
               {truncatedDetails}

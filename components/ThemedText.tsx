@@ -1,6 +1,5 @@
 import { useMemo } from "react";
-import { StyleSheet, type TextProps } from "react-native";
-import { UITextView as Text } from "react-native-uitextview";
+import { StyleSheet, Text, type TextProps } from "react-native";
 
 import { Colors } from "@/constants/Colors";
 import { useThemeColor } from "@/hooks/useThemeColor";
@@ -9,7 +8,6 @@ export type ThemedTextProps = TextProps & {
   lightColor?: string;
   darkColor?: string;
   selectable?: boolean;
-  uiTextView?: boolean;
   textAlign?: "auto" | "left" | "right" | "center" | "justify";
   size?: "lg" | "md" | "sm" | "xs";
   type?:
@@ -27,7 +25,6 @@ export function ThemedText({
   darkColor,
   type = "default",
   selectable = true,
-  uiTextView = true,
   textAlign,
   size,
   ...rest
@@ -75,7 +72,6 @@ export function ThemedText({
 
   return (
     <Text
-      uiTextView={uiTextView}
       style={[
         { color },
         type === "default" ? styles.default : undefined,
