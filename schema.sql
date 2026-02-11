@@ -60,11 +60,29 @@ CREATE INDEX idx_furigana_reading ON furigana(reading);
 CREATE VIRTUAL TABLE words_fts USING fts5(
     word,
     reading,
+    reading_hiragana,
     kanji,
-    meaning,
     content='words',
     content_rowid='id'
 );
+
+-- Keep FTS index in sync with words table
+CREATE TRIGGER words_ai AFTER INSERT ON words BEGIN
+    INSERT INTO words_fts(rowid, word, reading, reading_hiragana, kanji)
+    VALUES (new.id, new.word, new.reading, new.reading_hiragana, new.kanji);
+END;
+
+CREATE TRIGGER words_ad AFTER DELETE ON words BEGIN
+    INSERT INTO words_fts(words_fts, rowid, word, reading, reading_hiragana, kanji)
+    VALUES('delete', old.id, old.word, old.reading, old.reading_hiragana, old.kanji);
+END;
+
+CREATE TRIGGER words_au AFTER UPDATE ON words BEGIN
+    INSERT INTO words_fts(words_fts, rowid, word, reading, reading_hiragana, kanji)
+    VALUES('delete', old.id, old.word, old.reading, old.reading_hiragana, old.kanji);
+    INSERT INTO words_fts(rowid, word, reading, reading_hiragana, kanji)
+    VALUES (new.id, new.word, new.reading, new.reading_hiragana, new.kanji);
+END;
 
 -- =============================================================================
 -- KANJI SUPPORT TABLES

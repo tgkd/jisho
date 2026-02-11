@@ -144,7 +144,7 @@ describe("searchDictionary integration", () => {
   let db: SQLiteDatabase;
   const databasePath = path.join(
     __dirname,
-    "../assets/db/db_20260211_105924.db"
+    "../assets/db/db_20260211_114408.db"
   );
 
   beforeAll(async () => {
