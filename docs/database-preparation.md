@@ -90,7 +90,7 @@ A single JSON array of ruby annotation mappings. Each entry maps a written form 
 | `history` | User search history (empty at build time) |
 | `audio_blobs` | Cached audio data (empty at build time) |
 
-PRAGMAs set WAL mode, 256MB mmap, and `user_version = 17`.
+PRAGMAs set WAL mode, 256MB mmap, and `user_version = 20`.
 
 ### Step 2: Data Import (`--import`)
 
