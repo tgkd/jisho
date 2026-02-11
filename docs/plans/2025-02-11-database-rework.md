@@ -90,9 +90,9 @@ Line 113 in `app/word/index.tsx`: `JSON.stringify(newResults) !== JSON.stringify
 
 ### Task 4: Clean up dead code
 
-- [ ] Remove `createRankingClause` and `createDeduplicationQuery` from utils.ts if unused
-- [ ] Remove `searchByFuriganaReading` function and its imports
-- [ ] Verify audio_blobs indexes are correct
+- [x] Remove `createRankingClause` and `createDeduplicationQuery` from utils.ts if unused
+- [x] Remove `searchByFuriganaReading` function and its imports
+- [x] Verify audio_blobs indexes are correct
 
 ---
 

@@ -1,8 +1,8 @@
+import { DATABASE_NAME } from "@/constants/Database";
 import { Directory, File, Paths } from "expo-file-system";
 import { SQLiteDatabase } from "expo-sqlite";
 import { Alert } from "react-native";
 import * as wanakana from "wanakana";
-import { DATABASE_NAME } from "@/constants/Database";
 import { DBDictEntry, DictionaryEntry, SearchDictionaryResult, SearchQuery, WordMeaning } from "./types";
 
 export function processSearchQuery(query: string): SearchQuery {
@@ -32,21 +32,6 @@ export function processSearchQuery(query: string): SearchQuery {
 export function tokenizeJp(text: string) {
   const tokens = wanakana.tokenize(text);
   return tokens.map((t) => (typeof t === "string" ? t : t.value));
-}
-
-export function createRankingClause(
-  wordField: string,
-  readingField: string,
-  hiraganaField: string,
-  kanjiField: string
-): string {
-  return `
-    CASE
-      WHEN word = ${wordField} OR reading = ${readingField} OR reading_hiragana = ${hiraganaField} OR kanji = ${kanjiField} THEN 1
-      WHEN word LIKE ${wordField} || '%' OR reading LIKE ${readingField} || '%' OR reading_hiragana LIKE ${hiraganaField} || '%' OR kanji LIKE ${kanjiField} || '%' THEN 2
-      ELSE rank + 3
-    END
-  `;
 }
 
 export function createEmptyResult(error?: string): SearchDictionaryResult {
@@ -98,34 +83,6 @@ export function buildFtsMatchExpression(query: SearchQuery): string {
   }
 
   return terms.join(" OR ");
-}
-
-export function createDeduplicationQuery(
-  matchSubquery: string,
-  rankingClause: string,
-  minWordLength: number = 1
-): string {
-  return `
-    WITH matches AS (
-      ${matchSubquery}
-    ),
-    deduped AS (
-      SELECT
-        w.*,
-        m.rank,
-        ROW_NUMBER() OVER (
-          PARTITION BY w.word, w.reading
-          ORDER BY ${rankingClause}, length(w.word)
-        ) as row_num
-      FROM words w
-      JOIN matches m ON w.id = m.id
-      WHERE length(w.word) >= ${minWordLength}
-    )
-    SELECT * FROM deduped
-    WHERE row_num = 1
-    ORDER BY ${rankingClause}, length(word)
-    LIMIT ?
-  `;
 }
 
 export function dbWordToDictEntry(word: DBDictEntry): DictionaryEntry {
