@@ -324,11 +324,12 @@ async function searchByFTS(
   try {
     const matchExpression = buildFtsMatchExpression(query);
     const hiraganaQuery = query.hiragana || query.original;
+    const originalQuery = query.original;
 
     return await retryDatabaseOperation(() =>
       db.getAllAsync<DBDictEntry>(
         `
-        WITH params(q) AS (SELECT ?)
+        WITH params(q, orig) AS (SELECT ?, ?)
         SELECT w.*
         FROM words_fts f
         JOIN words w ON w.id = f.rowid
@@ -336,15 +337,17 @@ async function searchByFTS(
         WHERE f.words_fts MATCH ?
         ORDER BY
           CASE
-            WHEN w.word = p.q OR w.reading = p.q OR w.reading_hiragana = p.q OR w.kanji = p.q THEN 0
-            WHEN w.word LIKE p.q || '%' OR w.reading LIKE p.q || '%' OR w.reading_hiragana LIKE p.q || '%' OR w.kanji LIKE p.q || '%' THEN 1
+            WHEN w.word = p.q OR w.reading = p.q OR w.reading_hiragana = p.q OR w.kanji = p.q
+              OR w.word = p.orig OR w.kanji = p.orig THEN 0
+            WHEN w.word LIKE p.q || '%' OR w.reading LIKE p.q || '%' OR w.reading_hiragana LIKE p.q || '%' OR w.kanji LIKE p.q || '%'
+              OR w.word LIKE p.orig || '%' OR w.kanji LIKE p.orig || '%' THEN 1
             ELSE 2
           END,
           bm25(words_fts),
           length(w.word)
         LIMIT ?
         `,
-        [hiraganaQuery, matchExpression, options.limit]
+        [hiraganaQuery, originalQuery, matchExpression, options.limit]
       )
     );
   } catch (error) {

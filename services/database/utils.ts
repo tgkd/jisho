@@ -65,21 +65,26 @@ export function isSingleKanjiCharacter(query: string): boolean {
 }
 
 export function buildFtsMatchExpression(query: SearchQuery): string {
+  const escape = (s: string) => s.replace(/"/g, '""');
   const terms: string[] = [];
 
-  terms.push(`"${query.original}"^2`);
-  terms.push(`"${query.original}"*`);
+  const orig = escape(query.original);
+  terms.push(`"${orig}"^2`);
+  terms.push(`"${orig}"*`);
 
   if (query.hiragana) {
-    terms.push(`"${query.hiragana}"`, `"${query.hiragana}"*`);
+    const h = escape(query.hiragana);
+    terms.push(`"${h}"`, `"${h}"*`);
   }
 
   if (query.katakana) {
-    terms.push(`"${query.katakana}"`, `"${query.katakana}"*`);
+    const k = escape(query.katakana);
+    terms.push(`"${k}"`, `"${k}"*`);
   }
 
   if (query.romaji) {
-    terms.push(`"${query.romaji}"`, `"${query.romaji}"*`);
+    const r = escape(query.romaji);
+    terms.push(`"${r}"`, `"${r}"*`);
   }
 
   return terms.join(" OR ");
