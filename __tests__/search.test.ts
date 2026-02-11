@@ -1,6 +1,6 @@
-import sqlite3 from "sqlite3";
-import path from "path";
 import type { SQLiteDatabase } from "expo-sqlite";
+import path from "path";
+import sqlite3 from "sqlite3";
 
 import { searchDictionary } from "../services/database/search";
 
@@ -144,7 +144,7 @@ describe("searchDictionary integration", () => {
   let db: SQLiteDatabase;
   const databasePath = path.join(
     __dirname,
-    "../assets/db/db_20250927_130743.db"
+    "../assets/db/db_20260211_105924.db"
   );
 
   beforeAll(async () => {

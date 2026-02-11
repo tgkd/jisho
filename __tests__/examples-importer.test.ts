@@ -1,8 +1,8 @@
 import { mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import path from 'path';
-import { DatabaseManager } from '../scripts/import/utils/database';
 import { ExamplesImporter } from '../scripts/import/examples-importer';
+import { DatabaseManager } from '../scripts/import/utils/database';
 
 const schemaPath = path.join(__dirname, '../schema.sql');
 
@@ -66,7 +66,7 @@ describe('ExamplesImporter', () => {
     expect(firstRows[0]).toMatchObject({
       japanese_text: '日本語の文です。',
       english_text: 'This is a sentence.',
-      tokens: '日本語(にほんご) の 文{文です。}',
+      tokens: '["日本語","文"]',
       example_id: 'example_1'
     });
 
@@ -92,7 +92,7 @@ describe('ExamplesImporter', () => {
     expect(rowsAfter[0]).toMatchObject({
       japanese_text: '日本語の文です。',
       english_text: 'Updated translation.',
-      tokens: '日本語(にほんご) の 文{文です。}',
+      tokens: '["日本語","文"]',
       example_id: 'example_1'
     });
   });
