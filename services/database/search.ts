@@ -329,22 +329,39 @@ async function searchByFTS(
     return await retryDatabaseOperation(() =>
       db.getAllAsync<DBDictEntry>(
         `
-        WITH params(q, orig) AS (SELECT ?, ?)
-        SELECT w.*
-        FROM words_fts f
-        JOIN words w ON w.id = f.rowid
+        WITH params(q, orig) AS (SELECT ?, ?),
+        ranked AS (
+          SELECT w.*,
+            ROW_NUMBER() OVER (
+              PARTITION BY w.word, w.reading
+              ORDER BY
+                CASE
+                  WHEN w.word = p.q OR w.reading = p.q OR w.reading_hiragana = p.q OR w.kanji = p.q
+                    OR w.word = p.orig OR w.kanji = p.orig THEN 0
+                  WHEN w.word LIKE p.q || '%' OR w.reading LIKE p.q || '%' OR w.reading_hiragana LIKE p.q || '%' OR w.kanji LIKE p.q || '%'
+                    OR w.word LIKE p.orig || '%' OR w.kanji LIKE p.orig || '%' THEN 1
+                  ELSE 2
+                END,
+                bm25(words_fts),
+                length(w.word)
+            ) as row_num
+          FROM words_fts f
+          JOIN words w ON w.id = f.rowid
+          CROSS JOIN params p
+          WHERE f.words_fts MATCH ?
+        )
+        SELECT * FROM ranked
         CROSS JOIN params p
-        WHERE f.words_fts MATCH ?
+        WHERE row_num = 1
         ORDER BY
           CASE
-            WHEN w.word = p.q OR w.reading = p.q OR w.reading_hiragana = p.q OR w.kanji = p.q
-              OR w.word = p.orig OR w.kanji = p.orig THEN 0
-            WHEN w.word LIKE p.q || '%' OR w.reading LIKE p.q || '%' OR w.reading_hiragana LIKE p.q || '%' OR w.kanji LIKE p.q || '%'
-              OR w.word LIKE p.orig || '%' OR w.kanji LIKE p.orig || '%' THEN 1
+            WHEN word = p.q OR reading = p.q OR reading_hiragana = p.q OR kanji = p.q
+              OR word = p.orig OR kanji = p.orig THEN 0
+            WHEN word LIKE p.q || '%' OR reading LIKE p.q || '%' OR reading_hiragana LIKE p.q || '%' OR kanji LIKE p.q || '%'
+              OR word LIKE p.orig || '%' OR kanji LIKE p.orig || '%' THEN 1
             ELSE 2
           END,
-          bm25(words_fts),
-          length(w.word)
+          length(word)
         LIMIT ?
         `,
         [hiraganaQuery, originalQuery, matchExpression, options.limit]
