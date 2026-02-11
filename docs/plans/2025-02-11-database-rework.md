@@ -98,7 +98,7 @@ Line 113 in `app/word/index.tsx`: `JSON.stringify(newResults) !== JSON.stringify
 
 ## Final Verification
 
-- [ ] Verify `yarn db:build` produces DB with matching word counts in words and words_fts
-- [ ] Test FTS search returns results: `SELECT * FROM words_fts WHERE words_fts MATCH 'たべる' LIMIT 5`
-- [ ] Test rapid typing shows results for final typed text, not intermediate states
-- [ ] Verify search tests pass: `yarn test:ci`
+- [x] Verify `yarn db:build` produces DB with matching word counts in words and words_fts
+- [x] Test FTS search returns results: `SELECT * FROM words_fts WHERE words_fts MATCH 'たべる' LIMIT 5`
+- [x] Test rapid typing shows results for final typed text, not intermediate states
+- [x] Verify search tests pass: `yarn test:ci`
