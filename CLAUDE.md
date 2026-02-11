@@ -164,7 +164,6 @@ The app supports both local and cloud AI through `UnifiedAIProvider`:
 
 ## Build Configuration
 - **app.json**: Expo configuration
-- **eas.json**: Build profiles (development, preview, production)
 - **Bundle ID**: app.jisho.loc
 - Auto-increment version on production builds
 

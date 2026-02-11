@@ -129,8 +129,8 @@ PODS:
   - hermes-engine (0.14.0):
     - hermes-engine/Pre-built (= 0.14.0)
   - hermes-engine/Pre-built (0.14.0)
-  - libavif/core (0.11.1)
-  - libavif/libdav1d (0.11.1):
+  - libavif/core (1.0.0)
+  - libavif/libdav1d (1.0.0):
     - libavif/core
     - libdav1d (>= 0.6.0)
   - libdav1d (1.2.0)
@@ -172,7 +172,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - NitroModules (0.33.2):
+  - NitroModules (0.33.7):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -195,11 +195,11 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - PurchasesHybridCommon (17.30.1):
-    - RevenueCat (= 5.56.0)
-  - PurchasesHybridCommonUI (17.30.1):
-    - PurchasesHybridCommon (= 17.30.1)
-    - RevenueCatUI (= 5.56.0)
+  - PurchasesHybridCommon (17.31.0):
+    - RevenueCat (= 5.57.0)
+  - PurchasesHybridCommonUI (17.31.0):
+    - PurchasesHybridCommon (= 17.31.0)
+    - RevenueCatUI (= 5.57.0)
   - RCTDeprecation (0.83.1)
   - RCTRequired (0.83.1)
   - RCTSwiftUI (0.83.1)
@@ -2113,9 +2113,9 @@ PODS:
     - React-utils (= 0.83.1)
     - ReactNativeDependencies
   - ReactNativeDependencies (0.83.1)
-  - RevenueCat (5.56.0)
-  - RevenueCatUI (5.56.0):
-    - RevenueCat (= 5.56.0)
+  - RevenueCat (5.57.0)
+  - RevenueCatUI (5.57.0):
+    - RevenueCat (= 5.57.0)
   - RNGestureHandler (2.30.0):
     - hermes-engine
     - RCTRequired
@@ -2138,11 +2138,11 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - RNPaywalls (9.7.5):
-    - PurchasesHybridCommonUI (= 17.30.1)
+  - RNPaywalls (9.7.6):
+    - PurchasesHybridCommonUI (= 17.31.0)
     - React-Core
-  - RNPurchases (9.7.5):
-    - PurchasesHybridCommon (= 17.30.1)
+  - RNPurchases (9.7.6):
+    - PurchasesHybridCommon (= 17.31.0)
     - React-Core
   - RNReanimated (4.2.1):
     - hermes-engine
@@ -2336,9 +2336,9 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - SDWebImage (5.21.5):
-    - SDWebImage/Core (= 5.21.5)
-  - SDWebImage/Core (5.21.5)
+  - SDWebImage (5.21.6):
+    - SDWebImage/Core (= 5.21.6)
+  - SDWebImage/Core (5.21.6)
   - SDWebImageAVIFCoder (0.11.1):
     - libavif/core (>= 0.11.0)
     - SDWebImage (~> 5.10)
@@ -2729,14 +2729,14 @@ SPEC CHECKSUMS:
   ExpoUI: 2f424272bf96fd60a2c80ff67f54dc24b2282820
   FBLazyVector: 3a7ea85f6009224ad89f7daeda516f189e6b5759
   hermes-engine: 0ff399b61feed5748d6b8a41bfd314398e6ca1f8
-  libavif: 84bbb62fb232c3018d6f1bab79beea87e35de7b7
+  libavif: 5f8e715bea24debec477006f21ef9e95432e254d
   libdav1d: 23581a4d8ec811ff171ed5e2e05cd27bad64c39f
   libwebp: 02b23773aedb6ff1fd38cec7a77b81414c6842a8
   MMKVCore: f2dd4c9befea04277a55e84e7812f930537993df
   NitroMmkv: c9fd61d98afd00a6e4e1656a415c28f7be0fd74e
-  NitroModules: 114b4f79e10be9b202723e721d6a54382fa4b599
-  PurchasesHybridCommon: c0bc3edee10a8742e9a238247944b4be044ff177
-  PurchasesHybridCommonUI: b3d0bc51d9016e15b68d48ea9f297d202720df4a
+  NitroModules: a5ca899bb0c1326c937f11de6b050a467c5a12de
+  PurchasesHybridCommon: 21a11c5d66c8a52cf9aede45cecc2efe1551b98b
+  PurchasesHybridCommonUI: 60fbb660ebbf224df733c90849c4f3b8f6819f4b
   RCTDeprecation: a93fe21ed2fd99e13bf3b011390d1e9769c83d23
   RCTRequired: 176145d35686c966863f268c0f938f58ae23dc78
   RCTSwiftUI: a6c7271c39098bf00dbdad8f8ed997a59bbfbe44
@@ -2810,15 +2810,15 @@ SPEC CHECKSUMS:
   ReactCodegen: fc927f8651c51b06a38dff2328ffe27e75f4e211
   ReactCommon: c24a308601d0bce5c9edf2f36afb0dbf7afaf6ef
   ReactNativeDependencies: ef154343b1fde68e19351be642f9cc64885deb27
-  RevenueCat: 9e2a13bead55198a72272ff105a7265e9510cd11
-  RevenueCatUI: 2200b8ec1cadb1c69c6f05452144184f929eadef
+  RevenueCat: 2d8aa56c68fa8e92c0d669e5e797c4a93e284f20
+  RevenueCatUI: 25c86cf10c6cb9e3e9f308c48df55b31bf7fdba5
   RNGestureHandler: 5494787ce29288a8941fa825663f2b1fa0a5aaf1
-  RNPaywalls: ab90f4c038b0913ffee94c180cb94c29b0fcc149
-  RNPurchases: ae1f8f522674a7938dd26eba6c103c40d049dfee
+  RNPaywalls: d8ebe418a058fdc7c7b6dd1b3ecb07058d4f1d89
+  RNPurchases: 462fb7edb0304dba1db46e3d38368a271ebe4cc2
   RNReanimated: 86e5991396f1aa514db90d6c79d4c3e37a37bb10
   RNScreens: 77d5ed082f2ae8eb79d5e6124fe8db19577d501f
   RNWorklets: 0e736f568c3c61cb3326cdcda767c4daee56a8a9
-  SDWebImage: e9c98383c7572d713c1a0d7dd2783b10599b9838
+  SDWebImage: 1bb6a1b84b6fe87b972a102bdc77dd589df33477
   SDWebImageAVIFCoder: afe194a084e851f70228e4be35ef651df0fc5c57
   SDWebImageSVGCoder: 15a300a97ec1c8ac958f009c02220ac0402e936c
   SDWebImageWebPCoder: e38c0a70396191361d60c092933e22c20d5b1380
