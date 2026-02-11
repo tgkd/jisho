@@ -21,7 +21,7 @@ import {
   searchDictionary,
   searchKanji,
   WordHistoryEntry,
-  WordMeaning,
+  WordMeaning
 } from "@/services/database";
 import { getJpTokens } from "@/services/parse";
 import { Button, Host } from "@expo/ui/swift-ui";
@@ -63,7 +63,6 @@ export default function HomeScreen() {
   const searchBarRef = useRef<SearchBarCommands>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const [tokens, setTokens] = useState<{ id: string; label: string }[]>([]);
-  const isSearchingRef = useRef(false);
   const [searchMode, setSearchMode] = useState<"word" | "kanji">("word");
 
   const handleSearch = useDebouncedCallback(async (query: string) => {
@@ -76,15 +75,8 @@ export default function HomeScreen() {
     if (text.length === 0) {
       setResults([]);
       setLoading(false);
-      isSearchingRef.current = false;
       return;
     }
-
-    if (isSearchingRef.current) {
-      return;
-    }
-
-    isSearchingRef.current = true;
 
     const controller = new AbortController();
     abortControllerRef.current = controller;
@@ -102,47 +94,31 @@ export default function HomeScreen() {
           signal: controller.signal,
         });
 
-        if (controller.signal.aborted) {
-          return;
-        }
+        if (controller.signal.aborted) return;
 
-        if (!controller.signal.aborted && isSearchingRef.current) {
-          const newResults = searchResults.words || [];
-          const newMeanings = searchResults.meanings || new Map();
-
-          if (JSON.stringify(newResults) !== JSON.stringify(results)) {
-            setResults(newResults);
-            setMeaningsMap(newMeanings);
-          }
-        }
+        setResults(searchResults.words || []);
+        setMeaningsMap(searchResults.meanings || new Map());
       } else {
         const kanjiResults = await searchKanji(db, text);
 
-        if (controller.signal.aborted) {
-          return;
-        }
+        if (controller.signal.aborted) return;
 
-        if (!controller.signal.aborted && isSearchingRef.current) {
-          setResults(kanjiResults);
-          setMeaningsMap(new Map());
-        }
+        setResults(kanjiResults);
+        setMeaningsMap(new Map());
       }
     } catch (error) {
       if (error instanceof Error && error.name !== "AbortError") {
         console.error("Search failed:", error);
       }
-      if (!controller.signal.aborted && isSearchingRef.current) {
-        if (results.length > 0) {
-          setResults([]);
-        }
+      if (!controller.signal.aborted) {
+        setResults([]);
       }
     } finally {
-      if (!controller.signal.aborted && isSearchingRef.current) {
+      if (!controller.signal.aborted) {
         setLoading(false);
       }
-      isSearchingRef.current = false;
     }
-  }, 100);
+  }, 150);
 
   const handleChange = (text: string) => {
     if (text.trim().length > 0) {
@@ -206,8 +182,6 @@ export default function HomeScreen() {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
-
-    isSearchingRef.current = false;
 
     setSearch("");
     setResults([]);

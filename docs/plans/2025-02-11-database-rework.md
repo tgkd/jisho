@@ -83,10 +83,10 @@ Line 113 in `app/word/index.tsx`: `JSON.stringify(newResults) !== JSON.stringify
 
 **Goal**: Every keystroke that matters gets searched, stale results don't linger.
 
-- [ ] Remove `isSearchingRef` guard entirely
-- [ ] Fix the debounced callback flow to properly use AbortController
-- [ ] Remove `JSON.stringify` comparison for results
-- [ ] Consider increasing debounce to 150-200ms
+- [x] Remove `isSearchingRef` guard entirely
+- [x] Fix the debounced callback flow to properly use AbortController
+- [x] Remove `JSON.stringify` comparison for results
+- [x] Consider increasing debounce to 150-200ms
 
 ### Task 4: Clean up dead code
 
