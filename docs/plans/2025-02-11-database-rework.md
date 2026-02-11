@@ -74,10 +74,10 @@ Line 113 in `app/word/index.tsx`: `JSON.stringify(newResults) !== JSON.stringify
 
 **Goal**: FTS actually gets used, search is simpler and faster.
 
-- [ ] Remove the `searchByFTS` length guard (`trimmedQuery.length > 2`)
-- [ ] Simplify `searchByFTS` by removing re-ranking CASE expressions
-- [ ] Make FTS the primary path for Japanese queries (not middle tier)
-- [ ] Remove `searchByFuriganaReading` and its imports
+- [x] Remove the `searchByFTS` length guard (`trimmedQuery.length > 2`)
+- [x] Simplify `searchByFTS` by removing re-ranking CASE expressions
+- [x] Make FTS the primary path for Japanese queries (not middle tier)
+- [x] Remove `searchByFuriganaReading` and its imports
 
 ### Task 3: Fix rapid-typing race condition
 
