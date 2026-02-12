@@ -5,9 +5,6 @@
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
-    "initdb": "node ./scripts/init_db.js",
-    "initex": "node ./scripts/examples_db.js",
-    "initkanji": "node ./scripts/kanji_db.js",
     "db:create": "tsx scripts/migrate.ts --create",
     "db:import": "tsx scripts/migrate.ts --import",
     "db:import:words": "tsx scripts/migrate.ts --import-words",
@@ -30,8 +27,6 @@
     "test:db": "jest __tests__ --config jest.config.node.js --watchAll=false --verbose",
     "test:ci": "jest --watchAll=false --verbose",
     "lint": "expo lint",
-    "build": "eas build --platform ios",
-    "build:preview": "eas build -p ios --profile preview",
     "deploy": "tsx pages/deploy-pages.ts",
     "deploy:production": "tsx pages/deploy-pages.ts --production"
   },

@@ -31,7 +31,8 @@ CREATE TABLE meanings (
     part_of_speech TEXT,           -- Part of speech tag
     field TEXT,                    -- Field/domain tag
     misc TEXT,                     -- Miscellaneous tags
-    info TEXT                      -- Additional information
+    info TEXT,                     -- Additional information
+    FOREIGN KEY (word_id) REFERENCES words(id)
 );
 
 CREATE INDEX idx_meanings_word_id ON meanings(word_id);
@@ -59,11 +60,29 @@ CREATE INDEX idx_furigana_reading ON furigana(reading);
 CREATE VIRTUAL TABLE words_fts USING fts5(
     word,
     reading,
+    reading_hiragana,
     kanji,
-    meaning,
     content='words',
     content_rowid='id'
 );
+
+-- Keep FTS index in sync with words table
+CREATE TRIGGER words_ai AFTER INSERT ON words BEGIN
+    INSERT INTO words_fts(rowid, word, reading, reading_hiragana, kanji)
+    VALUES (new.id, new.word, new.reading, new.reading_hiragana, new.kanji);
+END;
+
+CREATE TRIGGER words_ad AFTER DELETE ON words BEGIN
+    INSERT INTO words_fts(words_fts, rowid, word, reading, reading_hiragana, kanji)
+    VALUES('delete', old.id, old.word, old.reading, old.reading_hiragana, old.kanji);
+END;
+
+CREATE TRIGGER words_au AFTER UPDATE ON words BEGIN
+    INSERT INTO words_fts(words_fts, rowid, word, reading, reading_hiragana, kanji)
+    VALUES('delete', old.id, old.word, old.reading, old.reading_hiragana, old.kanji);
+    INSERT INTO words_fts(rowid, word, reading, reading_hiragana, kanji)
+    VALUES (new.id, new.word, new.reading, new.reading_hiragana, new.kanji);
+END;
 
 -- =============================================================================
 -- KANJI SUPPORT TABLES
@@ -78,6 +97,9 @@ CREATE TABLE kanji (
     on_readings TEXT,               -- JSON array of on (Chinese) readings
     kun_readings TEXT,              -- JSON array of kun (native) readings
     meanings TEXT,                  -- JSON array of English meanings
+    grade INTEGER,                  -- School grade level (1-10, where 8+ = Jinmeiyou)
+    stroke_count INTEGER,           -- Number of strokes
+    frequency INTEGER,              -- Frequency ranking (lower = more common)
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -92,9 +114,10 @@ CREATE TABLE examples (
     id INTEGER PRIMARY KEY,
     japanese_text TEXT,
     english_text TEXT,
-    tokens TEXT,                    -- Tokenized/parsed Japanese text
+    tokens TEXT,                    -- JSON array of dictionary form tokens
     example_id TEXT,                -- External example ID
-    word_id INTEGER                 -- Link to words table
+    word_id INTEGER,                -- Link to words table
+    reading TEXT                    -- Reading in kana
 );
 
 CREATE INDEX idx_examples_japanese ON examples(japanese_text);
@@ -150,4 +173,4 @@ PRAGMA synchronous = NORMAL;
 PRAGMA temp_store = MEMORY;
 PRAGMA mmap_size = 268435456; -- 256MB
 PRAGMA cache_size = 10000;
-PRAGMA user_version = 17;
+PRAGMA user_version = 20;

@@ -6,6 +6,10 @@ module.exports = {
   transform: {
     '^.+\\.ts$': 'ts-jest',
   },
+  moduleNameMapper: {
+    '^@/constants/Database$': '<rootDir>/__mocks__/Database.ts',
+    '^@/(.*)$': '<rootDir>/$1',
+  },
   moduleFileExtensions: ['ts', 'js'],
   collectCoverageFrom: [
     'services/**/*.ts',

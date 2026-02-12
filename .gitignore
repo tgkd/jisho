@@ -58,3 +58,6 @@ scripts/
 scripts_bkp/
 assets/db/
 furi/*
+
+# ralphex progress logs
+progress*.txt

@@ -237,6 +237,10 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
           VALUES (new.id, new.word, new.reading, new.reading_hiragana, new.kanji);
         END;
         `);
+      await db.execAsync(`
+        INSERT INTO words_fts(rowid, word, reading, reading_hiragana, kanji)
+        SELECT id, word, reading, reading_hiragana, kanji FROM words;
+      `);
       await db.execAsync(`PRAGMA user_version = 10`);
       currentDbVersion = 10;
     }

@@ -67,8 +67,8 @@ app/              # File-based routing screens (expo-router with NativeTabs)
 
 services/         # Business logic layer
 ├── database/     # Database operations and search pipeline
-│   ├── core.ts       # Database migrations (currently version 19)
-│   ├── search.ts     # Multi-tier search with FTS5, caching, retries
+│   ├── core.ts       # Database migrations (currently version 20)
+│   ├── search.ts     # FTS5-primary search with tiered fallback, caching, retries
 │   ├── dictionary.ts # Dictionary entry queries
 │   ├── history.ts    # Search history management
 │   ├── kanji.ts      # Kanji lookups
@@ -107,7 +107,7 @@ scripts/          # Build and database tooling
 ### Database Schema
 Core tables:
 - `words` - Dictionary entries with readings and kanji
-- `words_fts` - FTS5 virtual table for full-text search
+- `words_fts` - FTS5 virtual table indexing word, reading, reading_hiragana, kanji (synced via insert/delete/update triggers)
 - `meanings` - Word definitions and parts of speech
 - `examples` - Example sentences with translations
 - `kanji` - Kanji character data with readings
@@ -164,7 +164,6 @@ The app supports both local and cloud AI through `UnifiedAIProvider`:
 
 ## Build Configuration
 - **app.json**: Expo configuration
-- **eas.json**: Build profiles (development, preview, production)
 - **Bundle ID**: app.jisho.loc
 - Auto-increment version on production builds
 
@@ -177,7 +176,7 @@ The app supports both local and cloud AI through `UnifiedAIProvider`:
 - WAL mode enforced for SQLite operations
 - Use `retryDatabaseOperation` wrapper for all raw SQL to handle SQLITE_BUSY
 - Pull database connection from `useSQLiteContext()` and pass to `services/database/` helpers
-- Search pipeline (`services/database/search.ts`): normalizes queries, handles multi-tier matching (exact/prefix/contains), uses FTS5 for longer queries, and implements 30s caching
+- Search pipeline (`services/database/search.ts`): normalizes queries, uses FTS5 as primary search path for all queries, falls back to tiered LIKE-based matching (exact/prefix/contains), and implements 30s caching
 - Database helpers should remain free of React Native globals for Node.js test compatibility
 - Expo API and library docs: https://docs.expo.dev/llms-full.txt
 

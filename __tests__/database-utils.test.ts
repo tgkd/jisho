@@ -1,5 +1,5 @@
-import sqlite3 from 'sqlite3';
 import path from 'path';
+import sqlite3 from 'sqlite3';
 
 // Types matching our database structure
 interface DBDictEntry {
@@ -167,7 +167,7 @@ function testFormatSearchResults(words: DBDictEntry[], meanings: Map<number, any
 
 describe('Database Utilities', () => {
   let db: TestDatabase;
-  const dbPath = path.join(__dirname, '../assets/db/db_3.db');
+  const dbPath = path.join(__dirname, '../assets/db/db_20260211_105924.db');
 
   beforeAll(async () => {
     db = new TestDatabase(dbPath);

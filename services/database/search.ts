@@ -1,6 +1,5 @@
 import { SQLiteDatabase } from "expo-sqlite";
 import * as wanakana from "wanakana";
-import { searchFuriganaByPartialReading, searchTextsByReading } from "./furigana";
 import {
   DBDictEntry,
   DBWordMeaning,
@@ -61,15 +60,6 @@ const SUB_RANK = Object.freeze({
   DEFAULT: 99,
 });
 
-const SECONDARY_ORDER = Object.freeze({
-  HIRAGANA: 1,
-  READING: 2,
-  WORD: 3,
-  KANJI: 4,
-  FALLBACK: 5,
-});
-
-const FTS_RANK_OFFSET = MATCH_RANK.CONTAINS;
 
 /**
  * Creates a deterministic cache key for search results.
@@ -333,70 +323,49 @@ async function searchByFTS(
 ): Promise<DBDictEntry[]> {
   try {
     const matchExpression = buildFtsMatchExpression(query);
+    const hiraganaQuery = query.hiragana || query.original;
     const originalQuery = query.original;
-    const hiraganaQuery = query.hiragana || originalQuery;
 
     return await retryDatabaseOperation(() =>
       db.getAllAsync<DBDictEntry>(
         `
-        WITH match_params AS (
-      SELECT ? AS original
-    ),
-    matches AS (
-      SELECT w.*, bm25(words_fts) as rank
-      FROM words_fts f
-      JOIN words w ON w.id = f.rowid
-      CROSS JOIN match_params mp
-      WHERE f.words_fts MATCH ?
-      ORDER BY rank
-    ),
-    deduped AS (
-      SELECT
-        w.*,
-        m.rank,
-        ROW_NUMBER() OVER (
-          PARTITION BY w.word, w.reading
-          ORDER BY
-            CASE
-              WHEN w.word = mp.original OR w.reading = mp.original OR w.reading_hiragana = mp.original OR w.kanji = mp.original THEN ${
-                MATCH_RANK.EXACT
-              }
-              WHEN w.word LIKE mp.original || '%' OR w.reading LIKE mp.original || '%' OR w.reading_hiragana LIKE mp.original || '%' OR w.kanji LIKE mp.original || '%' THEN ${
-                MATCH_RANK.PREFIX
-              }
-              ELSE m.rank + ${FTS_RANK_OFFSET}
-            END,
-            length(w.word)
-        ) as row_num
-      FROM words w
-      JOIN matches m ON w.id = m.id
-      CROSS JOIN match_params mp
-      WHERE length(w.word) >= ${Math.min(originalQuery.length, 2)}
-    )
-    SELECT * FROM deduped
-    CROSS JOIN match_params mp
-    WHERE row_num = 1
-    ORDER BY
-      CASE
-        WHEN word = mp.original OR reading = mp.original OR reading_hiragana = mp.original OR kanji = mp.original THEN ${
-          MATCH_RANK.EXACT
-        }
-        WHEN word LIKE mp.original || '%' OR reading LIKE mp.original || '%' OR reading_hiragana LIKE mp.original || '%' OR kanji LIKE mp.original || '%' THEN ${
-          MATCH_RANK.PREFIX
-        }
-        ELSE rank + ${FTS_RANK_OFFSET}
-      END,
-      CASE
-        WHEN reading_hiragana = mp.original THEN ${SECONDARY_ORDER.HIRAGANA}
-        WHEN reading = mp.original THEN ${SECONDARY_ORDER.READING}
-        WHEN word = mp.original THEN ${SECONDARY_ORDER.WORD}
-        WHEN kanji = mp.original THEN ${SECONDARY_ORDER.KANJI}
-        ELSE ${SECONDARY_ORDER.FALLBACK}
-      END,
-      length(word)
-    LIMIT ?
-    `,
-        [hiraganaQuery, matchExpression, options.limit]
+        WITH params(q, orig) AS (SELECT ?, ?),
+        ranked AS (
+          SELECT w.*, f.rank as fts_rank,
+            ROW_NUMBER() OVER (
+              PARTITION BY w.word, w.reading
+              ORDER BY
+                CASE
+                  WHEN w.word = p.q OR w.reading = p.q OR w.reading_hiragana = p.q OR w.kanji = p.q
+                    OR w.word = p.orig OR w.kanji = p.orig THEN 0
+                  WHEN w.word LIKE p.q || '%' OR w.reading LIKE p.q || '%' OR w.reading_hiragana LIKE p.q || '%' OR w.kanji LIKE p.q || '%'
+                    OR w.word LIKE p.orig || '%' OR w.kanji LIKE p.orig || '%' THEN 1
+                  ELSE 2
+                END,
+                f.rank,
+                length(w.word)
+            ) as row_num
+          FROM words_fts f
+          JOIN words w ON w.id = f.rowid
+          CROSS JOIN params p
+          WHERE f.words_fts MATCH ?
+        )
+        SELECT * FROM ranked
+        CROSS JOIN params p
+        WHERE row_num = 1
+        ORDER BY
+          CASE
+            WHEN word = p.q OR reading = p.q OR reading_hiragana = p.q OR kanji = p.q
+              OR word = p.orig OR kanji = p.orig THEN 0
+            WHEN word LIKE p.q || '%' OR reading LIKE p.q || '%' OR reading_hiragana LIKE p.q || '%' OR kanji LIKE p.q || '%'
+              OR word LIKE p.orig || '%' OR kanji LIKE p.orig || '%' THEN 1
+            ELSE 2
+          END,
+          fts_rank,
+          length(word)
+        LIMIT ?
+        `,
+        [hiraganaQuery, originalQuery, matchExpression, options.limit]
       )
     );
   } catch (error) {
@@ -405,47 +374,6 @@ async function searchByFTS(
   }
 }
 
-/**
- * Searches dictionary entries by furigana readings.
- * @param db - SQLite database connection instance
- * @param query - Reading query (hiragana/katakana)
- * @param limit - Maximum number of results to return
- * @returns Array of dictionary entries with furigana-based matches
- */
-async function searchByFuriganaReading(
-  db: SQLiteDatabase,
-  query: string,
-  limit: number
-): Promise<DBDictEntry[]> {
-  const furiganaEntries = await searchTextsByReading(db, query, Math.min(limit * 2, 100));
-
-  if (furiganaEntries.length === 0) {
-    const partialEntries = await searchFuriganaByPartialReading(db, query, Math.min(limit * 2, 100));
-    if (partialEntries.length === 0) return [];
-    furiganaEntries.push(...partialEntries);
-  }
-
-  const texts = furiganaEntries.map(entry => entry.text);
-  if (texts.length === 0) return [];
-
-  const placeholders = texts.map(() => '?').join(',');
-
-  try {
-    return await db.getAllAsync<DBDictEntry>(
-      `
-      SELECT DISTINCT w.*
-      FROM words w
-      WHERE w.word IN (${placeholders}) OR w.kanji IN (${placeholders})
-      ORDER BY length(w.word)
-      LIMIT ?
-      `,
-      [...texts, ...texts, limit]
-    );
-  } catch (error) {
-    console.error('Failed to search by furigana reading:', error);
-    return [];
-  }
-}
 
 /**
  * Searches dictionary meanings using English text heuristics.
@@ -539,14 +467,6 @@ async function searchByTiers(
     }
   });
 
-  /**
-   * Orchestrates the dictionary search workflow with caching, fallbacks, and cancellation support.
-   * @param db - SQLite database connection instance
-   * @param query - Raw user input string
-   * @param options - Search behaviour flags and execution controls
-   * @returns Search result containing matched entries and optional meanings
-   * @throws Error with name `AbortError` when the search is cancelled
-   */
   if (searchTerms.length === 0) return [];
 
   const termsCte = searchTerms
@@ -695,41 +615,22 @@ export async function searchDictionary(
       return result;
     }
 
-    // Try FTS first if available (but skip for short queries where reading matches are important)
-    if (trimmedQuery.length > 2) {
+    // Try FTS first for all queries
+    if (signal?.aborted) throw new Error("Search cancelled");
+    const ftsResults = await searchByFTS(db, processedQuery, { limit });
+    if (ftsResults.length > 0) {
       if (signal?.aborted) throw new Error("Search cancelled");
-      const ftsResults = await searchByFTS(db, processedQuery, { limit });
-      if (ftsResults.length > 0) {
-        if (signal?.aborted) throw new Error("Search cancelled");
-        const meanings = withMeanings
-          ? await fetchMeanings(db, ftsResults, signal)
-          : new Map();
-        const result = formatSearchResults(ftsResults, meanings);
-        if (!result.error) {
-          setCachedSearchResult(cacheKey, result);
-        }
-        return result;
+      const meanings = withMeanings
+        ? await fetchMeanings(db, ftsResults, signal)
+        : new Map();
+      const result = formatSearchResults(ftsResults, meanings);
+      if (!result.error) {
+        setCachedSearchResult(cacheKey, result);
       }
+      return result;
     }
 
-    // // Try furigana reading search for Japanese text
-    // if (wanakana.isJapanese(trimmedQuery) && (wanakana.isHiragana(trimmedQuery) || wanakana.isKatakana(trimmedQuery))) {
-    //   if (signal?.aborted) throw new Error("Search cancelled");
-    //   const furiganaResults = await searchByFuriganaReading(db, trimmedQuery, limit);
-    //   if (furiganaResults.length > 0) {
-    //     if (signal?.aborted) throw new Error("Search cancelled");
-    //     const meanings = withMeanings
-    //       ? await fetchMeanings(db, furiganaResults, signal)
-    //       : new Map();
-    //     const result = formatSearchResults(furiganaResults, meanings);
-    //     if (!result.error) {
-    //       setCachedSearchResult(cacheKey, result);
-    //     }
-    //     return result;
-    //   }
-    // }
-
-    // Use optimized tiered search
+    // Fall back to tiered search
     if (signal?.aborted) throw new Error("Search cancelled");
     const results = await searchByTiers(db, processedQuery, limit);
     if (signal?.aborted) throw new Error("Search cancelled");

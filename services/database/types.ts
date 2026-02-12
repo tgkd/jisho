@@ -111,16 +111,20 @@ export type DBKanji = {
   on_readings: string | null;
   kun_readings: string | null;
   meanings: string | null;
+  grade: number | null;
+  stroke_count: number | null;
+  frequency: number | null;
   created_at: string;
 };
 
 export type KanjiEntry = Omit<
   DBKanji,
-  "on_readings" | "kun_readings" | "meanings"
+  "on_readings" | "kun_readings" | "meanings" | "stroke_count"
 > & {
   onReadings: string[] | null;
   kunReadings: string[] | null;
   meanings: string[] | null;
+  strokeCount: number | null;
 };
 
 export interface SearchQuery {
