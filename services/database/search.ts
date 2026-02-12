@@ -331,8 +331,7 @@ async function searchByFTS(
         `
         WITH params(q, orig) AS (SELECT ?, ?),
         ranked AS (
-          SELECT w.*,
-            bm25(words_fts) as fts_rank,
+          SELECT w.*, f.rank as fts_rank,
             ROW_NUMBER() OVER (
               PARTITION BY w.word, w.reading
               ORDER BY
@@ -343,7 +342,7 @@ async function searchByFTS(
                     OR w.word LIKE p.orig || '%' OR w.kanji LIKE p.orig || '%' THEN 1
                   ELSE 2
                 END,
-                bm25(words_fts),
+                f.rank,
                 length(w.word)
             ) as row_num
           FROM words_fts f

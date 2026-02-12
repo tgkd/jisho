@@ -251,13 +251,13 @@ export default function ChatScreen() {
       <FlashList
         contentInsetAdjustmentBehavior="automatic"
         ref={scrollRef}
-        estimatedItemSize={120}
         style={styles.list}
         contentContainerStyle={styles.scrollContainer}
         keyboardDismissMode="on-drag"
         renderItem={renderItem}
         data={messages}
         ListEmptyComponent={renderEmpty}
+        ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
       />
       <KeyboardAvoidingView
         behavior="translate-with-padding"
