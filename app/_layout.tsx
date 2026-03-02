@@ -1,7 +1,7 @@
 import {
   DarkTheme,
   DefaultTheme,
-  ThemeProvider,
+  ThemeProvider
 } from "@react-navigation/native";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { setAudioModeAsync } from "expo-audio";
@@ -15,12 +15,10 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import {
   configureReanimatedLogger,
-  ReanimatedLogLevel,
+  ReanimatedLogLevel
 } from "react-native-reanimated";
 import { AppleAIProvider } from "../providers/AppleAIProvider";
 import { UnifiedAIProvider } from "../providers/UnifiedAIProvider";
-// Legacy support - will be removed after migration complete
-// import { LocalAIProvider } from "../providers/LocalAIProvider";
 
 import { Loader } from "@/components/Loader";
 import { DATABASE_ASSET_ID, DATABASE_NAME } from "@/constants/Database";
@@ -56,6 +54,15 @@ export default function RootLayout() {
   useEffect(() => {
     SplashScreen.hideAsync().then(setupAudio);
   }, []);
+
+  // TODO: NativeTabs screen backgrounds don't follow ThemeProvider dark theme on iOS.
+  // react-native-screens does not apply nativeContainerBackgroundColor to the tab controller
+  // view during initialization — only when the prop changes from JS.
+  // This causes white screen backgrounds in dark mode while JS components render correctly.
+  // Tracked in:
+  // - https://github.com/expo/expo/issues/40389
+  // - https://github.com/expo/expo/issues/39969
+  // - https://github.com/software-mansion/react-native-screens/issues/3162
 
   return (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
