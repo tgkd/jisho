@@ -289,7 +289,7 @@ export default function HomeScreen() {
           headerTitle: () => <Text style={{ flex: 1 }} />,
           title: searchMode === "word" ? "Words" : "Kanji",
           headerRight: () => (
-            <Host matchContents>
+            <Host style={{ width: 35, height: 35 }}>
               <Button
                 systemImage={
                   searchMode === "word" ? "character" : "character.book.closed"

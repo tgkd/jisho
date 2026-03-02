@@ -14,6 +14,7 @@
     "db:reset": "tsx scripts/migrate.ts --reset",
     "db:stats": "tsx scripts/migrate.ts --stats",
     "db:verify": "tsx scripts/migrate.ts --verify",
+    "db:fetch": "tsx scripts/fetch-data.ts",
     "db:generate-readings": "tsx scripts/generate-example-readings.ts",
     "android": "expo run:android",
     "ios": "expo run:ios",

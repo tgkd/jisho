@@ -21,7 +21,7 @@ export default function WordLayout() {
           headerTransparent: true,
           headerLeft: () =>
             ai.isAvailable ? (
-              <Host matchContents>
+              <Host style={{ width: 35, height: 35 }}>
                 <Button
                   label="AI"
                   systemImage="message"
