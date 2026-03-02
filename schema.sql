@@ -163,6 +163,34 @@ CREATE TABLE audio_blobs (
 
 CREATE INDEX idx_audio_example_id ON audio_blobs(example_id);
 
+-- Audio TTS cache
+CREATE TABLE audio_cache (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    text TEXT NOT NULL UNIQUE,
+    audio_data BLOB NOT NULL,
+    created_at INTEGER NOT NULL
+);
+
+CREATE INDEX idx_audio_cache_text ON audio_cache(text);
+
+-- =============================================================================
+-- PRACTICE / READING SESSION TABLES
+-- =============================================================================
+
+CREATE TABLE practice_sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    level TEXT NOT NULL,
+    title TEXT,
+    content TEXT,
+    content_output TEXT,
+    content_text TEXT,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+);
+
+CREATE INDEX idx_practice_sessions_level ON practice_sessions(level);
+CREATE INDEX idx_practice_sessions_updated_at ON practice_sessions(updated_at);
+
 -- =============================================================================
 -- DATABASE CONFIGURATION
 -- =============================================================================
