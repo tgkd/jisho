@@ -105,11 +105,6 @@ function Router() {
         <NativeTabs.Trigger.Label>Search</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="history">
-        <NativeTabs.Trigger.Icon sf="clock" drawable="custom_android_drawable" />
-        <NativeTabs.Trigger.Label>History</NativeTabs.Trigger.Label>
-      </NativeTabs.Trigger>
-
       <NativeTabs.Trigger name="practice" hidden={!sub.isPremium}>
         <NativeTabs.Trigger.Icon sf="book" drawable="custom_android_drawable" />
         <NativeTabs.Trigger.Label>Read</NativeTabs.Trigger.Label>

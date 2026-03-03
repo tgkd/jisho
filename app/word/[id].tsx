@@ -291,6 +291,9 @@ function ExamplesView({
   );
 }
 
+// TODO: Example furigana — seed DB tokens are plain string arrays (no readings).
+// Options: (1) generate segments from japaneseText + reading column at render time,
+// (2) update examples import to preserve readings from Tatoeba B: lines as {ruby, rt} segments.
 function ExampleRow({
   e,
   word,

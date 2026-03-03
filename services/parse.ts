@@ -73,6 +73,13 @@ export function extractSegmentsFromTokens(tokens?: string | null): FuriganaSegme
     if (segments.length > 0) {
       return segments;
     }
+    // Valid JSON but no furigana segments (e.g. plain string array of dictionary forms)
+    try {
+      JSON.parse(trimmed);
+      return [];
+    } catch {
+      // Not valid JSON, fall through to text parsing
+    }
   }
 
   // Fall back to text breakdown parsing

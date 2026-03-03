@@ -2,13 +2,8 @@ import { SQLiteDatabase } from "expo-sqlite";
 import { buildFuriganaSegmentsFromTokens, processJpExampleText } from "../parse";
 import { AiExample } from "../request";
 import {
-  DBDictEntry,
-  DBWordMeaning,
-  DBExampleSentence,
-  DictionaryEntry,
-  WordMeaning,
-  ExampleSentence,
-  FuriganaSegment,
+  DBDictEntry, DBExampleSentence, DBWordMeaning, DictionaryEntry, ExampleSentence,
+  FuriganaSegment, WordMeaning
 } from "./types";
 import { dbWordToDictEntry } from "./utils";
 
@@ -60,8 +55,16 @@ function deriveExampleFurigana(tokens?: string | null): {
   }
 
   if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed) && parsed.every((item) => typeof item === "string")) {
+        return { segments: [], reading: null };
+      }
+    } catch {
+      // Not valid JSON, fall through
+    }
     const jsonSegments = parseSegmentsFromJson(trimmed);
-    if (jsonSegments) {
+    if (jsonSegments && jsonSegments.length > 0) {
       const reading = jsonSegments
         .map((segment) => segment.rt?.trim() || segment.ruby)
         .join("")
