@@ -171,9 +171,7 @@ export default function HomeScreen() {
 
   const shouldShowRecentHistory =
     !search.trim().length && !results.length && !loading;
-  const recentHistory = shouldShowRecentHistory
-    ? history.list.slice(0, 10)
-    : [];
+  const recentHistory = shouldShowRecentHistory ? history.list : [];
   const displayData: (SearchResult | HistoryEntry)[] = shouldShowRecentHistory
     ? recentHistory
     : results;
@@ -248,7 +246,7 @@ export default function HomeScreen() {
     if (!search.length) {
       return (
         <View style={styles.emptyContainer}>
-          <ThemedText type="secondary">{"Start search..."}</ThemedText>
+          <ThemedText type="secondary">{"No search history yet."}</ThemedText>
         </View>
       );
     }
@@ -318,12 +316,16 @@ export default function HomeScreen() {
         }
         ListEmptyComponent={renderEmptyContainer()}
         ListFooterComponent={
-          loading ? (
+          loading || (history.isLoading && shouldShowRecentHistory && history.list.length > 0) ? (
             <View style={styles.loader}>
               <Loader />
             </View>
           ) : null
         }
+        onEndReached={() => {
+          if (shouldShowRecentHistory) history.loadMore();
+        }}
+        onEndReachedThreshold={0.5}
       />
       {Clipboard.isPasteButtonAvailable ? (
         <KeyboardAvoidingView behavior="position" keyboardVerticalOffset={-24}>
