@@ -44,7 +44,7 @@ Jisho is a cross-platform Japanese dictionary mobile app built with Expo and Rea
 
 ### Build System
 - Uses **Yarn 4.10.3** as package manager
-- **Expo (v55 canary)** with file-based routing via `expo-router`
+- **Expo (v55)** with file-based routing via `expo-router`
 - **EAS Build** for production builds
 - **TypeScript** for type safety
 - **Jest** with expo preset for testing (see `jest.config.node.js` for Node.js tests)
@@ -56,18 +56,17 @@ Jisho is a cross-platform Japanese dictionary mobile app built with Expo and Rea
 app/              # File-based routing screens (expo-router with NativeTabs)
 ├── _layout.tsx   # Root navigation layout with SQLiteProvider
 ├── index.tsx     # Search/home screen (tab: word/search)
-├── history/      # Search history screens (tab: history)
 ├── settings/     # App settings screens (tab: settings)
 ├── practice/     # JLPT reading practice screens (tab: practice, premium-only)
 ├── word/         # Word detail pages and related functionality
 │   ├── [id].tsx  # Dynamic word detail pages
-│   ├── chat.tsx  # AI chat interface
+│   ├── chat.tsx  # AI chat interface (thin wrapper around ChatView)
 │   └── kanji/[id].tsx # Kanji detail pages
 └── paywall.tsx   # In-app purchase subscription screen
 
 services/         # Business logic layer
 ├── database/     # Database operations and search pipeline
-│   ├── core.ts       # Database migrations (currently version 20)
+│   ├── core.ts       # Database init, ensureUserDataTables(), migrations removed (seed DB is v20)
 │   ├── search.ts     # FTS5-primary search with tiered fallback, caching, retries
 │   ├── dictionary.ts # Dictionary entry queries
 │   ├── history.ts    # Search history management
@@ -83,7 +82,7 @@ services/         # Business logic layer
 ├── storage.ts    # Local storage (MMKV) with typed keys
 └── queryClient.ts # Global React Query client
 
-components/       # Reusable UI components
+components/       # Reusable UI components (includes ChatView for AI chat UI)
 providers/        # React context providers
 ├── UnifiedAIProvider.tsx   # Unified AI interface (local/remote)
 ├── AppleAIProvider.tsx     # Apple Intelligence integration
@@ -91,6 +90,11 @@ providers/        # React context providers
 └── SubscriptionContext.tsx  # Subscription state and paywall
 hooks/           # Custom hooks
 scripts/          # Build and database tooling
+├── fetch-data.ts             # Fetch latest dictionary data from upstream
+├── build-database.ts         # Build database bundles
+├── migrate.ts                # DB create, import, reset, stats, verify
+├── generate-example-readings.ts # Generate reading annotations
+└── import/                   # Data importers (words, kanji, examples, furigana)
 ```
 
 ### Key Technologies
@@ -119,6 +123,8 @@ Storage and practice:
 - `practice_passages` - JLPT reading passages by level
 - `practice_sessions` - User practice session tracking
 
+Full schema defined in `schema.sql` at project root.
+
 ### AI Integration
 The app supports both local and cloud AI through `UnifiedAIProvider`:
 - **Local AI**: Apple Intelligence (`@react-native-ai/apple`) for offline explanations
@@ -128,6 +134,7 @@ The app supports both local and cloud AI through `UnifiedAIProvider`:
 - Audio playback hierarchy: cached remote → fresh remote (`getAiSound`) → local Apple synthesis → `expo-speech`
 - Streaming responses use `StreamingResponse` interface with `onChunk`, `onComplete`, and `onError` callbacks
 - Practice chat uses JLPT-level-specific system prompts (N5 through N1)
+- Speech playback supports pause/resume via `pauseSpeech()`/`resumeSpeech()` in UnifiedAIProvider
 
 ## Code Style (from .github/copilot-instructions.md)
 
@@ -172,7 +179,9 @@ The app supports both local and cloud AI through `UnifiedAIProvider`:
 - Supports both iOS and Android
 - Offline-first architecture with local dictionary data
 - Comprehensive Japanese language data from JMdict and Kanjidic
-- Database migrations managed via `migrateDbIfNeeded` (target user_version 20)
+- Database uses stable name `jisho.db` (defined in `constants/Database.ts`), seed asset is `jisho-seed.db`
+- Legacy v1-v20 migrations removed; fresh installs receive complete v20 seed database
+- `ensureUserDataTables()` runs on startup to guarantee user-data tables exist regardless of seed DB state
 - WAL mode enforced for SQLite operations
 - Use `retryDatabaseOperation` wrapper for all raw SQL to handle SQLITE_BUSY
 - Pull database connection from `useSQLiteContext()` and pass to `services/database/` helpers
@@ -197,6 +206,18 @@ Root layout (`app/_layout.tsx`) wraps the app in this order:
 - Paywall shown via `subscription.showPaywall()` when accessing premium features without subscription
 - Practice tab hidden in navigation when user is not premium (`sub.isPremium`)
 - `SubscriptionRequiredError` thrown from `UnifiedAIProvider` when remote features accessed without subscription
+
+## Data Sources
+All data files live in `data/` (gitignored). Use `yarn db:fetch` to download latest upstream data.
+
+| Dataset | File | Source | License |
+|---------|------|--------|---------|
+| JMdict (words) | `words.ljson` | [jmdict-simplified](https://github.com/scriptin/jmdict-simplified/releases) | CC BY-SA 3.0 |
+| KANJIDIC | `kanjidic_comb_utf8` | http://ftp.edrdg.org/pub/Nihongo/kanjidic_comb_utf8.gz | CC BY-SA 3.0 |
+| Examples | `examples.utf` | http://ftp.edrdg.org/pub/Nihongo/examples.utf.gz | CC BY 2.0 |
+| Furigana | `JmdictFurigana.json` | [JmdictFurigana](https://github.com/Doublevil/JmdictFurigana/releases) | CC BY-SA 3.0 |
+
+Rebuild after updating: `yarn db:create && yarn db:import && yarn db:stats && yarn db:build`
 
 # important-instruction-reminders
 Do what has been asked; nothing more, nothing less.
