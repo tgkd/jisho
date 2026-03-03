@@ -112,6 +112,8 @@ export interface UnifiedAIContextValue {
   ) => Promise<void>;
   speakText: (text: string) => Promise<void>;
   stopSpeech: () => void;
+  pauseSpeech: () => void;
+  resumeSpeech: () => Promise<void>;
   isPlayingSpeech?: boolean;
 
   // State management
@@ -413,6 +415,15 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
     Speech.stop();
   }, [audioPlayer]);
 
+  const pauseSpeech = useCallback(() => {
+    audioPlayer.pause();
+    Speech.stop();
+  }, [audioPlayer]);
+
+  const resumeSpeech = useCallback(async () => {
+    await audioPlayer.play();
+  }, [audioPlayer]);
+
   const contextValue: UnifiedAIContextValue = {
     generateExamples,
     explainText,
@@ -422,6 +433,8 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
     generateReadingPassageStreaming,
     speakText,
     stopSpeech,
+    pauseSpeech,
+    resumeSpeech,
     isGenerating: isGenerating || localAI.isGenerating,
     isAvailable,
     currentProvider: provider,

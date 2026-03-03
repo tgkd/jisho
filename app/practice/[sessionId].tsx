@@ -48,7 +48,7 @@ export default function PracticeSessionScreen() {
   const [streamingContent, setStreamingContent] = useState<string>("");
   const [speechState, setSpeechState] = useState<{
     index: number | null;
-    phase: "idle" | "loading" | "playing";
+    phase: "idle" | "loading" | "playing" | "paused";
   }>({ index: null, phase: "idle" });
 
   const { index: activeSpeechIndex, phase: activeSpeechPhase } = speechState;
@@ -73,13 +73,24 @@ export default function PracticeSessionScreen() {
 
   const handlePlayParagraph = useCallback(
     async (text: string, index: number) => {
-      if (
-        activeSpeechIndex === index &&
-        (activeSpeechPhase === "loading" || activeSpeechPhase === "playing")
-      ) {
-        ai.stopSpeech();
-        setSpeechState({ index: null, phase: "idle" });
-        return;
+      if (activeSpeechIndex === index) {
+        if (activeSpeechPhase === "loading") {
+          ai.stopSpeech();
+          setSpeechState({ index: null, phase: "idle" });
+          return;
+        }
+
+        if (activeSpeechPhase === "playing") {
+          ai.pauseSpeech();
+          setSpeechState({ index, phase: "paused" });
+          return;
+        }
+
+        if (activeSpeechPhase === "paused") {
+          setSpeechState({ index, phase: "playing" });
+          await ai.resumeSpeech();
+          return;
+        }
       }
 
       try {
@@ -114,7 +125,7 @@ export default function PracticeSessionScreen() {
         return current;
       }
 
-      if (current.phase === "idle") {
+      if (current.phase === "idle" || current.phase === "paused") {
         return current;
       }
 
@@ -165,6 +176,9 @@ export default function PracticeSessionScreen() {
           const isPlaying =
             speechState.index === currentIndex &&
             speechState.phase === "playing";
+          const isPaused =
+            speechState.index === currentIndex &&
+            speechState.phase === "paused";
 
           return (
             <View key={node.key} style={renderStyles.paragraph}>
@@ -185,9 +199,21 @@ export default function PracticeSessionScreen() {
                 >
                   {isLoading ? (
                     <ActivityIndicator size="small" color={tintColor} />
+                  ) : isPlaying ? (
+                    <IconSymbol
+                      name="pause.circle.fill"
+                      size={20}
+                      color={tintColor}
+                    />
+                  ) : isPaused ? (
+                    <IconSymbol
+                      name="play.circle.fill"
+                      size={20}
+                      color={tintColor}
+                    />
                   ) : (
                     <IconSymbol
-                      name={isPlaying ? "stop.circle.fill" : "play.circle"}
+                      name="play.circle"
                       size={20}
                       color={tintColor}
                     />
