@@ -3,6 +3,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { useMdStyles } from "@/hooks/useMdStyles";
 import { useThemeColor } from "@/hooks/useThemeColor";
+import { useSpeech } from "@/providers/SpeechProvider";
 import { useUnifiedAI } from "@/providers/UnifiedAIProvider";
 import {
   getSession,
@@ -40,6 +41,7 @@ export default function PracticeSessionScreen() {
   const db = useSQLiteContext();
   const markdownStyles = useMdStyles();
   const ai = useUnifiedAI();
+  const speech = useSpeech();
   const tintColor = useThemeColor({}, "tint");
 
   const [session, setSession] = useState<PracticeSession | null>(null);
@@ -75,20 +77,20 @@ export default function PracticeSessionScreen() {
     async (text: string, index: number) => {
       if (activeSpeechIndex === index) {
         if (activeSpeechPhase === "loading") {
-          ai.stopSpeech();
+          speech.stop();
           setSpeechState({ index: null, phase: "idle" });
           return;
         }
 
         if (activeSpeechPhase === "playing") {
-          ai.pauseSpeech();
+          speech.pause();
           setSpeechState({ index, phase: "paused" });
           return;
         }
 
         if (activeSpeechPhase === "paused") {
           setSpeechState({ index, phase: "playing" });
-          await ai.resumeSpeech();
+          await speech.resume();
           return;
         }
       }
@@ -97,15 +99,9 @@ export default function PracticeSessionScreen() {
         setSpeechState({ index, phase: "loading" });
         await ai.generateSpeech(text);
         setSpeechState((current) => {
-          if (current.index !== index) {
-            return current;
-          }
-
-          if (ai.isPlayingSpeech) {
-            return { index, phase: "playing" };
-          }
-
-          return { index: null, phase: "idle" };
+          if (current.index !== index) return current;
+          if (current.phase !== "loading") return current;
+          return { index, phase: "playing" };
         });
       } catch (error) {
         console.error("Speech generation failed:", error);
@@ -113,25 +109,25 @@ export default function PracticeSessionScreen() {
         setSpeechState({ index: null, phase: "idle" });
       }
     },
-    [ai, activeSpeechIndex, activeSpeechPhase]
+    [ai, speech, activeSpeechIndex, activeSpeechPhase]
   );
 
   useEffect(() => {
     setSpeechState((current) => {
-      if (ai.isPlayingSpeech) {
+      if (speech.isPlaying) {
         if (current.phase === "loading" && current.index !== null) {
           return { index: current.index, phase: "playing" };
         }
         return current;
       }
 
-      if (current.phase === "idle" || current.phase === "paused") {
+      if (current.phase === "idle" || current.phase === "paused" || current.phase === "loading") {
         return current;
       }
 
       return { index: null, phase: "idle" };
     });
-  }, [ai.isPlayingSpeech]);
+  }, [speech.isPlaying]);
 
   const extractTextFromNode = useCallback((node: any): string => {
     if (!node) return "";

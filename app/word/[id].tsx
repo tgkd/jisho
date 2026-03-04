@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -18,6 +18,7 @@ import { ThemedView } from "@/components/ThemedView";
 import { Card } from "@/components/ui/Card";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { useThemeColor } from "@/hooks/useThemeColor";
+import { useSpeech } from "@/providers/SpeechProvider";
 import { useUnifiedAI } from "@/providers/UnifiedAIProvider";
 import {
   addExamplesList,
@@ -55,6 +56,7 @@ export default function WordDetailScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const db = useSQLiteContext();
   const ai = useUnifiedAI();
+  const speech = useSpeech();
 
   const details = useMemo(
     () =>
@@ -94,15 +96,33 @@ export default function WordDetailScreen() {
     initEntry();
   }, []);
 
-  const handleSpeech = async () => {
-    if (entry) {
-      try {
-        await ai.generateSpeech(entry.word.word);
-      } catch (error) {
-        console.error("Speech generation failed:", error);
-      }
+  const [wordSpeechPhase, setWordSpeechPhase] = useState<
+    "idle" | "playing" | "paused"
+  >("idle");
+
+  const handleSpeech = useCallback(() => {
+    if (!entry) return;
+
+    if (wordSpeechPhase === "playing") {
+      speech.pause();
+      setWordSpeechPhase("paused");
+      return;
     }
-  };
+    if (wordSpeechPhase === "paused") {
+      speech.resume();
+      setWordSpeechPhase("playing");
+      return;
+    }
+
+    speech.speakText(entry.word.word, { language: "ja", rate: 0.8 });
+    setWordSpeechPhase("playing");
+  }, [entry, speech, wordSpeechPhase]);
+
+  useEffect(() => {
+    if (!speech.isPlaying && wordSpeechPhase === "playing") {
+      setWordSpeechPhase("idle");
+    }
+  }, [speech.isPlaying, wordSpeechPhase]);
 
   const handleStartChat = () => {
     if (!entry) return;
@@ -152,14 +172,21 @@ export default function WordDetailScreen() {
       contentInsetAdjustmentBehavior="automatic"
     >
       <ThemedView style={styles.headerSection}>
+        <FuriganaText
+          word={entry.word.word}
+          segments={furigana?.segments}
+          reading={entry.word.reading}
+          textStyle={styles.word}
+          uiTextView
+        />
         <HapticTab onPress={handleSpeech}>
-          <FuriganaText
-            word={entry.word.word}
-            segments={furigana?.segments}
-            reading={entry.word.reading}
-            textStyle={styles.word}
-            uiTextView
-          />
+          {wordSpeechPhase === "playing" ? (
+            <IconSymbol name="pause.circle.fill" size={20} color={tintColor} />
+          ) : wordSpeechPhase === "paused" ? (
+            <IconSymbol name="play.circle.fill" size={20} color={tintColor} />
+          ) : (
+            <IconSymbol name="play.circle" size={20} color={tintColor} />
+          )}
         </HapticTab>
       </ThemedView>
 
@@ -233,7 +260,66 @@ function ExamplesView({
 }) {
   const db = useSQLiteContext();
   const ai = useUnifiedAI();
+  const speech = useSpeech();
   const router = useRouter();
+
+  const [speechState, setSpeechState] = useState<{
+    index: number | null;
+    phase: "idle" | "loading" | "playing" | "paused";
+  }>({ index: null, phase: "idle" });
+
+  const handlePlayExample = useCallback(
+    async (text: string, index: number) => {
+      if (speechState.index === index) {
+        if (speechState.phase === "loading") {
+          speech.stop();
+          setSpeechState({ index: null, phase: "idle" });
+          return;
+        }
+        if (speechState.phase === "playing") {
+          speech.pause();
+          setSpeechState({ index, phase: "paused" });
+          return;
+        }
+        if (speechState.phase === "paused") {
+          setSpeechState({ index, phase: "playing" });
+          await speech.resume();
+          return;
+        }
+      }
+
+      try {
+        setSpeechState({ index, phase: "loading" });
+        await ai.generateSpeech(text);
+        setSpeechState((current) => {
+          if (current.index !== index) return current;
+          if (current.phase !== "loading") return current;
+          return { index, phase: "playing" };
+        });
+      } catch (error) {
+        console.error("Speech generation failed:", error);
+        setSpeechState({ index: null, phase: "idle" });
+      }
+    },
+    [ai, speech, speechState.index, speechState.phase]
+  );
+
+  useEffect(() => {
+    setSpeechState((current) => {
+      if (speech.isPlaying) {
+        if (current.phase === "loading" && current.index !== null) {
+          return { index: current.index, phase: "playing" };
+        }
+        return current;
+      }
+
+      if (current.phase === "idle" || current.phase === "paused" || current.phase === "loading") {
+        return current;
+      }
+
+      return { index: null, phase: "idle" };
+    });
+  }, [speech.isPlaying]);
 
   const handleFetchExamples = async () => {
     try {
@@ -260,8 +346,11 @@ function ExamplesView({
           <ExampleRow
             key={idx}
             e={e}
+            index={idx}
             word={entry.word.word}
             wordId={entry.word.id}
+            speechPhase={speechState.index === idx ? speechState.phase : "idle"}
+            onPlay={handlePlayExample}
             onKanjiPress={(kanjiChars) =>
               router.push({
                 pathname: "/word/kanji-list",
@@ -296,19 +385,24 @@ function ExamplesView({
 // (2) update examples import to preserve readings from Tatoeba B: lines as {ruby, rt} segments.
 function ExampleRow({
   e,
+  index,
   word,
   wordId,
+  speechPhase,
+  onPlay,
   onKanjiPress,
 }: {
   e: ExampleSentence;
+  index: number;
   word: string;
   wordId: number;
+  speechPhase: "idle" | "loading" | "playing" | "paused";
+  onPlay: (text: string, index: number) => void;
   onKanjiPress?: (kanjiChars: string[]) => void;
 }) {
   const tintColor = useThemeColor({}, "tint");
   const ai = useUnifiedAI();
   const audioAvailable = ai.currentProvider === "remote";
-  const [loading, setLoading] = useState(false);
 
   const segments = useMemo<FuriganaSegment[]>(() => {
     if (Array.isArray(e.segments) && e.segments.length > 0) {
@@ -334,30 +428,9 @@ function ExampleRow({
     return derived;
   }, [e.reading, segments]);
 
-  const fallbackToSpeech = async () => {
-    try {
-      await ai.generateSpeech(e.japaneseText);
-    } catch (error) {
-      console.error("Speech generation failed:", error);
-    }
-  };
-
-  const handlePlayText = async () => {
-    if (!audioAvailable) {
-      await fallbackToSpeech();
-      return;
-    }
-
-    try {
-      setLoading(true);
-      await ai.generateSpeech(cleanupJpReadings(e.japaneseText));
-    } catch (error) {
-      console.error("Failed to play text:", error);
-      await fallbackToSpeech();
-    } finally {
-      setLoading(false);
-    }
-  };
+  const text = audioAvailable
+    ? cleanupJpReadings(e.japaneseText)
+    : e.japaneseText;
 
   const kanjiChars = findKanji(e.japaneseText);
   const hasKanji = kanjiChars.length > 0;
@@ -380,11 +453,14 @@ function ExampleRow({
 
       <HapticTab
         style={styles.icon}
-        onPress={handlePlayText}
-        disabled={audioAvailable && loading}
+        onPress={() => onPlay(text, index)}
       >
-        {audioAvailable && loading ? (
-          <ActivityIndicator size="small" />
+        {speechPhase === "loading" ? (
+          <ActivityIndicator size="small" color={tintColor} />
+        ) : speechPhase === "playing" ? (
+          <IconSymbol name="pause.circle.fill" size={24} color={tintColor} />
+        ) : speechPhase === "paused" ? (
+          <IconSymbol name="play.circle.fill" size={24} color={tintColor} />
         ) : (
           <IconSymbol name="play.circle" size={24} color={tintColor} />
         )}

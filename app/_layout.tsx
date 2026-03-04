@@ -18,6 +18,7 @@ import {
   ReanimatedLogLevel
 } from "react-native-reanimated";
 import { AppleAIProvider } from "../providers/AppleAIProvider";
+import { SpeechProvider } from "../providers/SpeechProvider";
 import { UnifiedAIProvider } from "../providers/UnifiedAIProvider";
 
 import { Loader } from "@/components/Loader";
@@ -69,6 +70,7 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <SubscriptionProvider>
           <AppleAIProvider>
+            <SpeechProvider>
             <UnifiedAIProvider>
               <GestureHandlerRootView style={styles.container}>
                 <Suspense fallback={<Loader />}>
@@ -89,6 +91,7 @@ export default function RootLayout() {
                 </Suspense>
               </GestureHandlerRootView>
             </UnifiedAIProvider>
+            </SpeechProvider>
           </AppleAIProvider>
         </SubscriptionProvider>
       </QueryClientProvider>

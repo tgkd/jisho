@@ -1,5 +1,3 @@
-import { useAudioPlayer } from "expo-audio";
-import * as Speech from "expo-speech";
 import React, {
   createContext,
   ReactNode,
@@ -20,6 +18,7 @@ import {
 } from "@/services/request";
 import { SETTINGS_KEYS } from "@/services/storage";
 import { useAppleAI } from "./AppleAIProvider";
+import { useSpeech } from "./SpeechProvider";
 import { useSubscription } from "./SubscriptionContext";
 
 export type AIProviderType = "local" | "remote";
@@ -104,17 +103,12 @@ export interface UnifiedAIContextValue {
   generateSpeech: (
     text: string,
     options?: { language?: string; rate?: number }
-  ) => Promise<string | undefined>;
+  ) => Promise<void>;
   generateReadingPassageStreaming: (
     level: string,
     streaming: StreamingResponse,
     signal?: AbortSignal
   ) => Promise<void>;
-  speakText: (text: string) => Promise<void>;
-  stopSpeech: () => void;
-  pauseSpeech: () => void;
-  resumeSpeech: () => Promise<void>;
-  isPlayingSpeech?: boolean;
 
   // State management
   isGenerating: boolean;
@@ -135,9 +129,7 @@ const UnifiedAIContext = createContext<UnifiedAIContextValue | undefined>(
 export function UnifiedAIProvider({ children }: { children: ReactNode }) {
   const localAI = useAppleAI();
   const subscription = useSubscription();
-  const audioPlayer = useAudioPlayer(undefined, {
-    keepAudioSessionActive: false,
-  });
+  const speech = useSpeech();
   const [currentProvider, setCurrentProvider] = useMMKVString(
     SETTINGS_KEYS.AI_PROVIDER_TYPE
   );
@@ -330,7 +322,7 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
         language: "ja",
         rate: 0.8,
       }
-    ): Promise<string | undefined> => {
+    ): Promise<void> => {
       try {
         if (provider === "remote") {
           if (!checkRemoteAccess()) {
@@ -340,26 +332,25 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
           }
 
           const file = await getAiSound(text);
-          audioPlayer.replace(file.uri);
-          await audioPlayer.play();
-          return file.base64Sync();
+          await speech.playAudio(file.uri);
+          return;
         }
 
         if (provider === "local" && localAI.isReady) {
           const b64 = localAI.generateSpeech(text);
-          await audioPlayer.replace(`data:audio/wav;base64,${b64}`);
-          await audioPlayer.play();
+          await speech.playAudio(`data:audio/wav;base64,${b64}`);
+          return;
         }
       } catch (error) {
         console.warn("Speech failed, falling back to expo-speech:", error);
       }
 
-      Speech.speak(text, {
+      speech.speakText(text, {
         language: options.language || "ja",
         rate: options.rate,
       });
     },
-    [provider, localAI, audioPlayer, checkRemoteAccess]
+    [provider, localAI, speech, checkRemoteAccess]
   );
 
   const generateReadingPassageStreaming = useCallback(
@@ -397,32 +388,11 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
     [provider, checkRemoteAccess]
   );
 
-  const speakText = useCallback(
-    async (text: string): Promise<void> => {
-      await generateSpeech(text);
-    },
-    [generateSpeech]
-  );
-
   const interrupt = useCallback(() => {
     if (provider === "local") {
       localAI.interrupt();
     }
   }, [provider, localAI]);
-
-  const stopSpeech = useCallback(() => {
-    audioPlayer.pause();
-    Speech.stop();
-  }, [audioPlayer]);
-
-  const pauseSpeech = useCallback(() => {
-    audioPlayer.pause();
-    Speech.stop();
-  }, [audioPlayer]);
-
-  const resumeSpeech = useCallback(async () => {
-    await audioPlayer.play();
-  }, [audioPlayer]);
 
   const contextValue: UnifiedAIContextValue = {
     generateExamples,
@@ -431,14 +401,9 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
     chatWithPractice,
     generateSpeech,
     generateReadingPassageStreaming,
-    speakText,
-    stopSpeech,
-    pauseSpeech,
-    resumeSpeech,
     isGenerating: isGenerating || localAI.isGenerating,
     isAvailable,
     currentProvider: provider,
-    isPlayingSpeech: audioPlayer.playing,
     setCurrentProvider,
     interrupt,
   };

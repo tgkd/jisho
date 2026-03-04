@@ -1,7 +1,6 @@
 import { useLocalSearchParams } from "expo-router";
-import * as Speech from "expo-speech";
 import { useSQLiteContext } from "expo-sqlite";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 
 import { HapticTab } from "@/components/HapticTab";
@@ -11,6 +10,7 @@ import { ThemedView } from "@/components/ThemedView";
 import { Card } from "@/components/ui/Card";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { useThemeColor } from "@/hooks/useThemeColor";
+import { useSpeech } from "@/providers/SpeechProvider";
 import { getKanjiById, KanjiEntry } from "@/services/database";
 
 export default function KanjiDetailScreen() {
@@ -89,58 +89,103 @@ export default function KanjiDetailScreen() {
 
 function ReadingsSection({ entry }: { entry: KanjiEntry }) {
   const tintColor = useThemeColor({}, "tint");
+  const speech = useSpeech();
 
-  const handleSpeech = (reading: string) => {
-    try {
-      Speech.speak(reading, {
-        language: "ja",
-        rate: 0.8,
-      });
-    } catch (error) {
-      console.error("Speech generation failed:", error);
+  const allReadings = useMemo(() => {
+    const on = (entry.onReadings || []).map((r) => ({ reading: r, type: "on" as const }));
+    const kun = (entry.kunReadings || []).map((r) => ({ reading: r, type: "kun" as const }));
+    return [...on, ...kun];
+  }, [entry.onReadings, entry.kunReadings]);
+
+  const [speechState, setSpeechState] = useState<{
+    index: number | null;
+    phase: "idle" | "playing" | "paused";
+  }>({ index: null, phase: "idle" });
+
+  const handlePlay = useCallback(
+    (reading: string, index: number) => {
+      if (speechState.index === index) {
+        if (speechState.phase === "playing") {
+          speech.pause();
+          setSpeechState({ index, phase: "paused" });
+          return;
+        }
+        if (speechState.phase === "paused") {
+          speech.resume();
+          setSpeechState({ index, phase: "playing" });
+          return;
+        }
+      }
+
+      speech.speakText(reading, { language: "ja", rate: 0.8 });
+      setSpeechState({ index, phase: "playing" });
+    },
+    [speech, speechState.index, speechState.phase]
+  );
+
+  useEffect(() => {
+    if (!speech.isPlaying && speechState.phase === "playing") {
+      setSpeechState({ index: null, phase: "idle" });
     }
-  };
+  }, [speech.isPlaying, speechState.phase]);
+
+  const onReadings = allReadings.filter((r) => r.type === "on");
+  const kunReadings = allReadings.filter((r) => r.type === "kun");
+  const onOffset = 0;
+  const kunOffset = onReadings.length;
 
   return (
     <>
       <ThemedText style={styles.sectionTitle}>{"Readings"}</ThemedText>
       <Card variant="grouped">
-        {entry.onReadings?.length ? (
+        {onReadings.length > 0 ? (
           <View style={styles.readingSection}>
             <ThemedText type="secondary">{"On"}</ThemedText>
             <View style={styles.readingList}>
-              {entry.onReadings?.map((r, idx) => (
-                <View style={styles.reading} key={idx}>
-                  <ThemedText uiTextView>{r}</ThemedText>
-                  <HapticTab onPress={() => handleSpeech(r)}>
-                    <IconSymbol
-                      name="play.circle"
-                      size={24}
-                      color={tintColor}
-                    />
-                  </HapticTab>
-                </View>
-              ))}
+              {onReadings.map((r, idx) => {
+                const globalIdx = onOffset + idx;
+                const phase = speechState.index === globalIdx ? speechState.phase : "idle";
+                return (
+                  <View style={styles.reading} key={idx}>
+                    <ThemedText uiTextView>{r.reading}</ThemedText>
+                    <HapticTab onPress={() => handlePlay(r.reading, globalIdx)}>
+                      {phase === "playing" ? (
+                        <IconSymbol name="pause.circle.fill" size={18} color={tintColor} />
+                      ) : phase === "paused" ? (
+                        <IconSymbol name="play.circle.fill" size={18} color={tintColor} />
+                      ) : (
+                        <IconSymbol name="play.circle" size={18} color={tintColor} />
+                      )}
+                    </HapticTab>
+                  </View>
+                );
+              })}
             </View>
           </View>
         ) : null}
 
-        {entry.kunReadings?.length ? (
+        {kunReadings.length > 0 ? (
           <View style={styles.readingSection}>
             <ThemedText type="secondary">{"Kun"}</ThemedText>
             <View style={styles.readingList}>
-              {entry.kunReadings?.map((r, idx) => (
-                <View style={styles.reading} key={idx}>
-                  <ThemedText uiTextView>{r}</ThemedText>
-                  <HapticTab onPress={() => handleSpeech(r)}>
-                    <IconSymbol
-                      name="play.circle"
-                      size={24}
-                      color={tintColor}
-                    />
-                  </HapticTab>
-                </View>
-              ))}
+              {kunReadings.map((r, idx) => {
+                const globalIdx = kunOffset + idx;
+                const phase = speechState.index === globalIdx ? speechState.phase : "idle";
+                return (
+                  <View style={styles.reading} key={idx}>
+                    <ThemedText uiTextView>{r.reading}</ThemedText>
+                    <HapticTab onPress={() => handlePlay(r.reading, globalIdx)}>
+                      {phase === "playing" ? (
+                        <IconSymbol name="pause.circle.fill" size={18} color={tintColor} />
+                      ) : phase === "paused" ? (
+                        <IconSymbol name="play.circle.fill" size={18} color={tintColor} />
+                      ) : (
+                        <IconSymbol name="play.circle" size={18} color={tintColor} />
+                      )}
+                    </HapticTab>
+                  </View>
+                );
+              })}
             </View>
           </View>
         ) : null}
