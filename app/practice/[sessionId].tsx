@@ -50,7 +50,7 @@ export default function PracticeSessionScreen() {
   const [streamingContent, setStreamingContent] = useState<string>("");
   const [speechState, setSpeechState] = useState<{
     index: number | null;
-    phase: "idle" | "loading" | "playing" | "paused";
+    phase: "idle" | "loading" | "paused";
   }>({ index: null, phase: "idle" });
 
   const { index: activeSpeechIndex, phase: activeSpeechPhase } = speechState;
@@ -82,15 +82,15 @@ export default function PracticeSessionScreen() {
           return;
         }
 
-        if (activeSpeechPhase === "playing") {
-          speech.pause();
-          setSpeechState({ index, phase: "paused" });
+        if (activeSpeechPhase === "paused") {
+          setSpeechState({ index, phase: "idle" });
+          await speech.resume();
           return;
         }
 
-        if (activeSpeechPhase === "paused") {
-          setSpeechState({ index, phase: "playing" });
-          await speech.resume();
+        if (speech.isPlaying) {
+          speech.pause();
+          setSpeechState({ index, phase: "paused" });
           return;
         }
       }
@@ -101,7 +101,7 @@ export default function PracticeSessionScreen() {
         setSpeechState((current) => {
           if (current.index !== index) return current;
           if (current.phase !== "loading") return current;
-          return { index, phase: "playing" };
+          return { index, phase: "idle" };
         });
       } catch (error) {
         console.error("Speech generation failed:", error);
@@ -111,23 +111,6 @@ export default function PracticeSessionScreen() {
     },
     [ai, speech, activeSpeechIndex, activeSpeechPhase]
   );
-
-  useEffect(() => {
-    setSpeechState((current) => {
-      if (speech.isPlaying) {
-        if (current.phase === "loading" && current.index !== null) {
-          return { index: current.index, phase: "playing" };
-        }
-        return current;
-      }
-
-      if (current.phase === "idle" || current.phase === "paused" || current.phase === "loading") {
-        return current;
-      }
-
-      return { index: null, phase: "idle" };
-    });
-  }, [speech.isPlaying]);
 
   const extractTextFromNode = useCallback((node: any): string => {
     if (!node) return "";
@@ -163,18 +146,13 @@ export default function PracticeSessionScreen() {
           const currentIndex = paragraphIndex;
 
           // Use pre-split clean Japanese text if available, otherwise fall back to extracted text
-          const paragraphText =
-            japaneseParagraphs[currentIndex] || cleanText;
+          const paragraphText = japaneseParagraphs[currentIndex] || cleanText;
 
-          const isLoading =
-            speechState.index === currentIndex &&
-            speechState.phase === "loading";
+          const isActive = speechState.index === currentIndex;
+          const isLoading = isActive && speechState.phase === "loading";
+          const isPaused = isActive && speechState.phase === "paused";
           const isPlaying =
-            speechState.index === currentIndex &&
-            speechState.phase === "playing";
-          const isPaused =
-            speechState.index === currentIndex &&
-            speechState.phase === "paused";
+            isActive && speechState.phase === "idle" && speech.isPlaying;
 
           return (
             <View key={node.key} style={renderStyles.paragraph}>
@@ -232,6 +210,7 @@ export default function PracticeSessionScreen() {
     japaneseParagraphs,
     speechState.index,
     speechState.phase,
+    speech.isPlaying,
     tintColor,
     handlePlayParagraph,
     extractTextFromNode,
@@ -245,37 +224,33 @@ export default function PracticeSessionScreen() {
       setStreamingContent("");
 
       try {
-        await ai.generateReadingPassageStreaming(
-          level,
-          {
-            onChunk: (chunk: string) => {
-              setStreamingContent((prev) => prev + chunk);
-            },
-            onComplete: async (fullText: string) => {
-              const japaneseText =
-                extractJapaneseTextWithParagraphs(fullText);
+        await ai.generateReadingPassageStreaming(level, {
+          onChunk: (chunk: string) => {
+            setStreamingContent((prev) => prev + chunk);
+          },
+          onComplete: async (fullText: string) => {
+            const japaneseText = extractJapaneseTextWithParagraphs(fullText);
 
-              await updateSessionContent(db, Number(sessionId), {
-                output: fullText,
-                text: japaneseText,
-              });
+            await updateSessionContent(db, Number(sessionId), {
+              output: fullText,
+              text: japaneseText,
+            });
 
-              const updatedSession = await getSession(db, Number(sessionId));
-              if (updatedSession) {
-                setSession(updatedSession);
-              }
+            const updatedSession = await getSession(db, Number(sessionId));
+            if (updatedSession) {
+              setSession(updatedSession);
+            }
 
-              setStreamingContent("");
-              setIsGeneratingContent(false);
-            },
-            onError: (error: string) => {
-              console.error("Streaming error:", error);
-              Alert.alert("Error", "Failed to generate reading passage");
-              setIsGeneratingContent(false);
-              setStreamingContent("");
-            },
-          }
-        );
+            setStreamingContent("");
+            setIsGeneratingContent(false);
+          },
+          onError: (error: string) => {
+            console.error("Streaming error:", error);
+            Alert.alert("Error", "Failed to generate reading passage");
+            setIsGeneratingContent(false);
+            setStreamingContent("");
+          },
+        });
       } catch (error) {
         console.error("Failed to generate content:", error);
         Alert.alert("Error", "Failed to generate reading passage");
@@ -283,7 +258,7 @@ export default function PracticeSessionScreen() {
         setStreamingContent("");
       }
     },
-    [ai, db, sessionId, isGeneratingContent]
+    [ai, db, sessionId, isGeneratingContent],
   );
 
   const loadSessionData = useCallback(async () => {
