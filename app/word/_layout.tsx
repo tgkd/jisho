@@ -1,4 +1,3 @@
-import { isLiquidGlassAvailable } from "expo-glass-effect";
 import { Color, Stack, useRouter } from "expo-router";
 import * as React from "react";
 
@@ -41,7 +40,12 @@ export default function WordLayout() {
       <Stack.Screen
         name="kanji-list"
         options={{
-          presentation: isLiquidGlassAvailable() ? "formSheet" : "modal",
+          presentation: "formSheet",
+          sheetAllowedDetents: [0.5, 1.0],
+          sheetInitialDetentIndex: 0,
+          sheetGrabberVisible: true,
+          sheetExpandsWhenScrolledToEdge: true,
+          sheetLargestUndimmedDetentIndex: 0,
         }}
       >
         <Stack.Screen.Title>Kanji Details</Stack.Screen.Title>
