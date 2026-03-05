@@ -229,7 +229,7 @@ export function ChatView({ initialPrompt }: ChatViewProps) {
       <Stack.Screen
         options={{
           headerRight: () => (
-            <Host style={{ width: 35, height: 35 }}>
+            <Host matchContents>
               <Button
                 role="destructive"
                 label="Clear"

@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Color, useLocalSearchParams, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -17,7 +17,6 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { Card } from "@/components/ui/Card";
 import { IconSymbol } from "@/components/ui/IconSymbol";
-import { useThemeColor } from "@/hooks/useThemeColor";
 import { useSpeech } from "@/providers/SpeechProvider";
 import { useUnifiedAI } from "@/providers/UnifiedAIProvider";
 import {
@@ -43,8 +42,6 @@ import {
 import { createWordPrompt } from "@/services/request";
 
 export default function WordDetailScreen() {
-  const markColor = useThemeColor({}, "text");
-  const tintColor = useThemeColor({}, "tint");
   const router = useRouter();
   const params = useLocalSearchParams();
   const [entry, setEntry] = useState<{
@@ -181,11 +178,11 @@ export default function WordDetailScreen() {
         />
         <HapticTab onPress={handleSpeech}>
           {wordSpeechPhase === "playing" ? (
-            <IconSymbol name="pause.circle.fill" size={20} color={tintColor} />
+            <IconSymbol name="pause.circle.fill" size={20} color={Color.ios.systemBlue} />
           ) : wordSpeechPhase === "paused" ? (
-            <IconSymbol name="play.circle.fill" size={20} color={tintColor} />
+            <IconSymbol name="play.circle.fill" size={20} color={Color.ios.systemBlue} />
           ) : (
-            <IconSymbol name="play.circle" size={20} color={tintColor} />
+            <IconSymbol name="play.circle" size={20} color={Color.ios.systemBlue} />
           )}
         </HapticTab>
       </ThemedView>
@@ -193,7 +190,7 @@ export default function WordDetailScreen() {
       <Card variant="grouped">
         {details.map((m, idx) => (
           <View key={idx} style={styles.row}>
-            <IconSymbol name="circle.fill" size={6} color={markColor} />
+            <IconSymbol name="circle.fill" size={6} color={Color.ios.label} />
             <ThemedText size="md" uiTextView>{m}</ThemedText>
           </View>
         ))}
@@ -211,7 +208,7 @@ export default function WordDetailScreen() {
                 <IconSymbol
                   name="bubble.left.and.text.bubble.right"
                   size={24}
-                  color={tintColor}
+                  color={Color.ios.systemBlue}
                 />
                 <ThemedText style={styles.actionText}>Start Chat</ThemedText>
               </View>
@@ -400,7 +397,6 @@ function ExampleRow({
   onPlay: (text: string, index: number) => void;
   onKanjiPress?: (kanjiChars: string[]) => void;
 }) {
-  const tintColor = useThemeColor({}, "tint");
   const ai = useUnifiedAI();
   const audioAvailable = ai.currentProvider === "remote";
 
@@ -456,13 +452,13 @@ function ExampleRow({
         onPress={() => onPlay(text, index)}
       >
         {speechPhase === "loading" ? (
-          <ActivityIndicator size="small" color={tintColor} />
+          <ActivityIndicator size="small" color={Color.ios.systemBlue} />
         ) : speechPhase === "playing" ? (
-          <IconSymbol name="pause.circle.fill" size={24} color={tintColor} />
+          <IconSymbol name="pause.circle.fill" size={24} color={Color.ios.systemBlue} />
         ) : speechPhase === "paused" ? (
-          <IconSymbol name="play.circle.fill" size={24} color={tintColor} />
+          <IconSymbol name="play.circle.fill" size={24} color={Color.ios.systemBlue} />
         ) : (
-          <IconSymbol name="play.circle" size={24} color={tintColor} />
+          <IconSymbol name="play.circle" size={24} color={Color.ios.systemBlue} />
         )}
       </HapticTab>
 

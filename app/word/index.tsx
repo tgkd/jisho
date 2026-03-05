@@ -1,9 +1,9 @@
 import { FlashList } from "@shopify/flash-list";
 import * as Clipboard from "expo-clipboard";
-import { Stack, useRouter } from "expo-router";
+import { Color, Stack, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useRef, useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, TouchableOpacity, View } from "react-native";
 import { SearchBarCommands } from "react-native-screens";
 
 import { ListItem } from "@/components/ListItem";
@@ -12,7 +12,6 @@ import TagsList from "@/components/TagsList";
 import { ThemedText } from "@/components/ThemedText";
 import { useDebouncedCallback } from "@/hooks/useDebouncedCallback";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
-import { useThemeColor } from "@/hooks/useThemeColor";
 import {
   DictionaryEntry,
   HistoryEntry,
@@ -24,8 +23,6 @@ import {
   WordMeaning
 } from "@/services/database";
 import { getJpTokens } from "@/services/parse";
-import { Button, Host } from "@expo/ui/swift-ui";
-import { labelStyle, tint } from "@expo/ui/swift-ui/modifiers";
 import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 
 type SearchResult = DictionaryEntry | KanjiEntry;
@@ -52,7 +49,6 @@ export default function HomeScreen() {
   const db = useSQLiteContext();
   const router = useRouter();
   const history = useSearchHistory();
-  const defaultColor = useThemeColor({}, "text");
 
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -270,36 +266,27 @@ export default function HomeScreen() {
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          headerSearchBarOptions: {
-            placement: "automatic",
-            placeholder:
-              searchMode === "word"
-                ? "Search by word..."
-                : "Search by kanji...",
-            onChangeText: (e) => handleChange(e.nativeEvent.text),
-            ref: searchBarRef as React.RefObject<SearchBarCommands>,
-            onCancelButtonPress: handleCancelButtonPress,
-            hideWhenScrolling: false,
-            autoCapitalize: searchMode === "kanji" ? "none" : "sentences",
-          },
-          headerTitle: () => <Text style={{ flex: 1 }} />,
-          title: searchMode === "word" ? "Words" : "Kanji",
-          headerRight: () => (
-            <Host style={{ width: 35, height: 35 }}>
-              <Button
-                systemImage={
-                  searchMode === "word" ? "character" : "character.book.closed"
-                }
-                label={searchMode === "word" ? "Kanji" : "Word"}
-                onPress={toggleSearchMode}
-                modifiers={[labelStyle("iconOnly"), tint(defaultColor)]}
-              />
-            </Host>
-          ),
-        }}
+      <Stack.Screen.Title large>
+        {searchMode === "word" ? "Words" : "Kanji"}
+      </Stack.Screen.Title>
+      <Stack.SearchBar
+        placement="automatic"
+        placeholder={
+          searchMode === "word" ? "Search by word..." : "Search by kanji..."
+        }
+        onChangeText={(e) => handleChange(e.nativeEvent.text)}
+        ref={searchBarRef as React.RefObject<SearchBarCommands>}
+        onCancelButtonPress={handleCancelButtonPress}
+        hideWhenScrolling={false}
+        autoCapitalize={searchMode === "kanji" ? "none" : "sentences"}
       />
+      <Stack.Toolbar placement="right">
+        <Stack.Toolbar.Button
+          icon={searchMode === "word" ? "character" : "character.book.closed"}
+          tintColor={Color.ios.label}
+          onPress={toggleSearchMode}
+        />
+      </Stack.Toolbar>
       <FlashList
         data={displayData}
         renderItem={renderItem}

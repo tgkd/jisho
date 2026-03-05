@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from "expo-router";
+import { Color, useLocalSearchParams } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
@@ -9,12 +9,10 @@ import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { Card } from "@/components/ui/Card";
 import { IconSymbol } from "@/components/ui/IconSymbol";
-import { useThemeColor } from "@/hooks/useThemeColor";
 import { useSpeech } from "@/providers/SpeechProvider";
 import { getKanjiById, KanjiEntry } from "@/services/database";
 
 export default function KanjiDetailScreen() {
-  const markColor = useThemeColor({}, "text");
   const params = useLocalSearchParams<{ id: string; title?: string }>();
   const [entry, setEntry] = useState<KanjiEntry | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -74,7 +72,7 @@ export default function KanjiDetailScreen() {
           <Card variant="grouped">
             {entry.meanings.map((meaning, idx) => (
               <View key={idx} style={styles.row}>
-                <IconSymbol name="circle.fill" size={6} color={markColor} />
+                <IconSymbol name="circle.fill" size={6} color={Color.ios.label} />
                 <ThemedText size="md" uiTextView>{meaning}</ThemedText>
               </View>
             ))}
@@ -88,7 +86,6 @@ export default function KanjiDetailScreen() {
 }
 
 function ReadingsSection({ entry }: { entry: KanjiEntry }) {
-  const tintColor = useThemeColor({}, "tint");
   const speech = useSpeech();
 
   const allReadings = useMemo(() => {
@@ -150,11 +147,11 @@ function ReadingsSection({ entry }: { entry: KanjiEntry }) {
                     <ThemedText uiTextView>{r.reading}</ThemedText>
                     <HapticTab onPress={() => handlePlay(r.reading, globalIdx)}>
                       {phase === "playing" ? (
-                        <IconSymbol name="pause.circle.fill" size={18} color={tintColor} />
+                        <IconSymbol name="pause.circle.fill" size={18} color={Color.ios.systemBlue} />
                       ) : phase === "paused" ? (
-                        <IconSymbol name="play.circle.fill" size={18} color={tintColor} />
+                        <IconSymbol name="play.circle.fill" size={18} color={Color.ios.systemBlue} />
                       ) : (
-                        <IconSymbol name="play.circle" size={18} color={tintColor} />
+                        <IconSymbol name="play.circle" size={18} color={Color.ios.systemBlue} />
                       )}
                     </HapticTab>
                   </View>
@@ -176,11 +173,11 @@ function ReadingsSection({ entry }: { entry: KanjiEntry }) {
                     <ThemedText uiTextView>{r.reading}</ThemedText>
                     <HapticTab onPress={() => handlePlay(r.reading, globalIdx)}>
                       {phase === "playing" ? (
-                        <IconSymbol name="pause.circle.fill" size={18} color={tintColor} />
+                        <IconSymbol name="pause.circle.fill" size={18} color={Color.ios.systemBlue} />
                       ) : phase === "paused" ? (
-                        <IconSymbol name="play.circle.fill" size={18} color={tintColor} />
+                        <IconSymbol name="play.circle.fill" size={18} color={Color.ios.systemBlue} />
                       ) : (
-                        <IconSymbol name="play.circle" size={18} color={tintColor} />
+                        <IconSymbol name="play.circle" size={18} color={Color.ios.systemBlue} />
                       )}
                     </HapticTab>
                   </View>
