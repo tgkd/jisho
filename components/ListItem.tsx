@@ -424,7 +424,6 @@ function SearchContent({
   isLast: boolean;
   onPress: () => void;
 }) {
-  const iconColor = useThemeColor({}, "secondaryText");
   const separatorColor = useThemeColor({}, "separator");
   const details = (
     meanings && meanings.length > 0
@@ -476,7 +475,6 @@ function SearchContent({
               {truncatedDetails}
             </ThemedText>
           </View>
-          <IconSymbol color={iconColor} name="chevron.right" size={16} />
         </ThemedView>
         {isLast ? null : (
           <View style={[styles.separator, { backgroundColor: separatorColor }]} />
@@ -497,7 +495,6 @@ function KanjiContent({
   isLast: boolean;
   onPress: () => void;
 }) {
-  const iconColor = useThemeColor({}, "secondaryText");
   const separatorColor = useThemeColor({}, "separator");
 
   return (
@@ -532,7 +529,6 @@ function KanjiContent({
               {item.meanings ? item.meanings.join(", ") : ""}
             </ThemedText>
           </View>
-          <IconSymbol color={iconColor} name="chevron.right" size={16} />
         </ThemedView>
       </HapticTab>
       {isLast ? null : (
@@ -610,11 +606,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   item: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 4,
+    flexDirection: "column",
     padding: 12,
+    gap: 4,
   },
   titleRow: {
     flexDirection: "row",
@@ -645,8 +639,8 @@ const styles = StyleSheet.create({
   },
   readings: {
     flexDirection: "column",
+    flexShrink: 1,
     gap: 2,
-    maxWidth: "100%"
   },
   kanjiHistoryRow: {
     flexDirection: "row",

@@ -278,6 +278,7 @@ export default function HomeScreen() {
         ref={searchBarRef as React.RefObject<SearchBarCommands>}
         onCancelButtonPress={handleCancelButtonPress}
         hideWhenScrolling={false}
+        hideNavigationBar={false}
         autoCapitalize={searchMode === "kanji" ? "none" : "sentences"}
       />
       <Stack.Toolbar placement="right">
