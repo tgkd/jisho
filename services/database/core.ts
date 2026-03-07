@@ -1,4 +1,100 @@
-import { SQLiteDatabase } from "expo-sqlite";
+import {
+  deleteDatabaseAsync,
+  importDatabaseFromAssetAsync,
+  openDatabaseAsync,
+  SQLiteDatabase
+} from "expo-sqlite";
+
+import { DATABASE_ASSET_ID } from "@/constants/Database";
+
+const SEED_COPY_NAME = "_furigana_seed.db";
+const BATCH_SIZE = 500;
+
+type FuriganaRow = {
+  id: number;
+  text: string;
+  reading: string;
+  reading_hiragana: string | null;
+  segments: string;
+  created_at: string;
+};
+
+/**
+ * Creates the furigana table if it doesn't exist (fast, runs in onInit).
+ */
+async function ensureFuriganaTable(db: SQLiteDatabase) {
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS furigana (
+      id INTEGER PRIMARY KEY,
+      text TEXT NOT NULL,
+      reading TEXT NOT NULL,
+      reading_hiragana TEXT,
+      segments TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_furigana_text_reading ON furigana(text, reading);
+    CREATE INDEX IF NOT EXISTS idx_furigana_text ON furigana(text);
+    CREATE INDEX IF NOT EXISTS idx_furigana_reading ON furigana(reading);
+  `);
+}
+
+/**
+ * Populates the furigana table from the bundled seed database in the background.
+ * Runs independently of version checks so it retries on next launch if interrupted.
+ */
+async function populateFuriganaFromSeed(db: SQLiteDatabase) {
+  try {
+    const row = await db.getFirstAsync<{ count: number }>(
+      "SELECT count(*) as count FROM furigana"
+    );
+
+    if (row && row.count > 0) {
+      return;
+    }
+
+    console.log("[furigana] populating from seed in background...");
+
+    await importDatabaseFromAssetAsync(SEED_COPY_NAME, {
+      assetId: DATABASE_ASSET_ID,
+      forceOverwrite: true,
+    });
+
+    const seedDb = await openDatabaseAsync(SEED_COPY_NAME);
+
+    const totalRow = await seedDb.getFirstAsync<{ count: number }>(
+      "SELECT count(*) as count FROM furigana"
+    );
+    const total = totalRow?.count ?? 0;
+
+    for (let offset = 0; offset < total; offset += BATCH_SIZE) {
+      const rows = await seedDb.getAllAsync<FuriganaRow>(
+        `SELECT id, text, reading, reading_hiragana, segments, created_at
+         FROM furigana LIMIT ${BATCH_SIZE} OFFSET ${offset}`
+      );
+
+      const placeholders = rows.map(() => "(?,?,?,?,?,?)").join(",");
+      const params = rows.flatMap((r) => [
+        r.id, r.text, r.reading, r.reading_hiragana, r.segments, r.created_at,
+      ]);
+
+      await db.runAsync(
+        `INSERT OR IGNORE INTO furigana (id, text, reading, reading_hiragana, segments, created_at)
+         VALUES ${placeholders}`,
+        params
+      );
+    }
+
+    await seedDb.closeAsync();
+    await deleteDatabaseAsync(SEED_COPY_NAME);
+
+    const inserted = await db.getFirstAsync<{ count: number }>(
+      "SELECT count(*) as count FROM furigana"
+    );
+    console.log(`[furigana] done: ${inserted?.count ?? 0} entries`);
+  } catch (error) {
+    console.error("[furigana] migration failed:", error);
+  }
+}
 
 /**
  * Ensures all user-data tables exist regardless of user_version.
@@ -59,7 +155,7 @@ async function ensureUserDataTables(db: SQLiteDatabase) {
 }
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
-  const DATABASE_VERSION = 20;
+  const DATABASE_VERSION = 22;
 
   try {
     // Test if database is corrupted by trying a simple query
@@ -110,6 +206,7 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
 
     if (currentDbVersion >= DATABASE_VERSION) {
       await ensureUserDataTables(db);
+      populateFuriganaFromSeed(db);
       return;
     }
 
@@ -119,8 +216,16 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
     // stable "jisho.db", so no existing user can arrive here with
     // a version below 20. Future migrations start at v21+.
 
+    if (currentDbVersion < 22) {
+      await ensureFuriganaTable(db);
+    }
+
     await ensureUserDataTables(db);
     await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
+
+    // Populate furigana in background — not gated by version so it
+    // retries on next launch if interrupted. App remains usable immediately.
+    populateFuriganaFromSeed(db);
 
     console.log(
       `Database migrations completed. Current version: ${DATABASE_VERSION}`
