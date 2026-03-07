@@ -1,28 +1,18 @@
 import { useSQLiteContext } from "expo-sqlite";
 import { Alert, ScrollView, StyleSheet, Switch, View } from "react-native";
-import { useMMKVBoolean, useMMKVString } from "react-native-mmkv";
+import { useMMKVBoolean } from "react-native-mmkv";
 
 import { FuriganaText } from "@/components/FuriganaText";
 import { HapticTab } from "@/components/HapticTab";
 import { ThemedText } from "@/components/ThemedText";
 import { Card } from "@/components/ui/Card";
 import { IconSymbol } from "@/components/ui/IconSymbol";
-import { Colors, getHighlightColorValue } from "@/constants/Colors";
+import { Colors } from "@/constants/Colors";
 import { useSubscription } from "@/providers/SubscriptionContext";
 import { useUnifiedAI } from "@/providers/UnifiedAIProvider";
 import { clearHistory, resetDatabase } from "@/services/database";
 import { SETTINGS_KEYS } from "@/services/storage";
 import { useRouter } from "expo-router";
-
-const highlightColorOptions: {
-  label: string;
-  value: string;
-}[] = [
-  { label: "黄色", value: "yellow" },
-  { label: "青色", value: "blue" },
-  { label: "緑色", value: "green" },
-  { label: "桃色", value: "pink" },
-];
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -30,14 +20,6 @@ export default function SettingsScreen() {
   const ai = useUnifiedAI();
   const subscription = useSubscription();
 
-  const [highlightColorState, setHighlightColor] = useMMKVString(
-    SETTINGS_KEYS.HIGHLIGHT_COLOR
-  );
-  const highlightColor = highlightColorState
-    ? highlightColorOptions.find(
-        (option) => option.value === highlightColorState
-      ) ?? highlightColorOptions[0]
-    : highlightColorOptions[0];
   const [showFurigana, setShowFurigana] = useMMKVBoolean(
     SETTINGS_KEYS.SHOW_FURIGANA
   );
@@ -115,40 +97,11 @@ export default function SettingsScreen() {
     >
       <Card>
         <View style={styles.settingItem}>
-          <ThemedText size="sm">{"Highlight Color"}</ThemedText>
-          <View style={styles.row}>
-            {highlightColorOptions.map((o) => (
-              <HapticTab
-                key={o.value}
-                onPress={() => {
-                  setHighlightColor(o.value);
-                }}
-              >
-                <View
-                  style={[
-                    styles.colorPreview,
-                    o.value === highlightColor.value ? styles.active : null,
-                    {
-                      backgroundColor: getHighlightColorValue(o.value),
-                    },
-                  ]}
-                />
-              </HapticTab>
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.settingItem}>
           <View style={styles.row}>
             <ThemedText size="sm">{"Show Furigana"}</ThemedText>
             <Switch value={showFurigana} onValueChange={handleToggleFurigana} />
           </View>
-          <View
-            style={[
-              styles.furiganaExample,
-              { backgroundColor: getHighlightColorValue(highlightColor.value) },
-            ]}
-          >
+          <View style={styles.furiganaExample}>
             <FuriganaText
               word="食べ物"
               segments={[

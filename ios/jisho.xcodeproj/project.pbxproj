@@ -7,13 +7,13 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0D5B86F0112BCD59F10B9258 /* libPods-jisho.a in Frameworks */ = {isa = PBXBuildFile; fileRef = CAA6058CFD5113C9F7E68DF4 /* libPods-jisho.a */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
 		9986C9882E966B9D00246610 /* config.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 9986C9872E966B9D00246610 /* config.storekit */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 		F24139DD80626AD100E1CF95 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18237108CE55B73C43A079E6 /* ExpoModulesProvider.swift */; };
-		F5B214F2E5A08D59B467B364 /* libPods-jisho.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B200A2878F614E99C1BA23B1 /* libPods-jisho.a */; };
 		FC04D20956D0B40B7552EB42 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D9DB476F4E7B9B5F44536908 /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
@@ -22,12 +22,12 @@
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = jisho/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = jisho/Info.plist; sourceTree = "<group>"; };
 		18237108CE55B73C43A079E6 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-jisho/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
-		426000FC5347C78E3E5A811F /* Pods-jisho.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-jisho.release.xcconfig"; path = "Target Support Files/Pods-jisho/Pods-jisho.release.xcconfig"; sourceTree = "<group>"; };
-		74F512FE8CDBA21187945A1A /* Pods-jisho.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-jisho.debug.xcconfig"; path = "Target Support Files/Pods-jisho/Pods-jisho.debug.xcconfig"; sourceTree = "<group>"; };
+		3BE1D045C1FDA235B2AE6E46 /* Pods-jisho.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-jisho.debug.xcconfig"; path = "Target Support Files/Pods-jisho/Pods-jisho.debug.xcconfig"; sourceTree = "<group>"; };
 		9986C9872E966B9D00246610 /* config.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = config.storekit; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = jisho/SplashScreen.storyboard; sourceTree = "<group>"; };
-		B200A2878F614E99C1BA23B1 /* libPods-jisho.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-jisho.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		B34485251D22D5B9E7AA480D /* Pods-jisho.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-jisho.release.xcconfig"; path = "Target Support Files/Pods-jisho/Pods-jisho.release.xcconfig"; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
+		CAA6058CFD5113C9F7E68DF4 /* libPods-jisho.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-jisho.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		D9DB476F4E7B9B5F44536908 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = jisho/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = jisho/AppDelegate.swift; sourceTree = "<group>"; };
@@ -39,7 +39,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F5B214F2E5A08D59B467B364 /* libPods-jisho.a in Frameworks */,
+				0D5B86F0112BCD59F10B9258 /* libPods-jisho.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -64,7 +64,7 @@
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				B200A2878F614E99C1BA23B1 /* libPods-jisho.a */,
+				CAA6058CFD5113C9F7E68DF4 /* libPods-jisho.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -128,8 +128,8 @@
 		D82F846AA08A65F35DC31BC0 /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				74F512FE8CDBA21187945A1A /* Pods-jisho.debug.xcconfig */,
-				426000FC5347C78E3E5A811F /* Pods-jisho.release.xcconfig */,
+				3BE1D045C1FDA235B2AE6E46 /* Pods-jisho.debug.xcconfig */,
+				B34485251D22D5B9E7AA480D /* Pods-jisho.release.xcconfig */,
 			);
 			path = Pods;
 			sourceTree = "<group>";
@@ -141,14 +141,14 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "jisho" */;
 			buildPhases = (
-				20331E21C7870A2C24F512B0 /* [CP] Check Pods Manifest.lock */,
+				354BD96D076D57C04AB74FD3 /* [CP] Check Pods Manifest.lock */,
 				F977D9F9BF59210B74096479 /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
-				CA88A631F0AF518C676A32B6 /* [CP] Embed Pods Frameworks */,
-				5213121796E1AF60EAAC48B0 /* [CP] Copy Pods Resources */,
+				6C92C0A2B4DAC9C8390DE189 /* [CP] Embed Pods Frameworks */,
+				2211A88D72BAFEC7E300D222 /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -221,29 +221,7 @@
 			shellPath = /bin/sh;
 			shellScript = "if [[ -f \"$PODS_ROOT/../.xcode.env\" ]]; then\n  source \"$PODS_ROOT/../.xcode.env\"\nfi\nif [[ -f \"$PODS_ROOT/../.xcode.env.local\" ]]; then\n  source \"$PODS_ROOT/../.xcode.env.local\"\nfi\n\n# The project root by default is one level up from the ios directory\nexport PROJECT_ROOT=\"$PROJECT_DIR\"/..\n\nif [[ \"$CONFIGURATION\" = *Debug* ]]; then\n  export SKIP_BUNDLING=1\nfi\nif [[ -z \"$ENTRY_FILE\" ]]; then\n  # Set the entry JS file using the bundler's entry resolution.\n  export ENTRY_FILE=\"$(\"$NODE_BINARY\" -e \"require('expo/scripts/resolveAppEntry')\" \"$PROJECT_ROOT\" ios absolute | tail -n 1)\"\nfi\n\nif [[ -z \"$CLI_PATH\" ]]; then\n  # Use Expo CLI\n  export CLI_PATH=\"$(\"$NODE_BINARY\" --print \"require.resolve('@expo/cli', { paths: [require.resolve('expo/package.json')] })\")\"\nfi\nif [[ -z \"$BUNDLE_COMMAND\" ]]; then\n  # Default Expo CLI command for bundling\n  export BUNDLE_COMMAND=\"export:embed\"\nfi\n\n# Source .xcode.env.updates if it exists to allow\n# SKIP_BUNDLING to be unset if needed\nif [[ -f \"$PODS_ROOT/../.xcode.env.updates\" ]]; then\n  source \"$PODS_ROOT/../.xcode.env.updates\"\nfi\n# Source local changes to allow overrides\n# if needed\nif [[ -f \"$PODS_ROOT/../.xcode.env.local\" ]]; then\n  source \"$PODS_ROOT/../.xcode.env.local\"\nfi\n\n`\"$NODE_BINARY\" --print \"require('path').dirname(require.resolve('react-native/package.json')) + '/scripts/react-native-xcode.sh'\"`\n\n";
 		};
-		20331E21C7870A2C24F512B0 /* [CP] Check Pods Manifest.lock */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
-				"${PODS_ROOT}/Manifest.lock",
-			);
-			name = "[CP] Check Pods Manifest.lock";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-jisho-checkManifestLockResult.txt",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
-			showEnvVarsInLog = 0;
-		};
-		5213121796E1AF60EAAC48B0 /* [CP] Copy Pods Resources */ = {
+		2211A88D72BAFEC7E300D222 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -279,7 +257,29 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-jisho/Pods-jisho-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		CA88A631F0AF518C676A32B6 /* [CP] Embed Pods Frameworks */ = {
+		354BD96D076D57C04AB74FD3 /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-jisho-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+		6C92C0A2B4DAC9C8390DE189 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -342,14 +342,14 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 74F512FE8CDBA21187945A1A /* Pods-jisho.debug.xcconfig */;
+			baseConfigurationReference = 3BE1D045C1FDA235B2AE6E46 /* Pods-jisho.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = jisho/jisho.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 122;
+				CURRENT_PROJECT_VERSION = 123;
 				DEVELOPMENT_TEAM = ULU867Y7LC;
 				ENABLE_BITCODE = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -388,14 +388,14 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 426000FC5347C78E3E5A811F /* Pods-jisho.release.xcconfig */;
+			baseConfigurationReference = B34485251D22D5B9E7AA480D /* Pods-jisho.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = jisho/jisho.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 122;
+				CURRENT_PROJECT_VERSION = 123;
 				DEVELOPMENT_TEAM = ULU867Y7LC;
 				INFOPLIST_FILE = jisho/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = tango;

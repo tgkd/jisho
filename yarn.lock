@@ -5,29 +5,29 @@ __metadata:
   version: 8
   cacheKey: 10c0
 
-"@ai-sdk/gateway@npm:3.0.61":
-  version: 3.0.61
-  resolution: "@ai-sdk/gateway@npm:3.0.61"
+"@ai-sdk/gateway@npm:3.0.69":
+  version: 3.0.69
+  resolution: "@ai-sdk/gateway@npm:3.0.69"
   dependencies:
     "@ai-sdk/provider": "npm:3.0.8"
-    "@ai-sdk/provider-utils": "npm:4.0.17"
+    "@ai-sdk/provider-utils": "npm:4.0.20"
     "@vercel/oidc": "npm:3.1.0"
   peerDependencies:
     zod: ^3.25.76 || ^4.1.8
-  checksum: 10c0/221068c97f0a3f00f05f37b98b4993b6c44a4921c00eedd23aba2d04c4549e2e61ada82859a90e2f8db0c82e8f3b5e18d33e0126f1146840d24e004e427d0533
+  checksum: 10c0/f9f5ecdc20636524dfbbbc9876fa6032e10165df24b008d5e1ce5e0fa9e654d533d26c85246c0b2ece9ce71371b355433e9971769a16a4362061ae082dd9f46b
   languageName: node
   linkType: hard
 
-"@ai-sdk/provider-utils@npm:4.0.17":
-  version: 4.0.17
-  resolution: "@ai-sdk/provider-utils@npm:4.0.17"
+"@ai-sdk/provider-utils@npm:4.0.20":
+  version: 4.0.20
+  resolution: "@ai-sdk/provider-utils@npm:4.0.20"
   dependencies:
     "@ai-sdk/provider": "npm:3.0.8"
     "@standard-schema/spec": "npm:^1.1.0"
     eventsource-parser: "npm:^3.0.6"
   peerDependencies:
     zod: ^3.25.76 || ^4.1.8
-  checksum: 10c0/0056b44cbc805332d0aac2199a80536f52b86233e7507e889cb7c10ef486291d31f3b039510913d72a28ca2b712cd12ba5cc1c1b3c918c6f0d16bcbf24e59e0e
+  checksum: 10c0/749d9f91b2b098f716246bbb92a801d0f8a952fed4481e48b7d36a1c026cfe96b9d956f34b95270bc4628048ad57edd7b19026c167e8ded288e741aa289d4cdd
   languageName: node
   linkType: hard
 
@@ -1845,9 +1845,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@expo/cli@npm:55.0.14":
-  version: 55.0.14
-  resolution: "@expo/cli@npm:55.0.14"
+"@expo/cli@npm:55.0.15":
+  version: 55.0.15
+  resolution: "@expo/cli@npm:55.0.15"
   dependencies:
     "@expo/code-signing-certificates": "npm:^0.0.6"
     "@expo/config": "npm:~55.0.8"
@@ -1917,7 +1917,7 @@ __metadata:
       optional: true
   bin:
     expo-internal: build/bin/cli
-  checksum: 10c0/9dc574c0132fcde065efae4d904c5d8f6b482e6aaafe413953f7263442244f470095622851a0c2cd6447eacb38bcf78bd11a33b92079ad668e4bfb72fdfffd07
+  checksum: 10c0/c04985251d38ce6b5693a5c1805f1de359db528f8421742e410f94c882a2102ba853ed3d0e9a5c109f2880678cf7f49aeacbe71bffa67d35c4fb1026e9ea3707
   languageName: node
   linkType: hard
 
@@ -3743,26 +3743,26 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@revenuecat/purchases-js-hybrid-mappings@npm:17.41.1":
-  version: 17.41.1
-  resolution: "@revenuecat/purchases-js-hybrid-mappings@npm:17.41.1"
+"@revenuecat/purchases-js-hybrid-mappings@npm:17.44.0":
+  version: 17.44.0
+  resolution: "@revenuecat/purchases-js-hybrid-mappings@npm:17.44.0"
   dependencies:
-    "@revenuecat/purchases-js": "npm:1.26.2"
-  checksum: 10c0/646c28dbd82725e70d3688a2d076ac92b88120e4c754e0e023da6e875030c7522ddef51fa99640e15fa28789a4bd6bee7b0d18dce36ddb0869887a5c56ba6291
+    "@revenuecat/purchases-js": "npm:1.27.0"
+  checksum: 10c0/8eab7fbca63af6907bb9785acc2657d91e3cb3bb24661833e22f0705e7079c5b08c57e1d209156b63bd76e43037e28aff62e7008e3c8cbd3ca135f010c88e30f
   languageName: node
   linkType: hard
 
-"@revenuecat/purchases-js@npm:1.26.2":
-  version: 1.26.2
-  resolution: "@revenuecat/purchases-js@npm:1.26.2"
-  checksum: 10c0/7908f14a4679483b75222fdd168d6390fb8d6dced5ceb02b64eaf819bd3aee40317d440e9fa926db9b11bc6fc80c5dd32c289f6d6396619b60cd680fd57f4523
+"@revenuecat/purchases-js@npm:1.27.0":
+  version: 1.27.0
+  resolution: "@revenuecat/purchases-js@npm:1.27.0"
+  checksum: 10c0/0f43aee391c70bf63775c6ea051567e2f686a2723bab6f0e3e65736d4d88dafab7f27bddd4eea451429509877faace11aaa9d75127982d579f6c255ab9b403af
   languageName: node
   linkType: hard
 
-"@revenuecat/purchases-typescript-internal@npm:17.41.1":
-  version: 17.41.1
-  resolution: "@revenuecat/purchases-typescript-internal@npm:17.41.1"
-  checksum: 10c0/1e0e0864eddef803262398bd454416533c96d47042cdc761363b38406aa71ba7ce8bf38c94cb26aa59ba1f90a5dec25032896df0ff429384481307641ec05017
+"@revenuecat/purchases-typescript-internal@npm:17.44.0":
+  version: 17.44.0
+  resolution: "@revenuecat/purchases-typescript-internal@npm:17.44.0"
+  checksum: 10c0/38f1eccd42446b445128dda8f0c7d0c172a0d65380731a6f6b1b6bf9a15d96ed8c62949f0a5f0297fda40f9a4fde14464acb734c162b7ffe126e3c2b9ea58dcc
   languageName: node
   linkType: hard
 
@@ -4510,17 +4510,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ai@npm:^6.0.108":
-  version: 6.0.108
-  resolution: "ai@npm:6.0.108"
+"ai@npm:^6.0.121":
+  version: 6.0.121
+  resolution: "ai@npm:6.0.121"
   dependencies:
-    "@ai-sdk/gateway": "npm:3.0.61"
+    "@ai-sdk/gateway": "npm:3.0.69"
     "@ai-sdk/provider": "npm:3.0.8"
-    "@ai-sdk/provider-utils": "npm:4.0.17"
+    "@ai-sdk/provider-utils": "npm:4.0.20"
     "@opentelemetry/api": "npm:1.9.0"
   peerDependencies:
     zod: ^3.25.76 || ^4.1.8
-  checksum: 10c0/845ce8f6b6a6b0dddb75e4ab9817132fb7d89cf677bed6e7eeabb0188e17a756748c14e327f8a15dd1398278d0a1a09a1ed6987c154a2a0afc2c5f7a6944ffd5
+  checksum: 10c0/8789ac39af2f5978d1af26c5978364c2edb0fbdc526f892a49635a5fac7b0cb96d640d4c3a10d32de3b15f0c8b3fa7afd98173d19293cf9ed82009ca83dbccc5
   languageName: node
   linkType: hard
 
@@ -7025,15 +7025,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"expo-modules-core@npm:55.0.13":
-  version: 55.0.13
-  resolution: "expo-modules-core@npm:55.0.13"
+"expo-modules-core@npm:55.0.14":
+  version: 55.0.14
+  resolution: "expo-modules-core@npm:55.0.14"
   dependencies:
     invariant: "npm:^2.2.4"
   peerDependencies:
     react: "*"
     react-native: "*"
-  checksum: 10c0/c8f366aec6cecad11fecf4727589265a3631731a1cdfdfec0309752de24d236e84dff3124760df3cdf1f27becdd01612395b81b0c8675cadfe3d17ea32266348
+  checksum: 10c0/1cedd1561c4638dbdf3a8ca6b50d11d5d8d4d79e6a9e7e481adee74d51cca95e74748caaa1e76d8bab2e7b5850b0009a66b554db32d834fa08267039d1f0472a
   languageName: node
   linkType: hard
 
@@ -7197,12 +7197,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"expo@npm:55.0.4":
-  version: 55.0.4
-  resolution: "expo@npm:55.0.4"
+"expo@npm:55.0.5":
+  version: 55.0.5
+  resolution: "expo@npm:55.0.5"
   dependencies:
     "@babel/runtime": "npm:^7.20.0"
-    "@expo/cli": "npm:55.0.14"
+    "@expo/cli": "npm:55.0.15"
     "@expo/config": "npm:~55.0.8"
     "@expo/config-plugins": "npm:~55.0.6"
     "@expo/devtools": "npm:55.0.2"
@@ -7220,7 +7220,7 @@ __metadata:
     expo-font: "npm:~55.0.4"
     expo-keep-awake: "npm:~55.0.4"
     expo-modules-autolinking: "npm:55.0.8"
-    expo-modules-core: "npm:55.0.13"
+    expo-modules-core: "npm:55.0.14"
     pretty-format: "npm:^29.7.0"
     react-refresh: "npm:^0.14.2"
     whatwg-url-minimum: "npm:^0.1.1"
@@ -7241,7 +7241,7 @@ __metadata:
     expo: bin/cli
     expo-modules-autolinking: bin/autolinking
     fingerprint: bin/fingerprint
-  checksum: 10c0/879e9bb9c4f54cd74b595cd362f7852f6b4e2ef801d9a9c6757a8880694e456ffa147ff132900492a9025bd7b3aa8c82d893e1df293baabca022a0f2b50973b7
+  checksum: 10c0/0505bcb7cbcd6e9900dde77c290b0c9fba0cb2a9ef31284d1f3ca7555d891468ca4e16db5a930d44473f37565f15dbf2696d2f395318fad42e64b6529c04a7a4
   languageName: node
   linkType: hard
 
@@ -9051,13 +9051,13 @@ __metadata:
     "@types/jest": "npm:29.5.14"
     "@types/react": "npm:~19.2.2"
     JSONStream: "npm:^1.3.5"
-    ai: "npm:^6.0.108"
+    ai: "npm:^6.0.121"
     better-sqlite3: "npm:^12.6.2"
     csv-parser: "npm:^3.2.0"
     eslint: "npm:^9.39.2"
     eslint-config-expo: "npm:~55.0.0"
     eventsource-parser: "npm:^1.1.2"
-    expo: "npm:55.0.4"
+    expo: "npm:55.0.5"
     expo-asset: "npm:~55.0.8"
     expo-audio: "npm:~55.0.8"
     expo-blur: "npm:~55.0.8"
@@ -9085,10 +9085,10 @@ __metadata:
     react-native-keyboard-aware-scroll-view: "npm:^0.9.5"
     react-native-keyboard-controller: "npm:1.20.7"
     react-native-markdown-display: "npm:^7.0.2"
-    react-native-mmkv: "npm:^4.1.2"
-    react-native-nitro-modules: "npm:^0.33.9"
-    react-native-purchases: "npm:^9.10.5"
-    react-native-purchases-ui: "npm:^9.10.5"
+    react-native-mmkv: "npm:^4.2.0"
+    react-native-nitro-modules: "npm:^0.35.0"
+    react-native-purchases: "npm:^9.11.2"
+    react-native-purchases-ui: "npm:^9.11.2"
     react-native-reanimated: "npm:~4.2.1"
     react-native-safe-area-context: "npm:~5.6.0"
     react-native-screens: "npm:~4.23.0"
@@ -11171,50 +11171,50 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-mmkv@npm:^4.1.2":
-  version: 4.1.2
-  resolution: "react-native-mmkv@npm:4.1.2"
+"react-native-mmkv@npm:^4.2.0":
+  version: 4.2.0
+  resolution: "react-native-mmkv@npm:4.2.0"
   peerDependencies:
     react: "*"
     react-native: "*"
     react-native-nitro-modules: "*"
-  checksum: 10c0/713f9c76e732fc010e53203f7dcb9fd571b1d89db13b8ea600ebc3b9505a3c8320e24acabdeb285e7bb0cc0c321d0374cf1a0cca9b211e0852555471aa90e396
+  checksum: 10c0/da2211a52f3a5c256906fcc75d0701d0ee21a7e08c1c630d360df5d1f822efebd7daadf598e052d41bbdc74c6677eee58c8dd6680025b71f777e8527e4e7e8a9
   languageName: node
   linkType: hard
 
-"react-native-nitro-modules@npm:^0.33.9":
-  version: 0.33.9
-  resolution: "react-native-nitro-modules@npm:0.33.9"
+"react-native-nitro-modules@npm:^0.35.0":
+  version: 0.35.0
+  resolution: "react-native-nitro-modules@npm:0.35.0"
   peerDependencies:
     react: "*"
     react-native: "*"
-  checksum: 10c0/1784fb51abbca6f82d792134055352c42a3bafb3450fc326b04f3cea092126ab1c9ebf152fc0ca43130c46f1537996b06ff33e644a576b03eb97f4413f5c76c3
+  checksum: 10c0/3e1360081b0b9b6fc315f062a65d48dc5398ca03effdf8869c00dce808ddd320a3fe1869077784c86c3b9dd3d500cb6fd84e0d0b07a73ecbe1598fb800a4b0bb
   languageName: node
   linkType: hard
 
-"react-native-purchases-ui@npm:^9.10.5":
-  version: 9.10.5
-  resolution: "react-native-purchases-ui@npm:9.10.5"
+"react-native-purchases-ui@npm:^9.11.2":
+  version: 9.11.2
+  resolution: "react-native-purchases-ui@npm:9.11.2"
   dependencies:
-    "@revenuecat/purchases-typescript-internal": "npm:17.41.1"
+    "@revenuecat/purchases-typescript-internal": "npm:17.44.0"
   peerDependencies:
     react: "*"
     react-native: ">= 0.73.0"
-    react-native-purchases: 9.10.5
+    react-native-purchases: 9.11.2
     react-native-web: "*"
   peerDependenciesMeta:
     react-native-web:
       optional: true
-  checksum: 10c0/d50285b97e3edc725ea5a8242eba7c8737d992dc536575b663ea63c8157317091c472c47d81079604b13bab95354b8fdf8f9fbbc6e11a67e666b428bacf05e3a
+  checksum: 10c0/46a3d2306a6b9a03a77fb71f6c2871a2b2fa509db19ba27f5f150f362b6478f07afe11a7af2cf318aa32464556ee20ec2d2b117fee3cbc18c0888e76c57a6783
   languageName: node
   linkType: hard
 
-"react-native-purchases@npm:^9.10.5":
-  version: 9.10.5
-  resolution: "react-native-purchases@npm:9.10.5"
+"react-native-purchases@npm:^9.11.2":
+  version: 9.11.2
+  resolution: "react-native-purchases@npm:9.11.2"
   dependencies:
-    "@revenuecat/purchases-js-hybrid-mappings": "npm:17.41.1"
-    "@revenuecat/purchases-typescript-internal": "npm:17.41.1"
+    "@revenuecat/purchases-js-hybrid-mappings": "npm:17.44.0"
+    "@revenuecat/purchases-typescript-internal": "npm:17.44.0"
   peerDependencies:
     react: ">= 16.6.3"
     react-native: ">= 0.73.0"
@@ -11222,7 +11222,7 @@ __metadata:
   peerDependenciesMeta:
     react-native-web:
       optional: true
-  checksum: 10c0/72db50b105ca55cb7887e7807520a3d46c7d8c17d7ff17161c32acfe0e6a8dc8de2d66dcfa7d61b42c8c1276bf06832b869085c261cb50e6535f5116959493b5
+  checksum: 10c0/a4873887a9b1703a1c7ee2a41c3bd0deffb793a33fb68036567b7a4b39c7f0fd40f77862683725e169522a5d55f5818abc5ed2453279faf77f1b303d7abe4705
   languageName: node
   linkType: hard
 
