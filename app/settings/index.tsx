@@ -20,7 +20,7 @@ export default function SettingsScreen() {
   const ai = useUnifiedAI();
   const subscription = useSubscription();
 
-  const [showFurigana, setShowFurigana] = useMMKVBoolean(
+  const [showFurigana = true, setShowFurigana] = useMMKVBoolean(
     SETTINGS_KEYS.SHOW_FURIGANA
   );
 

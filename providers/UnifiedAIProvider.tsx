@@ -337,7 +337,8 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
         }
 
         if (provider === "local" && localAI.isReady) {
-          const b64 = localAI.generateSpeech(text);
+          const b64 = await localAI.generateSpeech(text);
+          if (!b64) throw new Error("Local AI returned no audio data");
           await speech.playAudio(`data:audio/wav;base64,${b64}`);
           return;
         }

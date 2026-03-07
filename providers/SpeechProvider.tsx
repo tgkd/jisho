@@ -44,7 +44,24 @@ export function SpeechProvider({ children }: { children: ReactNode }) {
         setIsSpeakingState(false);
       }
       audioPlayer.replace(source);
-      await audioPlayer.play();
+      if (audioPlayer.isLoaded) {
+        audioPlayer.play();
+        return;
+      }
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          sub.remove();
+          reject(new Error("Audio load timed out"));
+        }, 5000);
+        const sub = audioPlayer.addListener("playbackStatusUpdate", (s) => {
+          if (s.isLoaded) {
+            clearTimeout(timeout);
+            sub.remove();
+            audioPlayer.play();
+            resolve();
+          }
+        });
+      });
     },
     [audioPlayer]
   );
