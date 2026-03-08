@@ -58,6 +58,10 @@ scripts_bkp/
 assets/db/
 furi/*
 
+# Database seed files
+*.db
+!assets/db/
+
 # ralphex progress logs
 progress*.txt
 CLAUDE.md
