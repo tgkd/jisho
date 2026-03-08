@@ -6,7 +6,7 @@ import { useCallback, useRef, useState } from "react";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
 import { SearchBarCommands } from "react-native-screens";
 
-import { ListItem } from "@/components/ListItem";
+import { ListItem, ListItemSeparator } from "@/components/ListItem";
 import { Loader } from "@/components/Loader";
 import TagsList from "@/components/TagsList";
 import { ThemedText } from "@/components/ThemedText";
@@ -291,6 +291,7 @@ export default function HomeScreen() {
       <FlashList
         data={displayData}
         renderItem={renderItem}
+        ItemSeparatorComponent={ListItemSeparator}
         keyExtractor={(item) =>
           isHistoryItem(item) ? `history-${item.id}` : `result-${item.id}`
         }

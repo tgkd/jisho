@@ -69,6 +69,13 @@ type ListItemProps =
   | KanjiVariantProps
   | BookmarkVariantProps;
 
+export function ListItemSeparator() {
+  const separatorColor = useThemeColor({}, "separator");
+  return (
+    <View style={[styles.separator, { backgroundColor: separatorColor }]} />
+  );
+}
+
 export const ListItem = (props: ListItemProps) => {
   const { variant, index, total, onPress } = props;
   const isFirst = index === 0;
@@ -290,53 +297,49 @@ function HistoryContent({
   isLast: boolean;
   onPress: () => void;
 }) {
-  const separatorColor = useThemeColor({}, "separator");
-
   return (
     <HapticTab onPress={onPress}>
       <ThemedView
         style={[
-          styles.resultItem,
-          isFirst && styles.firstRowStyle,
-          isLast && styles.lastRowStyle,
+          styles.item,
+          isFirst && styles.firstRadius,
+          isLast && styles.lastRadius,
         ]}
         lightColor={Colors.light.groupedBackground}
         darkColor={Colors.dark.groupedBackground}
       >
         {isWordHistoryEntry(item) ? (
           <>
-            <ThemedText>
+            <ThemedText numberOfLines={1} ellipsizeMode="tail">
               <ThemedText type="defaultSemiBold">
                 {item.word + " "}
               </ThemedText>
-              <ThemedText size="sm">
+              <ThemedText size="sm" type="secondary">
                 {formatJp(item.reading, false)}
               </ThemedText>
             </ThemedText>
             <ThemedText
               type="secondary"
-              style={styles.meaning}
+              numberOfLines={1}
+              ellipsizeMode="tail"
             >
-              {formatEn(item.meaning, "none", { truncateAll: 45 }).replace(
-                /[,;]\s*$/,
-                ""
-              )}
+              {formatEn(item.meaning, "none")}
             </ThemedText>
           </>
         ) : (
           <>
-            <View style={styles.kanjiHistoryRow}>
+            <View style={styles.kanjiRow}>
               <ThemedText type="defaultSemiBold">
                 {item.character}
               </ThemedText>
-              <View style={styles.kanjiHistoryReadings}>
+              <View style={styles.readings}>
                 {item.onReadings?.length > 0 && (
-                  <ThemedText size="sm" type="secondary">
+                  <ThemedText size="sm" type="secondary" numberOfLines={1} ellipsizeMode="tail">
                     On: {item.onReadings.join(", ")}
                   </ThemedText>
                 )}
                 {item.kunReadings?.length > 0 && (
-                  <ThemedText size="sm" type="secondary">
+                  <ThemedText size="sm" type="secondary" numberOfLines={1} ellipsizeMode="tail">
                     Kun: {item.kunReadings.join(", ")}
                   </ThemedText>
                 )}
@@ -344,19 +347,14 @@ function HistoryContent({
             </View>
             <ThemedText
               type="secondary"
-              style={styles.meaning}
+              numberOfLines={1}
+              ellipsizeMode="tail"
             >
-              {formatEn(item.meaning, "none", { truncateAll: 45 }).replace(
-                /[,;]\s*$/,
-                ""
-              )}
+              {formatEn(item.meaning, "none")}
             </ThemedText>
           </>
         )}
       </ThemedView>
-      {!isLast ? (
-        <View style={[styles.separator, { backgroundColor: separatorColor }]} />
-      ) : null}
     </HapticTab>
   );
 }
@@ -372,42 +370,36 @@ function BookmarkContent({
   isLast: boolean;
   onPress: () => void;
 }) {
-  const separatorColor = useThemeColor({}, "separator");
-
   return (
-    <>
-      <HapticTab onPress={onPress}>
-        <ThemedView
-          style={[
-            styles.resultItem,
-            isFirst && styles.firstRowStyle,
-            isLast && styles.lastRowStyle,
-          ]}
-          lightColor={Colors.light.groupedBackground}
-          darkColor={Colors.dark.groupedBackground}
+    <HapticTab onPress={onPress}>
+      <ThemedView
+        style={[
+          styles.item,
+          isFirst && styles.firstRadius,
+          isLast && styles.lastRadius,
+        ]}
+        lightColor={Colors.light.groupedBackground}
+        darkColor={Colors.dark.groupedBackground}
+      >
+        <ThemedText numberOfLines={1} ellipsizeMode="tail">
+          <ThemedText type="defaultSemiBold">
+            {item.word + " "}
+          </ThemedText>
+          <ThemedText size="sm" type="secondary">
+            {formatJp(item.reading, false)}
+          </ThemedText>
+        </ThemedText>
+        <ThemedText
+          type="secondary"
+          numberOfLines={1}
+          ellipsizeMode="tail"
         >
-          <ThemedText>
-            <ThemedText type="defaultSemiBold">
-              {item.word + " "}
-            </ThemedText>
-            <ThemedText size="sm">
-              {formatJp(item.reading, false)}
-            </ThemedText>
-          </ThemedText>
-          <ThemedText
-            type="secondary"
-            style={styles.meaning}
-          >
-            {item.meaning
-              ? formatEn(item.meaning, "none")
-              : formatJp(item.reading)}
-          </ThemedText>
-        </ThemedView>
-        {!isLast ? (
-          <View style={[styles.separator, { backgroundColor: separatorColor }]} />
-        ) : null}
-      </HapticTab>
-    </>
+          {item.meaning
+            ? formatEn(item.meaning, "none")
+            : formatJp(item.reading)}
+        </ThemedText>
+      </ThemedView>
+    </HapticTab>
   );
 }
 
@@ -424,7 +416,6 @@ function SearchContent({
   isLast: boolean;
   onPress: () => void;
 }) {
-  const separatorColor = useThemeColor({}, "separator");
   const details = (
     meanings && meanings.length > 0
       ? deduplicateEn(meanings.map((m) => formatEn(m.meaning, "none"))).filter(
@@ -435,52 +426,34 @@ function SearchContent({
     .join(", ")
     .replace(/[,;]\s*$/, "");
 
-  const truncatedDetails =
-    details.length > 45 ? details.substring(0, 42) + "..." : details;
-
   return (
-    <>
-      <HapticTab onPress={onPress}>
-        <ThemedView
-          style={[
-            styles.item,
-            isFirst && styles.firstRadius,
-            isLast && styles.lastRadius,
-          ]}
-          lightColor={Colors.light.groupedBackground}
-          darkColor={Colors.dark.groupedBackground}
+    <HapticTab onPress={onPress}>
+      <ThemedView
+        style={[
+          styles.item,
+          isFirst && styles.firstRadius,
+          isLast && styles.lastRadius,
+        ]}
+        lightColor={Colors.light.groupedBackground}
+        darkColor={Colors.dark.groupedBackground}
+      >
+        <ThemedText numberOfLines={1} ellipsizeMode="tail">
+          <ThemedText type="defaultSemiBold">
+            {item.word + " "}
+          </ThemedText>
+          <ThemedText size="sm" type="secondary">
+            {formatJp(item.reading, false)}
+          </ThemedText>
+        </ThemedText>
+        <ThemedText
+          type="secondary"
+          numberOfLines={1}
+          ellipsizeMode="tail"
         >
-          <View style={styles.col}>
-            <View style={styles.titleRow}>
-              <ThemedText
-                type="defaultSemiBold"
-                numberOfLines={1}
-                ellipsizeMode="tail"
-              >
-                {item.word}
-              </ThemedText>
-              <ThemedText
-                type="secondary"
-                numberOfLines={1}
-                ellipsizeMode="tail"
-                style={styles.readingText}
-              >
-                {formatJp(item.reading)}
-              </ThemedText>
-            </View>
-            <ThemedText
-              type="secondary"
-              style={styles.detailsText}
-            >
-              {truncatedDetails}
-            </ThemedText>
-          </View>
-        </ThemedView>
-        {isLast ? null : (
-          <View style={[styles.separator, { backgroundColor: separatorColor }]} />
-        )}
-      </HapticTab>
-    </>
+          {details}
+        </ThemedText>
+      </ThemedView>
+    </HapticTab>
   );
 }
 
@@ -495,46 +468,37 @@ function KanjiContent({
   isLast: boolean;
   onPress: () => void;
 }) {
-  const separatorColor = useThemeColor({}, "separator");
-
   return (
-    <>
-      <HapticTab onPress={onPress}>
-        <ThemedView
-          style={[
-            styles.item,
-            isFirst && styles.firstRadius,
-            isLast && styles.lastRadius,
-          ]}
-          lightColor={Colors.light.groupedBackground}
-          darkColor={Colors.dark.groupedBackground}
-        >
-          <View style={styles.col}>
-            <View style={styles.kanjiRow}>
-              <ThemedText type="defaultSemiBold">{item.character}</ThemedText>
-              <View style={styles.readings}>
-                {item.onReadings?.length ? (
-                  <ThemedText size="sm" type="secondary">
-                    On: {item.onReadings.join(", ")}
-                  </ThemedText>
-                ) : null}
-                {item.kunReadings?.length ? (
-                  <ThemedText size="sm" type="secondary">
-                    Kun: {item.kunReadings.join(", ")}
-                  </ThemedText>
-                ) : null}
-              </View>
-            </View>
-            <ThemedText style={styles.detailsText} type="secondary">
-              {item.meanings ? item.meanings.join(", ") : ""}
-            </ThemedText>
+    <HapticTab onPress={onPress}>
+      <ThemedView
+        style={[
+          styles.item,
+          isFirst && styles.firstRadius,
+          isLast && styles.lastRadius,
+        ]}
+        lightColor={Colors.light.groupedBackground}
+        darkColor={Colors.dark.groupedBackground}
+      >
+        <View style={styles.kanjiRow}>
+          <ThemedText type="defaultSemiBold">{item.character}</ThemedText>
+          <View style={styles.readings}>
+            {item.onReadings?.length ? (
+              <ThemedText size="sm" type="secondary" numberOfLines={1} ellipsizeMode="tail">
+                On: {item.onReadings.join(", ")}
+              </ThemedText>
+            ) : null}
+            {item.kunReadings?.length ? (
+              <ThemedText size="sm" type="secondary" numberOfLines={1} ellipsizeMode="tail">
+                Kun: {item.kunReadings.join(", ")}
+              </ThemedText>
+            ) : null}
           </View>
-        </ThemedView>
-      </HapticTab>
-      {isLast ? null : (
-        <View style={[styles.separator, { backgroundColor: separatorColor }]} />
-      )}
-    </>
+        </View>
+        <ThemedText type="secondary" numberOfLines={1} ellipsizeMode="tail">
+          {item.meanings ? item.meanings.join(", ") : ""}
+        </ThemedText>
+      </ThemedView>
+    </HapticTab>
   );
 }
 
@@ -573,56 +537,19 @@ function RightAction({
 }
 
 const styles = StyleSheet.create({
-  resultItem: {
-    flexDirection: "column",
-    flexWrap: "wrap",
-    padding: 12,
-    gap: 4,
-  },
   separator: {
     height: StyleSheet.hairlineWidth,
     marginHorizontal: 8,
-  },
-  firstRowStyle: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-  },
-  lastRowStyle: {
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
   },
   rightAction: {
     alignItems: "center",
     justifyContent: "center",
     width: ACTION_WIDTH,
   },
-  meaning: {
-    maxWidth: "90%",
-  },
-  col: {
-    flex: 1,
-    flexDirection: "column",
-    alignItems: "flex-start",
-    justifyContent: "center",
-  },
   item: {
     flexDirection: "column",
     padding: 12,
     gap: 4,
-  },
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "flex-start",
-    gap: 8,
-    width: "100%",
-  },
-  readingText: {
-    maxWidth: "70%",
-  },
-  detailsText: {
-    marginTop: 4,
-    width: "100%",
   },
   firstRadius: {
     borderTopLeftRadius: 24,
@@ -640,16 +567,6 @@ const styles = StyleSheet.create({
   readings: {
     flexDirection: "column",
     flexShrink: 1,
-    gap: 2,
-  },
-  kanjiHistoryRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    flexWrap: "wrap",
-  },
-  kanjiHistoryReadings: {
-    flexDirection: "column",
     gap: 2,
   },
 });
