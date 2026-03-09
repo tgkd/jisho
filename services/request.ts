@@ -10,6 +10,10 @@ export const aiExampleSchema = z.object({
   jp: z.string(),
   en: z.string(),
   jp_reading: z.string(),
+  segments: z.array(z.object({
+    ruby: z.string(),
+    rt: z.string().optional(),
+  })).optional(),
 });
 
 export const aiExampleSchemaArray = z.array(aiExampleSchema);

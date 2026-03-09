@@ -123,8 +123,14 @@ export async function addExamplesList(
     await db.withTransactionAsync(async () => {
       for (const example of examples) {
         await db.runAsync(
-          "INSERT INTO examples (japanese_text, english_text, word_id) VALUES (?, ?, ?)",
-          [example.jp, example.en, wId]
+          "INSERT INTO examples (japanese_text, english_text, word_id, tokens, reading) VALUES (?, ?, ?, ?, ?)",
+          [
+            example.jp,
+            example.en,
+            wId,
+            example.segments ? JSON.stringify(example.segments) : null,
+            example.jp_reading || null,
+          ]
         );
       }
     });
@@ -198,7 +204,7 @@ export async function getWordExamples(
     const id = word.id;
     const examplesByWordId = await db.getAllAsync<DBExampleSentence>(
       `
-      SELECT id, japanese_text, english_text, tokens, example_id
+      SELECT id, japanese_text, english_text, tokens, example_id, reading
       FROM examples
       WHERE word_id = ?
       ORDER BY length(japanese_text)
@@ -213,7 +219,7 @@ export async function getWordExamples(
 
     const examplesByText = await db.getAllAsync<DBExampleSentence>(
       `
-      SELECT id, japanese_text, english_text, tokens, example_id
+      SELECT id, japanese_text, english_text, tokens, example_id, reading
       FROM examples
       WHERE
         (tokens IS NOT NULL AND tokens != '' AND
