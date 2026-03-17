@@ -253,10 +253,6 @@ export default function PracticeSessionScreen() {
       }
 
       setSession(sessionData);
-
-      if (!sessionData.content_output && !sessionData.content) {
-        generatePassage(handleStreamComplete);
-      }
     } catch (error) {
       console.error("Failed to load session:", error);
       Alert.alert("Error", "Failed to load practice session");
@@ -264,7 +260,19 @@ export default function PracticeSessionScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [db, sessionId, router, generatePassage, handleStreamComplete]);
+  }, [db, sessionId, router]);
+
+  useEffect(() => {
+    if (
+      !isLoading &&
+      session &&
+      !session.content_output &&
+      !session.content &&
+      !passageIsStreaming
+    ) {
+      generatePassage(handleStreamComplete);
+    }
+  }, [isLoading, session, passageIsStreaming, generatePassage, handleStreamComplete]);
 
   const handleStartChat = () => {
     if (!session) return;
