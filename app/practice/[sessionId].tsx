@@ -18,16 +18,16 @@ import {
 } from "@/services/parse";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
-  ScrollView,
+  Alert, ScrollView,
   StyleSheet,
   TouchableOpacity,
   View
 } from "react-native";
 import Markdown, { RenderRules } from "react-native-markdown-display";
+import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { isJapanese } from "wanakana";
 
 /**
@@ -57,12 +57,36 @@ export default function PracticeSessionScreen() {
     isStreaming: passageIsStreaming,
     isLoading: passageIsLoading,
     generate: generatePassage,
+    cancel: cancelPassage,
   } = useStreamedPassage(session?.level, Number(sessionId));
+  const sessionRef = useRef(session);
 
   const { index: activeSpeechIndex, phase: activeSpeechPhase } = speechState;
 
   const streamingContent = passageData;
   const isGeneratingContent = passageIsStreaming || passageIsLoading;
+
+  const generatingLabels = useMemo(
+    () => [
+      "Generating passage...",
+      "Crafting sentences...",
+      "Adding vocabulary...",
+      "Almost ready...",
+    ],
+    []
+  );
+  const [generatingLabelIndex, setGeneratingLabelIndex] = useState(0);
+
+  useEffect(() => {
+    if (!isGeneratingContent || streamingContent) return;
+    setGeneratingLabelIndex(0);
+    const interval = setInterval(() => {
+      setGeneratingLabelIndex((i) =>
+        i < generatingLabels.length - 1 ? i + 1 : i
+      );
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [isGeneratingContent, streamingContent, generatingLabels]);
 
   // Pre-split clean Japanese text into paragraphs for speech playback
   const japaneseParagraphs = useMemo(() => {
@@ -307,6 +331,18 @@ export default function PracticeSessionScreen() {
     loadSessionData();
   }, [loadSessionData]);
 
+  sessionRef.current = session;
+
+  useEffect(() => {
+    return () => {
+      cancelPassage();
+      const s = sessionRef.current;
+      if (s && !s.content_output && !s.content) {
+        db.runAsync("DELETE FROM practice_sessions WHERE id = ?", [s.id]);
+      }
+    };
+  }, [cancelPassage, db]);
+
   if (isLoading) {
     return (
       <View style={styles.centerContainer}>
@@ -343,11 +379,15 @@ export default function PracticeSessionScreen() {
       contentContainerStyle={styles.contentContainer}
     >
       {isGeneratingContent && !streamingContent ? (
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" />
-          <ThemedText type="secondary" style={{ marginTop: 16 }}>
-            Generating reading passage...
-          </ThemedText>
+        <View style={styles.generatingContainer}>
+          <Animated.Text
+            key={generatingLabelIndex}
+            entering={FadeIn.duration(400)}
+            exiting={FadeOut.duration(400)}
+            style={styles.generatingLabel}
+          >
+            {generatingLabels[generatingLabelIndex]}
+          </Animated.Text>
         </View>
       ) : (
         <>
@@ -380,6 +420,16 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+  },
+  generatingContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingTop: 200,
+  },
+  generatingLabel: {
+    fontSize: 15,
+    color: "#8E8E93",
   },
   container: {
     flex: 1,
