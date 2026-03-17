@@ -12,8 +12,8 @@ import { Card } from "@/components/ui/Card";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { Colors } from "@/constants/Colors";
 import { useMdStyles } from "@/hooks/useMdStyles";
+import { useStreamedChat } from "@/hooks/useStreamedChat";
 import { useThemeColor } from "@/hooks/useThemeColor";
-import { useUnifiedAI } from "@/providers/UnifiedAIProvider";
 import { Button, Host } from "@expo/ui/swift-ui";
 import {
   disabled,
@@ -34,28 +34,17 @@ interface ChatViewProps {
 
 export function ChatView({ initialPrompt }: ChatViewProps) {
   const markdownStyles = useMdStyles();
-  const ai = useUnifiedAI();
   const scrollRef = useRef<FlashListRef<Message>>(null);
-  const abortRef = useRef<AbortController | null>(null);
-  const messagesRef = useRef<Message[]>([]);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [initialized, setInitialized] = useState(false);
   const defaultColor = useThemeColor({}, "text");
 
-  const updateMessages = useCallback((updater: (prev: Message[]) => Message[]) => {
-    setMessages((prev) => {
-      const next = updater(prev);
-      messagesRef.current = next;
-      return next;
-    });
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      abortRef.current?.abort();
-    };
-  }, []);
+  const {
+    messages,
+    sendMessage,
+    isStreaming,
+    cancel,
+    clearMessages: hookClearMessages,
+  } = useStreamedChat();
 
   const copyMessage = useCallback(async (content: string) => {
     await Clipboard.setStringAsync(content);
@@ -64,87 +53,19 @@ export function ChatView({ initialPrompt }: ChatViewProps) {
   const handleSubmit = useCallback(
     async (query: string) => {
       const text = query.trim();
-
-      if (text.length === 0 || isGenerating) {
-        return;
-      }
-
-      abortRef.current?.abort();
-      const controller = new AbortController();
-      abortRef.current = controller;
-
-      try {
-        setIsGenerating(true);
-
-        const userMessage: Message = { role: "user", content: text };
-        const placeholderAssistant: Message = {
-          role: "assistant",
-          content: "",
-        };
-
-        const currentMessages = messagesRef.current;
-        const updatedUIMessages: Message[] = [
-          ...currentMessages,
-          userMessage,
-          placeholderAssistant,
-        ];
-        updateMessages(() => updatedUIMessages);
-
-        const conversationMessages = [...currentMessages, userMessage];
-        let accumulatedContent = "";
-
-        await ai.chatWithMessages(conversationMessages, {
-          onChunk: (chunk: string) => {
-            accumulatedContent += chunk;
-            const content = accumulatedContent;
-            updateMessages((prev) => {
-              const newMessages = [...prev];
-              newMessages[newMessages.length - 1] = {
-                role: "assistant",
-                content,
-              };
-              return newMessages;
-            });
-            scrollRef.current?.scrollToEnd({ animated: true });
-          },
-          onComplete: (_fullResponse: string, error?: string) => {
-            setIsGenerating(false);
-            scrollRef.current?.scrollToEnd({ animated: true });
-
-            if (error) {
-              console.error("AI error:", error);
-              updateMessages((prev) => {
-                const newMessages = [...prev];
-                newMessages[newMessages.length - 1] = {
-                  role: "assistant",
-                  content: `Error: ${error}`,
-                };
-                return newMessages;
-              });
-            }
-          },
-          onError: (error: string) => {
-            console.error("AI error:", error);
-            setIsGenerating(false);
-            updateMessages((prev) => {
-              const newMessages = [...prev];
-              newMessages[newMessages.length - 1] = {
-                role: "assistant",
-                content: `Error: ${error}`,
-              };
-              return newMessages;
-            });
-          },
-        }, controller.signal);
-      } catch (error) {
-        if (!(error instanceof DOMException && error.name === "AbortError")) {
-          console.error("Chat failed:", error);
-        }
-        setIsGenerating(false);
-      }
+      if (text.length === 0 || isStreaming) return;
+      await sendMessage(text);
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
     },
-    [ai, isGenerating, updateMessages],
+    [isStreaming, sendMessage]
   );
+
+  // Auto-scroll during streaming
+  useEffect(() => {
+    if (isStreaming) {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }
+  }, [isStreaming, messages]);
 
   useEffect(() => {
     if (!initialized && initialPrompt) {
@@ -216,13 +137,11 @@ export function ChatView({ initialPrompt }: ChatViewProps) {
   );
 
   const clearMessages = useCallback(() => {
-    if (isGenerating) {
-      return;
-    }
-    abortRef.current?.abort();
-    updateMessages(() => []);
+    if (isStreaming) return;
+    cancel();
+    hookClearMessages();
     setInitialized(false);
-  }, [isGenerating, updateMessages]);
+  }, [isStreaming, cancel, hookClearMessages]);
 
   return (
     <>
@@ -237,7 +156,7 @@ export function ChatView({ initialPrompt }: ChatViewProps) {
                 onPress={clearMessages}
                 modifiers={[
                   labelStyle("iconOnly"),
-                  disabled(isGenerating || messages.length === 0),
+                  disabled(isStreaming || messages.length === 0),
                 ]}
               />
             </Host>
@@ -259,7 +178,7 @@ export function ChatView({ initialPrompt }: ChatViewProps) {
         behavior="translate-with-padding"
         keyboardVerticalOffset={64}
       >
-        <ChatFooterView handleSubmit={handleSubmit} loading={isGenerating} offsetBottom={16} />
+        <ChatFooterView handleSubmit={handleSubmit} loading={isStreaming} offsetBottom={16} />
       </KeyboardAvoidingView>
     </>
   );

@@ -2,6 +2,7 @@ import { HapticTab } from "@/components/HapticTab";
 import { ThemedText } from "@/components/ThemedText";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { useMdStyles } from "@/hooks/useMdStyles";
+import { useStreamedPassage } from "@/hooks/useStreamedPassage";
 import { useThemeColor } from "@/hooks/useThemeColor";
 import { useSpeech } from "@/providers/SpeechProvider";
 import { useUnifiedAI } from "@/providers/UnifiedAIProvider";
@@ -46,14 +47,22 @@ export default function PracticeSessionScreen() {
 
   const [session, setSession] = useState<PracticeSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isGeneratingContent, setIsGeneratingContent] = useState(false);
-  const [streamingContent, setStreamingContent] = useState<string>("");
   const [speechState, setSpeechState] = useState<{
     index: number | null;
     phase: "idle" | "loading" | "paused";
   }>({ index: null, phase: "idle" });
 
+  const {
+    data: passageData,
+    isStreaming: passageIsStreaming,
+    isLoading: passageIsLoading,
+    generate: generatePassage,
+  } = useStreamedPassage(session?.level, Number(sessionId));
+
   const { index: activeSpeechIndex, phase: activeSpeechPhase } = speechState;
+
+  const streamingContent = passageData;
+  const isGeneratingContent = passageIsStreaming || passageIsLoading;
 
   // Pre-split clean Japanese text into paragraphs for speech playback
   const japaneseParagraphs = useMemo(() => {
@@ -216,49 +225,21 @@ export default function PracticeSessionScreen() {
     extractTextFromNode,
   ]);
 
-  const generateContent = useCallback(
-    async (level: string) => {
-      if (isGeneratingContent) return;
+  const handleStreamComplete = useCallback(
+    async (fullText: string) => {
+      const japaneseText = extractJapaneseTextWithParagraphs(fullText);
 
-      setIsGeneratingContent(true);
-      setStreamingContent("");
+      await updateSessionContent(db, Number(sessionId), {
+        output: fullText,
+        text: japaneseText,
+      });
 
-      try {
-        await ai.generateReadingPassageStreaming(level, {
-          onChunk: (chunk: string) => {
-            setStreamingContent((prev) => prev + chunk);
-          },
-          onComplete: async (fullText: string) => {
-            const japaneseText = extractJapaneseTextWithParagraphs(fullText);
-
-            await updateSessionContent(db, Number(sessionId), {
-              output: fullText,
-              text: japaneseText,
-            });
-
-            const updatedSession = await getSession(db, Number(sessionId));
-            if (updatedSession) {
-              setSession(updatedSession);
-            }
-
-            setStreamingContent("");
-            setIsGeneratingContent(false);
-          },
-          onError: (error: string) => {
-            console.error("Streaming error:", error);
-            Alert.alert("Error", "Failed to generate reading passage");
-            setIsGeneratingContent(false);
-            setStreamingContent("");
-          },
-        });
-      } catch (error) {
-        console.error("Failed to generate content:", error);
-        Alert.alert("Error", "Failed to generate reading passage");
-        setIsGeneratingContent(false);
-        setStreamingContent("");
+      const updatedSession = await getSession(db, Number(sessionId));
+      if (updatedSession) {
+        setSession(updatedSession);
       }
     },
-    [ai, db, sessionId, isGeneratingContent],
+    [db, sessionId]
   );
 
   const loadSessionData = useCallback(async () => {
@@ -274,7 +255,7 @@ export default function PracticeSessionScreen() {
       setSession(sessionData);
 
       if (!sessionData.content_output && !sessionData.content) {
-        await generateContent(sessionData.level);
+        generatePassage(handleStreamComplete);
       }
     } catch (error) {
       console.error("Failed to load session:", error);
@@ -283,7 +264,7 @@ export default function PracticeSessionScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [db, sessionId, router, generateContent]);
+  }, [db, sessionId, router, generatePassage, handleStreamComplete]);
 
   const handleStartChat = () => {
     if (!session) return;

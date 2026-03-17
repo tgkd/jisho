@@ -1,4 +1,3 @@
-import { queryOptions } from "@tanstack/react-query";
 import { File, Paths } from "expo-file-system";
 import { fetch, FetchRequestInit } from "expo/fetch";
 import { z } from "zod";
@@ -129,34 +128,6 @@ function getDefaultOptions(): FetchRequestInit {
 
   return { headers, credentials: "include" };
 }
-
-export const aiExamplesQueryOptions = (prompt: string | null) =>
-  queryOptions({
-    enabled: false,
-    queryKey: ["ai-examples", prompt],
-    queryFn: async ({ signal }) => {
-      if (!prompt) {
-        throw new Error("No prompt provided");
-      }
-
-      const params = new URLSearchParams({ word: prompt });
-
-      const resp = await fetch(
-        `${process.env.EXPO_PUBLIC_BASE_URL}/example?${params.toString()}`,
-        {
-          signal,
-          method: "GET",
-          ...getDefaultOptions(),
-        }
-      );
-
-      if (!resp.ok) {
-        throw new Error("Network response was not ok");
-      }
-
-      return resp.json() as Promise<AiExample[]>;
-    },
-  });
 
 /**
  * Get AI explanation for text with streaming response.

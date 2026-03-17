@@ -7,13 +7,10 @@ import React, {
 } from "react";
 import { useMMKVString } from "react-native-mmkv";
 
-import { JLPTLevel } from "@/services/database/practice-sessions";
 import {
   AiExample,
   getAiChat,
   getAiExamples,
-  getAiExplanation,
-  getAiReadingPassageStreaming,
   getAiSound
 } from "@/services/request";
 import { SETTINGS_KEYS } from "@/services/storage";
@@ -29,14 +26,6 @@ export interface StreamingResponse {
   onError: (error: string) => void;
 }
 
-const PRACTICE_SYSTEM_PROMPTS: Record<JLPTLevel, string> = {
-  N5: "You are a friendly Japanese language teacher helping absolute beginners (JLPT N5 level). Use simple Japanese with hiragana when writing in Japanese. Focus on basic vocabulary and grammar patterns like です/ます forms. Always be encouraging and patient. When explaining, provide both Japanese text and English translations.",
-  N4: "You are a supportive Japanese language teacher for elementary students (JLPT N4 level). Use conversational Japanese appropriate for learners who understand basic grammar and can read hiragana and katakana. Introduce simple kanji gradually. Focus on everyday conversations and basic reading comprehension.",
-  N3: "You are a Japanese language teacher for intermediate students (JLPT N3 level). Use natural Japanese with common kanji appropriate for this level. Students can handle more complex sentence structures and should be familiar with て-form, た-form, and basic keigo. Provide challenging but accessible content.",
-  N2: "You are a Japanese language teacher for advanced students (JLPT N2 level). Use natural, moderately formal Japanese similar to what appears in newspapers and general articles. Students should be comfortable with advanced grammar patterns, a wide range of kanji, and various levels of politeness. Include nuanced expressions and cultural context.",
-  N1: "You are a Japanese language teacher for expert students (JLPT N1 level). Use sophisticated, native-level Japanese including complex grammar, advanced kanji, idioms, and formal/literary expressions. Students at this level should be able to understand abstract concepts and subtle nuances in the language. Challenge them with authentic Japanese content.",
-};
-
 class SubscriptionRequiredError extends Error {
   constructor(message: string) {
     super(message);
@@ -44,7 +33,7 @@ class SubscriptionRequiredError extends Error {
   }
 }
 
-async function readResponseStream(
+export async function readResponseStream(
   response: Response,
   streaming: StreamingResponse
 ): Promise<void> {
@@ -82,20 +71,8 @@ async function readResponseStream(
 }
 
 export interface UnifiedAIContextValue {
-  // Core AI operations
   generateExamples: (prompt: string) => Promise<AiExample[]>;
-  explainText: (
-    text: string,
-    streaming: StreamingResponse,
-    signal?: AbortSignal
-  ) => Promise<void>;
   chatWithMessages: (
-    messages: { role: "user" | "assistant"; content: string }[],
-    streaming: StreamingResponse,
-    signal?: AbortSignal
-  ) => Promise<void>;
-  chatWithPractice: (
-    level: JLPTLevel,
     messages: { role: "user" | "assistant"; content: string }[],
     streaming: StreamingResponse,
     signal?: AbortSignal
@@ -104,21 +81,11 @@ export interface UnifiedAIContextValue {
     text: string,
     options?: { language?: string; rate?: number }
   ) => Promise<void>;
-  generateReadingPassageStreaming: (
-    level: string,
-    streaming: StreamingResponse,
-    signal?: AbortSignal
-  ) => Promise<void>;
 
-  // State management
   isGenerating: boolean;
   isAvailable: boolean;
   currentProvider: AIProviderType;
-
-  // Configuration
   setCurrentProvider: (provider: AIProviderType) => void;
-
-  // Utilities
   interrupt: () => void;
 }
 
@@ -176,49 +143,6 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
     [provider, localAI, checkRemoteAccess]
   );
 
-  const explainText = useCallback(
-    async (
-      text: string,
-      streaming: StreamingResponse,
-      signal?: AbortSignal
-    ): Promise<void> => {
-      try {
-        if (provider === "local") {
-          await localAI.explainText(
-            text,
-            streaming.onChunk,
-            (fullResponse, error) => {
-              if (error) {
-                streaming.onError(error);
-              } else {
-                streaming.onComplete(fullResponse);
-              }
-            }
-          );
-        } else {
-          if (!checkRemoteAccess()) {
-            streaming.onError("Subscription required for AI explanations");
-            return;
-          }
-
-          const fetchFn = getAiExplanation(signal);
-          const response = await fetchFn(text);
-
-          if (!response.ok) {
-            throw new Error(`HTTP error: ${response.status}`);
-          }
-
-          await readResponseStream(response, streaming);
-        }
-      } catch (error) {
-        streaming.onError(
-          error instanceof Error ? error.message : "Unknown error"
-        );
-      }
-    },
-    [provider, localAI, checkRemoteAccess]
-  );
-
   const chatWithMessages = useCallback(
     async (
       messages: { role: "user" | "assistant"; content: string }[],
@@ -246,56 +170,6 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
 
           const fetchFn = getAiChat(signal);
           const response = await fetchFn(messages);
-
-          if (!response.ok) {
-            throw new Error(`HTTP error: ${response.status}`);
-          }
-
-          await readResponseStream(response, streaming);
-        }
-      } catch (error) {
-        streaming.onError(
-          error instanceof Error ? error.message : "Unknown error"
-        );
-      }
-    },
-    [provider, localAI, checkRemoteAccess]
-  );
-
-  const chatWithPractice = useCallback(
-    async (
-      level: JLPTLevel,
-      messages: { role: "user" | "assistant"; content: string }[],
-      streaming: StreamingResponse,
-      signal?: AbortSignal
-    ): Promise<void> => {
-      try {
-        const systemPrompt = PRACTICE_SYSTEM_PROMPTS[level];
-        const messagesWithSystem = [
-          { role: "assistant" as const, content: systemPrompt },
-          ...messages,
-        ];
-
-        if (provider === "local") {
-          await localAI.chatWithMessages(
-            messagesWithSystem,
-            streaming.onChunk,
-            (fullResponse, error) => {
-              if (error) {
-                streaming.onError(error);
-              } else {
-                streaming.onComplete(fullResponse);
-              }
-            }
-          );
-        } else {
-          if (!checkRemoteAccess()) {
-            streaming.onError("Subscription required for practice chat");
-            return;
-          }
-
-          const fetchFn = getAiChat(signal);
-          const response = await fetchFn(messagesWithSystem);
 
           if (!response.ok) {
             throw new Error(`HTTP error: ${response.status}`);
@@ -354,41 +228,6 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
     [provider, localAI, speech, checkRemoteAccess]
   );
 
-  const generateReadingPassageStreaming = useCallback(
-    async (
-      level: string,
-      streaming: StreamingResponse,
-      signal?: AbortSignal
-    ): Promise<void> => {
-      try {
-        if (provider === "local") {
-          streaming.onError(
-            "Reading passage generation not supported on local AI"
-          );
-          return;
-        }
-
-        if (!checkRemoteAccess()) {
-          streaming.onError("Subscription required for AI reading passages");
-          return;
-        }
-
-        const response = await getAiReadingPassageStreaming(level, signal);
-
-        if (!response.ok) {
-          throw new Error(`HTTP error: ${response.status}`);
-        }
-
-        await readResponseStream(response, streaming);
-      } catch (error) {
-        streaming.onError(
-          error instanceof Error ? error.message : "Unknown error"
-        );
-      }
-    },
-    [provider, checkRemoteAccess]
-  );
-
   const interrupt = useCallback(() => {
     if (provider === "local") {
       localAI.interrupt();
@@ -397,11 +236,8 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
 
   const contextValue: UnifiedAIContextValue = {
     generateExamples,
-    explainText,
     chatWithMessages,
-    chatWithPractice,
     generateSpeech,
-    generateReadingPassageStreaming,
     isGenerating: isGenerating || localAI.isGenerating,
     isAvailable,
     currentProvider: provider,
