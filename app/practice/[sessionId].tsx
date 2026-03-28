@@ -266,37 +266,34 @@ export default function PracticeSessionScreen() {
     [db, sessionId]
   );
 
-  const loadSessionData = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const sessionData = await getSession(db, Number(sessionId));
-      if (!sessionData) {
+  const hasInitiatedGeneration = useRef(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    getSession(db, Number(sessionId)).then((data) => {
+      if (cancelled) return;
+      if (!data) {
         Alert.alert("Error", "Practice session not found");
         router.back();
         return;
       }
+      setSession(data);
+      setIsLoading(false);
 
-      setSession(sessionData);
-    } catch (error) {
+      if (!data.content_output && !data.content && !hasInitiatedGeneration.current) {
+        hasInitiatedGeneration.current = true;
+        generatePassage(handleStreamComplete);
+      }
+    }).catch((error) => {
+      if (cancelled) return;
       console.error("Failed to load session:", error);
       Alert.alert("Error", "Failed to load practice session");
       router.back();
-    } finally {
-      setIsLoading(false);
-    }
-  }, [db, sessionId, router]);
+    });
 
-  useEffect(() => {
-    if (
-      !isLoading &&
-      session &&
-      !session.content_output &&
-      !session.content &&
-      !passageIsStreaming
-    ) {
-      generatePassage(handleStreamComplete);
-    }
-  }, [isLoading, session, passageIsStreaming, generatePassage, handleStreamComplete]);
+    return () => { cancelled = true; };
+  }, [db, sessionId, router, generatePassage, handleStreamComplete]);
 
   const handleStartChat = () => {
     if (!session) return;
@@ -326,10 +323,6 @@ export default function PracticeSessionScreen() {
       },
     });
   };
-
-  useEffect(() => {
-    loadSessionData();
-  }, [loadSessionData]);
 
   sessionRef.current = session;
 
