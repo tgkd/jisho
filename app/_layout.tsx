@@ -56,16 +56,8 @@ export default function RootLayout() {
     SplashScreen.hideAsync().then(setupAudio);
   }, []);
 
-  // TODO: NativeTabs screen backgrounds don't follow ThemeProvider dark theme on iOS.
-  // react-native-screens does not apply nativeContainerBackgroundColor to the tab controller
-  // view during initialization — only when the prop changes from JS.
-  // This causes white screen backgrounds in dark mode while JS components render correctly.
-  // Tracked in:
-  // - https://github.com/expo/expo/issues/40389
-  // - https://github.com/expo/expo/issues/39969
-  // - https://github.com/software-mansion/react-native-screens/issues/3162
 
-  return (
+return (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
       <QueryClientProvider client={queryClient}>
         <SubscriptionProvider>
