@@ -11,7 +11,7 @@ export const aiExampleSchema = z.object({
   jp_reading: z.string(),
   segments: z.array(z.object({
     ruby: z.string(),
-    rt: z.string().optional(),
+    rt: z.string().nullable().optional(),
   })).optional(),
 });
 

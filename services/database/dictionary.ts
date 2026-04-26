@@ -7,7 +7,7 @@ import {
 } from "./types";
 import { dbWordToDictEntry } from "./utils";
 
-function isSegment(value: unknown): value is FuriganaSegment {
+function isSegment(value: unknown): value is { ruby: string; rt?: string | null } {
   if (!value || typeof value !== "object") {
     return false;
   }
@@ -19,7 +19,7 @@ function isSegment(value: unknown): value is FuriganaSegment {
   }
 
   const rt = segment.rt;
-  if (rt !== undefined && typeof rt !== "string") {
+  if (rt !== undefined && rt !== null && typeof rt !== "string") {
     return false;
   }
 
@@ -33,7 +33,9 @@ function parseSegmentsFromJson(raw: string): FuriganaSegment[] | null {
       return null;
     }
 
-    const segments = parsed.filter(isSegment) as FuriganaSegment[];
+    const segments: FuriganaSegment[] = parsed
+      .filter(isSegment)
+      .map((s) => (s.rt ? { ruby: s.ruby, rt: s.rt } : { ruby: s.ruby }));
     return segments.length > 0 ? segments : null;
   } catch (error) {
     console.warn("Failed to parse example tokens JSON:", error);
@@ -121,6 +123,13 @@ export async function addExamplesList(
 ) {
   try {
     await db.withTransactionAsync(async () => {
+      // Drop prior AI-generated rows for this word so regeneration replaces rather
+      // than accumulates. Pre-loaded JMdict examples have a non-null example_id and
+      // are preserved.
+      await db.runAsync(
+        "DELETE FROM examples WHERE word_id = ? AND example_id IS NULL",
+        [wId]
+      );
       for (const example of examples) {
         await db.runAsync(
           "INSERT INTO examples (japanese_text, english_text, word_id, tokens, reading) VALUES (?, ?, ?, ?, ?)",
