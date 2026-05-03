@@ -23,7 +23,7 @@ PODS:
     - Yoga
   - EXConstants (55.0.15):
     - ExpoModulesCore
-  - Expo (55.0.17):
+  - Expo (55.0.19):
     - ExpoModulesCore
     - hermes-engine
     - RCTRequired
@@ -73,13 +73,13 @@ PODS:
     - SDWebImageAVIFCoder (~> 0.11.0)
     - SDWebImageSVGCoder (~> 1.7.0)
     - SDWebImageWebPCoder (~> 0.14.6)
-  - ExpoKeepAwake (55.0.6):
+  - ExpoKeepAwake (55.0.7):
     - ExpoModulesCore
   - ExpoLinking (55.0.14):
     - ExpoModulesCore
   - ExpoLogBox (55.0.11):
     - React-Core
-  - ExpoModulesCore (55.0.23):
+  - ExpoModulesCore (55.0.24):
     - ExpoModulesJSI
     - hermes-engine
     - RCTRequired
@@ -104,7 +104,7 @@ PODS:
     - ReactNativeDependencies
     - RNWorklets
     - Yoga
-  - ExpoModulesJSI (55.0.23):
+  - ExpoModulesJSI (55.0.24):
     - hermes-engine
     - React-Core
     - React-runtimescheduler
@@ -124,7 +124,7 @@ PODS:
     - ExpoModulesCore
   - ExpoSystemUI (55.0.16):
     - ExpoModulesCore
-  - ExpoUI (55.0.12):
+  - ExpoUI (55.0.13):
     - ExpoModulesCore
     - React-RCTFabric
   - FBLazyVector (0.83.6)
@@ -174,7 +174,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
-  - NitroModules (0.35.4):
+  - NitroModules (0.35.6):
     - hermes-engine
     - RCTRequired
     - RCTTypeSafety
@@ -2706,7 +2706,7 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   AppleLLM: 341c77649c3be1cb967d54e6debd354fe166f56a
   EXConstants: 5caf448ff399f60be9d1053e77aed32e39411900
-  Expo: bfedba58da14bf45546ae57e6a5bd5152a1546b4
+  Expo: 8d901a968aee7a848334798753b63c4a8bf08bd4
   ExpoAsset: f56ed740b6a127da2bfd90832cf688ae309d4410
   ExpoAudio: a826903abdeba843cde8602bd1c077d808b31f1d
   ExpoBlur: 7a86e84e7728108fa6908d7103fa527705a3dbbf
@@ -2717,11 +2717,11 @@ SPEC CHECKSUMS:
   ExpoGlassEffect: 72bcb9dc634262c59897ff7c53c16e2ff03990d0
   ExpoHaptics: 679f09dc37d5981e619bc197732007a3334e80b8
   ExpoImage: bd9e9c5bc4eff7a6883339be305f8b0bb5a0cf1c
-  ExpoKeepAwake: a1baf9810a2dee1905aa9bdd336852598f7220e9
+  ExpoKeepAwake: 861c66deb0f9f28f87882610195f26c4b88fba6f
   ExpoLinking: f9e01f5182f2653ea9d90f18fb47f1913e2f99ef
   ExpoLogBox: 617da77cbc083627692b2ea050a3666808aef2cd
-  ExpoModulesCore: 121f306333afed9321507d99a9804fe5e795c03a
-  ExpoModulesJSI: 24121c9a2f32d5f6b6ca2f7ff54925be716d5841
+  ExpoModulesCore: 088468ce2605ce08b704105945c2232e73a7b9ee
+  ExpoModulesJSI: 9b60671a31c30bc8e24b25632e7cb475a84b9016
   ExpoNetwork: aec041c4e9cb5a30cb4da32b2e315bcca6a7c2e4
   ExpoRouter: e2c56f80102b153c5f8c887b38094ef936c266a2
   ExpoSpeech: 7f5d4a94aea1fbc509cf4ab2649bc2e3f05ea15e
@@ -2729,7 +2729,7 @@ SPEC CHECKSUMS:
   ExpoSQLite: f63db535d24c59722971241ea9ade2a878dfabea
   ExpoSymbols: 8b63e859ba013df1f2fc666f535fddb3d5270569
   ExpoSystemUI: f0f31e6aea8f76b549a463483bdeeb1dcb8a5593
-  ExpoUI: 16f18266ea44f85b00a363760b7e2b8a0b257359
+  ExpoUI: 8620210ed7d67c6b3b4515554e16c37b3a95b7a8
   FBLazyVector: 427fa1856a481856091061293ce865a75aa4f20f
   hermes-engine: c9f19f8cbb42f0679ff52ba21c26e9262f677c0a
   libavif: 5f8e715bea24debec477006f21ef9e95432e254d
@@ -2737,7 +2737,7 @@ SPEC CHECKSUMS:
   libwebp: 02b23773aedb6ff1fd38cec7a77b81414c6842a8
   MMKVCore: 3d16ce9f7d411e135020915fde98a056859a1efa
   NitroMmkv: 7a7572934538ba6748e05dffc6ee8b06caad91cc
-  NitroModules: f45159491c5a0e7161685a301b1c6c11440b3ab1
+  NitroModules: 5a0f735f3f834ac1d998c28fc65be992849c30f3
   PurchasesHybridCommon: 32902b8fad349cf549f096183926ee33af00e36a
   PurchasesHybridCommonUI: 658bc5ca18c14a4bcc543740a3acc092cd0064f6
   RCTDeprecation: 9502b5eb8e3c9eb75ff5a333b2c591bab9d91e28
