@@ -5,7 +5,7 @@ import {
   DBDictEntry, DBExampleSentence, DBWordMeaning, DictionaryEntry, ExampleSentence,
   FuriganaSegment, WordMeaning
 } from "./types";
-import { dbWordToDictEntry } from "./utils";
+import { dbWordToDictEntry, retryDatabaseOperation } from "./utils";
 
 function isSegment(value: unknown): value is { ruby: string; rt?: string | null } {
   if (!value || typeof value !== "object") {
@@ -159,18 +159,19 @@ export async function getDictionaryEntry(
   examples: ExampleSentence[];
 } | null> {
   try {
-    const word = await db.getFirstAsync<DBDictEntry>(
-      "SELECT * FROM words WHERE id = ?",
-      [id]
+    const word = await retryDatabaseOperation(() =>
+      db.getFirstAsync<DBDictEntry>("SELECT * FROM words WHERE id = ?", [id])
     );
 
     if (!word) {
       return null;
     }
 
-    const meanings = await db.getAllAsync<DBWordMeaning>(
-      "SELECT * FROM meanings WHERE word_id = ?",
-      [id]
+    const meanings = await retryDatabaseOperation(() =>
+      db.getAllAsync<DBWordMeaning>(
+        "SELECT * FROM meanings WHERE word_id = ?",
+        [id]
+      )
     );
 
     if (withExamples) {
@@ -211,23 +212,26 @@ export async function getWordExamples(
 ): Promise<ExampleSentence[]> {
   try {
     const id = word.id;
-    const examplesByWordId = await db.getAllAsync<DBExampleSentence>(
-      `
+    const examplesByWordId = await retryDatabaseOperation(() =>
+      db.getAllAsync<DBExampleSentence>(
+        `
       SELECT id, japanese_text, english_text, tokens, example_id, reading
       FROM examples
       WHERE word_id = ?
       ORDER BY length(japanese_text)
       LIMIT 5
       `,
-      [id]
+        [id]
+      )
     );
 
     if (examplesByWordId && examplesByWordId.length > 0) {
       return examplesByWordId.map(mapDbExampleSentence);
     }
 
-    const examplesByText = await db.getAllAsync<DBExampleSentence>(
-      `
+    const examplesByText = await retryDatabaseOperation(() =>
+      db.getAllAsync<DBExampleSentence>(
+        `
       SELECT id, japanese_text, english_text, tokens, example_id, reading
       FROM examples
       WHERE
@@ -242,7 +246,8 @@ export async function getWordExamples(
       ORDER BY length(japanese_text)
       LIMIT 5
       `,
-      [word.word, `%${word.word}%`, word.word, word.word, word.word]
+        [word.word, `%${word.word}%`, word.word, word.word, word.word]
+      )
     );
 
     return examplesByText.map(mapDbExampleSentence);

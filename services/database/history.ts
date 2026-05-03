@@ -1,17 +1,22 @@
 import { SQLiteDatabase } from "expo-sqlite";
 import { DBHistoryEntry, DictionaryEntry, HistoryEntry, KanjiEntry } from "./types";
+import { retryDatabaseOperation } from "./utils";
 
 /**
  * Adds a word entry to search history
  */
 export async function addToHistory(db: SQLiteDatabase, entry: DictionaryEntry) {
   try {
-    await db.runAsync("DELETE FROM history WHERE entry_type = 'word' AND word_id = ?", [entry.id]);
-
-    await db.runAsync(
-      "INSERT INTO history (entry_type, word_id, created_at) VALUES (?, ?, ?)",
-      ['word', entry.id, new Date().toISOString()]
-    );
+    await retryDatabaseOperation(async () => {
+      await db.runAsync(
+        "DELETE FROM history WHERE entry_type = 'word' AND word_id = ?",
+        [entry.id]
+      );
+      await db.runAsync(
+        "INSERT INTO history (entry_type, word_id, created_at) VALUES (?, ?, ?)",
+        ["word", entry.id, new Date().toISOString()]
+      );
+    });
   } catch (error) {
     console.error("Failed to add word to history:", error);
   }
@@ -25,16 +30,20 @@ export async function addKanjiToHistory(
   kanji: KanjiEntry
 ) {
   try {
-    await db.runAsync("DELETE FROM history WHERE entry_type = 'kanji' AND kanji_id = ?", [kanji.id]);
-
     const meaning = kanji.meanings ? kanji.meanings.join(", ") : "";
     const onReadings = kanji.onReadings ? JSON.stringify(kanji.onReadings) : null;
     const kunReadings = kanji.kunReadings ? JSON.stringify(kanji.kunReadings) : null;
-    
-    await db.runAsync(
-      "INSERT INTO history (entry_type, kanji_id, kanji_character, kanji_meaning, kanji_on_readings, kanji_kun_readings, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-      ['kanji', kanji.id, kanji.character, meaning, onReadings, kunReadings, new Date().toISOString()]
-    );
+
+    await retryDatabaseOperation(async () => {
+      await db.runAsync(
+        "DELETE FROM history WHERE entry_type = 'kanji' AND kanji_id = ?",
+        [kanji.id]
+      );
+      await db.runAsync(
+        "INSERT INTO history (entry_type, kanji_id, kanji_character, kanji_meaning, kanji_on_readings, kanji_kun_readings, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        ["kanji", kanji.id, kanji.character, meaning, onReadings, kunReadings, new Date().toISOString()]
+      );
+    });
   } catch (error) {
     console.error("Failed to add kanji to history:", error);
   }
@@ -48,10 +57,9 @@ export async function getHistory(
   limit = 20,
   offset = 0
 ): Promise<HistoryEntry[]> {
-  const result = await db.getAllAsync<
-    DBHistoryEntry & { meaning?: string; history_id?: number }
-  >(
-    `
+  const result = await retryDatabaseOperation(() =>
+    db.getAllAsync<DBHistoryEntry & { meaning?: string; history_id?: number }>(
+      `
     SELECT
       h.id as history_id,
       h.entry_type,
@@ -70,14 +78,15 @@ export async function getHistory(
     ORDER BY h.created_at DESC
     LIMIT ? OFFSET ?
     `,
-    [limit, offset]
+      [limit, offset]
+    )
   );
 
   return result.map((e): HistoryEntry => {
     if (e.entry_type === 'kanji') {
       const onReadings = e.kanji_on_readings ? JSON.parse(e.kanji_on_readings) : [];
       const kunReadings = e.kanji_kun_readings ? JSON.parse(e.kanji_kun_readings) : [];
-      
+
       return {
         id: e.history_id || e.id,
         entryType: 'kanji',
@@ -103,12 +112,14 @@ export async function getHistory(
 }
 
 export async function clearHistory(db: SQLiteDatabase) {
-  await db.runAsync("DELETE FROM history");
+  await retryDatabaseOperation(() => db.runAsync("DELETE FROM history"));
 }
 
 export async function removeHistoryById(db: SQLiteDatabase, historyId: number) {
   try {
-    await db.runAsync("DELETE FROM history WHERE id = ?", [historyId]);
+    await retryDatabaseOperation(() =>
+      db.runAsync("DELETE FROM history WHERE id = ?", [historyId])
+    );
     return true;
   } catch (error) {
     console.error("Failed to remove history item:", error);

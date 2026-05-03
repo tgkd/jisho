@@ -3,7 +3,7 @@ import { fetch, FetchRequestInit } from "expo/fetch";
 import { z } from "zod";
 
 import { DictionaryEntry, ExampleSentence, WordMeaning } from "./database";
-import { settingsStorage, SETTINGS_KEYS } from "./storage";
+import { SETTINGS_KEYS, settingsStorage } from "./storage";
 
 export const aiExampleSchema = z.object({
   jp: z.string(),
@@ -86,9 +86,12 @@ export async function getAiSound(
     Object.assign(headers, defaultOptions.headers);
   }
 
-  const timestamp = Date.now();
-  const filename = `audio_${timestamp}.mp3`;
-  const targetFile = new File(Paths.cache, filename);
+  const cacheKey = hashCacheKey(`${prompt}|${voice ?? ""}|${lang ?? ""}`);
+  const targetFile = new File(Paths.cache, `tts_${cacheKey}.mp3`);
+
+  if (targetFile.exists) {
+    return targetFile;
+  }
 
   const queryParams = new URLSearchParams({
     prompt,
@@ -110,6 +113,14 @@ export async function getAiSound(
   }
 
   return file;
+}
+
+function hashCacheKey(input: string): string {
+  let hash = 0;
+  for (let i = 0; i < input.length; i++) {
+    hash = (hash * 31 + input.charCodeAt(i)) | 0;
+  }
+  return (hash >>> 0).toString(36);
 }
 
 /**

@@ -66,9 +66,13 @@ describe('ExamplesImporter', () => {
     expect(firstRows[0]).toMatchObject({
       japanese_text: '日本語の文です。',
       english_text: 'This is a sentence.',
-      tokens: '["日本語","文"]',
       example_id: 'example_1'
     });
+    expect(JSON.parse(firstRows[0].tokens)).toEqual([
+      { ruby: '日本語', rt: 'にほんご' },
+      { ruby: 'の' },
+      { ruby: '文です。' }
+    ]);
 
     const updatedContent = [
       'A: 日本語の文です。   Updated translation.#ID=example_1',
@@ -92,8 +96,12 @@ describe('ExamplesImporter', () => {
     expect(rowsAfter[0]).toMatchObject({
       japanese_text: '日本語の文です。',
       english_text: 'Updated translation.',
-      tokens: '["日本語","文"]',
       example_id: 'example_1'
     });
+    expect(JSON.parse(rowsAfter[0].tokens)).toEqual([
+      { ruby: '日本語', rt: 'にほんご' },
+      { ruby: 'の' },
+      { ruby: '文です。' }
+    ]);
   });
 });

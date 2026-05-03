@@ -5,33 +5,70 @@ import { Alert } from "react-native";
 import * as wanakana from "wanakana";
 import { DBDictEntry, DictionaryEntry, SearchDictionaryResult, SearchQuery, WordMeaning } from "./types";
 
+type ScriptType = "romaji" | "hiragana" | "katakana" | "japanese-mixed" | "other";
+
+function detectScript(query: string): ScriptType {
+  let hasRomaji = false;
+  let hasHiragana = false;
+  let hasKatakana = false;
+  let hasKanji = false;
+
+  for (let i = 0; i < query.length; i++) {
+    const code = query.charCodeAt(i);
+
+    if (code >= 0x3040 && code <= 0x309f) {
+      hasHiragana = true;
+    } else if (code >= 0x30a0 && code <= 0x30ff) {
+      hasKatakana = true;
+    } else if (code >= 0x4e00 && code <= 0x9fff) {
+      hasKanji = true;
+    } else if (
+      (code >= 0x41 && code <= 0x5a) ||
+      (code >= 0x61 && code <= 0x7a)
+    ) {
+      hasRomaji = true;
+    }
+  }
+
+  const japaneseSignals = [hasHiragana, hasKatakana, hasKanji].filter(Boolean).length;
+
+  if (japaneseSignals === 0 && hasRomaji) return "romaji";
+  if (hasHiragana && !hasKatakana && !hasKanji) return "hiragana";
+  if (hasKatakana && !hasHiragana && !hasKanji) return "katakana";
+  if (japaneseSignals > 0) return "japanese-mixed";
+  return "other";
+}
+
 export function processSearchQuery(query: string): SearchQuery {
-  const result: SearchQuery = {
-    original: query,
-    romaji: wanakana.isJapanese(query) ? wanakana.toRomaji(query) : undefined,
-  };
+  const script = detectScript(query);
+  const result: SearchQuery = { original: query };
 
-  if (wanakana.isRomaji(query)) {
-    result.hiragana = wanakana.toHiragana(query);
-    result.katakana = wanakana.toKatakana(query);
-  } else if (wanakana.isHiragana(query)) {
-    result.katakana = wanakana.toKatakana(query);
-  } else if (wanakana.isKatakana(query)) {
-    result.hiragana = wanakana.toHiragana(query);
-  } else if (wanakana.isJapanese(query)) {
-    const hiragana = wanakana.toHiragana(query);
-    const katakana = wanakana.toKatakana(query);
-
-    if (hiragana !== query) result.hiragana = hiragana;
-    if (katakana !== query) result.katakana = katakana;
+  switch (script) {
+    case "romaji":
+      result.hiragana = wanakana.toHiragana(query);
+      result.katakana = wanakana.toKatakana(query);
+      break;
+    case "hiragana":
+      result.katakana = wanakana.toKatakana(query);
+      result.romaji = wanakana.toRomaji(query);
+      break;
+    case "katakana":
+      result.hiragana = wanakana.toHiragana(query);
+      result.romaji = wanakana.toRomaji(query);
+      break;
+    case "japanese-mixed": {
+      result.romaji = wanakana.toRomaji(query);
+      const hiragana = wanakana.toHiragana(query);
+      const katakana = wanakana.toKatakana(query);
+      if (hiragana !== query) result.hiragana = hiragana;
+      if (katakana !== query) result.katakana = katakana;
+      break;
+    }
+    case "other":
+      break;
   }
 
   return result;
-}
-
-export function tokenizeJp(text: string) {
-  const tokens = wanakana.tokenize(text);
-  return tokens.map((t) => (typeof t === "string" ? t : t.value));
 }
 
 export function createEmptyResult(error?: string): SearchDictionaryResult {
@@ -97,6 +134,38 @@ export function dbWordToDictEntry(word: DBDictEntry): DictionaryEntry {
   };
 }
 
+/**
+ * Retries a database operation when SQLite reports the database is busy
+ * or locked. Uses exponential backoff between attempts; non-lock errors
+ * propagate immediately.
+ */
+export async function retryDatabaseOperation<T>(
+  operation: () => Promise<T>,
+  maxRetries: number = 3,
+  delay: number = 50
+): Promise<T> {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await operation();
+    } catch (error) {
+      const isLastAttempt = i === maxRetries - 1;
+      const isDatabaseLocked =
+        error instanceof Error &&
+        (error.message.includes("database is locked") ||
+          error.message.includes("SQLITE_BUSY"));
+
+      if (isLastAttempt || !isDatabaseLocked) {
+        throw error;
+      }
+
+      await new Promise((resolve) =>
+        setTimeout(resolve, delay * Math.pow(2, i))
+      );
+    }
+  }
+  throw new Error("Retry limit exceeded");
+}
+
 export async function resetDatabase(db: SQLiteDatabase): Promise<void> {
   try {
     console.log("Starting database reset process...");
@@ -105,11 +174,9 @@ export async function resetDatabase(db: SQLiteDatabase): Promise<void> {
       DROP TABLE IF EXISTS meanings;
       DROP TABLE IF EXISTS words;
       DROP TABLE IF EXISTS examples;
-      DROP TABLE IF EXISTS edict_fts;
-      DROP TABLE IF EXISTS edict_meanings;
-      DROP TABLE IF EXISTS edict_entries;
       DROP TABLE IF EXISTS history;
-      DROP TABLE IF EXISTS audio_blobs;
+      DROP TABLE IF EXISTS practice_sessions;
+      DROP TABLE IF EXISTS furigana;
       DROP TABLE IF EXISTS kanji;
     `);
 

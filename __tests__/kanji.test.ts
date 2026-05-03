@@ -1,7 +1,7 @@
 import type { SQLiteDatabase } from "expo-sqlite";
 
 import {
-  getKanji, getKanjiById, getKanjiByUnicode, getKanjiList, searchKanji
+  getKanji, getKanjiById, searchKanji
 } from "../services/database/kanji";
 import { DB_PATH, ExpoSQLiteTestAdapter } from "../test-utils/db-adapter";
 
@@ -104,14 +104,6 @@ describe("Kanji Database Operations", () => {
     expect(results.length).toBeLessThanOrEqual(1);
   });
 
-  test("getKanjiByUnicode returns matching character", async () => {
-    const waterUnicode = "U6c34";
-    const entry = await getKanjiByUnicode(db, waterUnicode);
-
-    expect(entry).not.toBeNull();
-    expect(entry!.character).toBe("水");
-  });
-
   test("getKanjiById returns matching character", async () => {
     const water = await getKanji(db, "水");
     expect(water).not.toBeNull();
@@ -124,20 +116,6 @@ describe("Kanji Database Operations", () => {
   test("getKanjiById returns null for non-existent id", async () => {
     const entry = await getKanjiById(db, 999999);
     expect(entry).toBeNull();
-  });
-
-  test("getKanjiList returns 50 entries with parsed fields", async () => {
-    const list = await getKanjiList(db);
-
-    expect(Array.isArray(list)).toBe(true);
-    expect(list.length).toBe(50);
-
-    for (const entry of list) {
-      expect(entry).toHaveProperty("character");
-      expect(entry).toHaveProperty("meanings");
-      expect(entry).toHaveProperty("onReadings");
-      expect(entry).toHaveProperty("kunReadings");
-    }
   });
 
   test("entries have grade, strokeCount, and frequency fields", async () => {

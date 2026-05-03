@@ -39,16 +39,53 @@ async function ensureFuriganaTable(db: SQLiteDatabase) {
 }
 
 /**
+ * Ensures the meta key/value table exists. Used to track one-shot
+ * background migrations whose state isn't expressible via user_version.
+ */
+async function ensureMetaTable(db: SQLiteDatabase) {
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS meta (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
+  `);
+}
+
+async function getMetaFlag(db: SQLiteDatabase, key: string): Promise<boolean> {
+  const row = await db.getFirstAsync<{ value: string } | null>(
+    "SELECT value FROM meta WHERE key = ?",
+    [key]
+  );
+  return row?.value === "1";
+}
+
+async function setMetaFlag(db: SQLiteDatabase, key: string): Promise<void> {
+  await db.runAsync(
+    "INSERT OR REPLACE INTO meta (key, value) VALUES (?, '1')",
+    [key]
+  );
+}
+
+/**
  * Populates the furigana table from the bundled seed database in the background.
- * Runs independently of version checks so it retries on next launch if interrupted.
+ * Guarded by a meta flag so the work runs once — interrupted populations are
+ * retried on the next launch because the flag is only set after success.
  */
 async function populateFuriganaFromSeed(db: SQLiteDatabase) {
   try {
-    const row = await db.getFirstAsync<{ count: number }>(
+    await ensureMetaTable(db);
+
+    if (await getMetaFlag(db, "furigana_populated")) {
+      return;
+    }
+
+    // Existing installs may already have a populated furigana table from
+    // an earlier run. If so, mark the flag and skip the import.
+    const existing = await db.getFirstAsync<{ count: number }>(
       "SELECT count(*) as count FROM furigana"
     );
-
-    if (row && row.count > 0) {
+    if (existing && existing.count > 0) {
+      await setMetaFlag(db, "furigana_populated");
       return;
     }
 
@@ -87,6 +124,8 @@ async function populateFuriganaFromSeed(db: SQLiteDatabase) {
     await seedDb.closeAsync();
     await deleteDatabaseAsync(SEED_COPY_NAME);
 
+    await setMetaFlag(db, "furigana_populated");
+
     const inserted = await db.getFirstAsync<{ count: number }>(
       "SELECT count(*) as count FROM furigana"
     );
@@ -117,16 +156,6 @@ async function ensureUserDataTables(db: SQLiteDatabase) {
       FOREIGN KEY (word_id) REFERENCES words (id)
     );
 
-    CREATE TABLE IF NOT EXISTS audio_blobs (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      file_path TEXT NOT NULL,
-      word_id INTEGER,
-      example_id INTEGER,
-      audio_data BLOB NOT NULL,
-      created_at TEXT NOT NULL,
-      FOREIGN KEY (example_id) REFERENCES examples (id)
-    );
-
     CREATE TABLE IF NOT EXISTS practice_sessions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       level TEXT NOT NULL,
@@ -138,63 +167,101 @@ async function ensureUserDataTables(db: SQLiteDatabase) {
       updated_at INTEGER NOT NULL
     );
 
-    CREATE TABLE IF NOT EXISTS audio_cache (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      text TEXT NOT NULL UNIQUE,
-      audio_data BLOB NOT NULL,
-      created_at INTEGER NOT NULL
-    );
-
     CREATE INDEX IF NOT EXISTS idx_history_entry_type ON history(entry_type);
     CREATE INDEX IF NOT EXISTS idx_history_kanji_id ON history(kanji_id);
-    CREATE INDEX IF NOT EXISTS idx_audio_example_id ON audio_blobs(example_id);
     CREATE INDEX IF NOT EXISTS idx_practice_sessions_level ON practice_sessions(level);
     CREATE INDEX IF NOT EXISTS idx_practice_sessions_updated_at ON practice_sessions(updated_at);
-    CREATE INDEX IF NOT EXISTS idx_audio_cache_text ON audio_cache(text);
+  `);
+}
+
+async function dropDeprecatedAudioTables(db: SQLiteDatabase) {
+  await db.execAsync(`
+    DROP TABLE IF EXISTS audio_blobs;
+    DROP TABLE IF EXISTS audio_cache;
+  `);
+}
+
+async function ensureWordsIndexes(db: SQLiteDatabase) {
+  await db.execAsync(`
+    CREATE INDEX IF NOT EXISTS idx_words_reading_hiragana ON words(reading_hiragana);
+  `);
+}
+
+async function ensureMeaningsFts(db: SQLiteDatabase) {
+  const existing = await db.getFirstAsync<{ name: string } | null>(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name='meanings_fts'"
+  );
+
+  if (existing) {
+    return;
+  }
+
+  await db.execAsync(`
+    CREATE VIRTUAL TABLE meanings_fts USING fts5(
+      meaning,
+      content='meanings',
+      content_rowid='id'
+    );
+
+    CREATE TRIGGER IF NOT EXISTS meanings_ai AFTER INSERT ON meanings BEGIN
+      INSERT INTO meanings_fts(rowid, meaning) VALUES (new.id, new.meaning);
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS meanings_ad AFTER DELETE ON meanings BEGIN
+      INSERT INTO meanings_fts(meanings_fts, rowid, meaning) VALUES('delete', old.id, old.meaning);
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS meanings_au AFTER UPDATE ON meanings BEGIN
+      INSERT INTO meanings_fts(meanings_fts, rowid, meaning) VALUES('delete', old.id, old.meaning);
+      INSERT INTO meanings_fts(rowid, meaning) VALUES (new.id, new.meaning);
+    END;
+
+    INSERT INTO meanings_fts(meanings_fts) VALUES('rebuild');
   `);
 }
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
-  const DATABASE_VERSION = 22;
+  const DATABASE_VERSION = 24;
 
   try {
     // Test if database is corrupted by trying a simple query
     try {
       await db.getFirstAsync("SELECT COUNT(*) FROM sqlite_master");
     } catch (corruptionError: any) {
-      console.error("Database corruption detected:", corruptionError?.message);
-      if (
-        corruptionError?.message?.includes(
-          "database disk image is malformed"
-        ) ||
-        corruptionError?.message?.includes("database is locked")
-      ) {
-        const { File } = await import("expo-file-system");
-        const dbPath = db.databasePath;
+      const message = corruptionError?.message ?? "";
+      const isMalformed = message.includes("database disk image is malformed");
 
-        console.log("Deleting corrupted database at:", dbPath);
-
-        try {
-          await db.closeAsync();
-        } catch {}
-
-        try {
-          const dbFile = new File(dbPath);
-          const walFile = new File(dbPath + "-wal");
-          const shmFile = new File(dbPath + "-shm");
-
-          if (dbFile.exists) dbFile.delete();
-          if (walFile.exists) walFile.delete();
-          if (shmFile.exists) shmFile.delete();
-        } catch (deleteError) {
-          console.error("Error deleting corrupted database:", deleteError);
-        }
-
-        throw new Error(
-          "Database corrupted and deleted - restart required for fresh copy"
-        );
+      if (!isMalformed) {
+        // Transient errors (locks, busy timeouts) must not delete the DB.
+        throw corruptionError;
       }
-      throw corruptionError;
+
+      console.error("Database corruption detected:", message);
+
+      const { File } = await import("expo-file-system");
+      const dbPath = db.databasePath;
+
+      console.log("Deleting corrupted database at:", dbPath);
+
+      try {
+        await db.closeAsync();
+      } catch {}
+
+      try {
+        const dbFile = new File(dbPath);
+        const walFile = new File(dbPath + "-wal");
+        const shmFile = new File(dbPath + "-shm");
+
+        if (dbFile.exists) dbFile.delete();
+        if (walFile.exists) walFile.delete();
+        if (shmFile.exists) shmFile.delete();
+      } catch (deleteError) {
+        console.error("Error deleting corrupted database:", deleteError);
+      }
+
+      throw new Error(
+        "Database corrupted and deleted - restart required for fresh copy"
+      );
     }
 
     const versionResult = await db.getFirstAsync<{ user_version: number }>(
@@ -218,6 +285,15 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
 
     if (currentDbVersion < 22) {
       await ensureFuriganaTable(db);
+    }
+
+    if (currentDbVersion < 23) {
+      await dropDeprecatedAudioTables(db);
+      await ensureWordsIndexes(db);
+    }
+
+    if (currentDbVersion < 24) {
+      await ensureMeaningsFts(db);
     }
 
     await ensureUserDataTables(db);

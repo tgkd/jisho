@@ -1,7 +1,11 @@
 import type { SQLiteDatabase } from "expo-sqlite";
 
 import { searchDictionary } from "../services/database/search";
-import { DB_PATH, ExpoSQLiteTestAdapter } from "../test-utils/db-adapter";
+import {
+  DB_PATH,
+  ExpoSQLiteTestAdapter,
+  openWritableSeedCopy,
+} from "../test-utils/db-adapter";
 
 jest.mock("expo-sqlite", () => ({}), { virtual: true });
 
@@ -56,6 +60,33 @@ describe("searchDictionary integration", () => {
     );
   });
 
+  test("queries on reading_hiragana use the new index when migrated", async () => {
+    const writable = await openWritableSeedCopy();
+    try {
+      await writable.exec(
+        "CREATE INDEX IF NOT EXISTS idx_words_reading_hiragana ON words(reading_hiragana);"
+      );
+
+      const indexes = await writable.getAllAsync<{ name: string }>(
+        "PRAGMA index_list(words)"
+      );
+      expect(indexes.map((i) => i.name)).toEqual(
+        expect.arrayContaining(["idx_words_reading_hiragana"])
+      );
+
+      const planRows = await writable.getAllAsync<{ detail: string }>(
+        "EXPLAIN QUERY PLAN SELECT id FROM words WHERE reading_hiragana = ?",
+        ["かど"]
+      );
+      const usesIndex = planRows.some((row) =>
+        row.detail.includes("idx_words_reading_hiragana")
+      );
+      expect(usesIndex).toBe(true);
+    } finally {
+      await writable.close();
+    }
+  });
+
   test("searchDictionary ranks exact reading matches first", async () => {
     const result = await searchDictionary(db, "かど", { limit: 10 });
 
@@ -87,6 +118,26 @@ describe("searchDictionary integration", () => {
 
     expect(kadoIndex).toBeGreaterThan(-1);
     expect(kadoIndex).toBeLessThan(5);
+  });
+
+  test("single kanji search exact-matches outrank substring matches", async () => {
+    const result = await searchDictionary(db, "水", { limit: 10 });
+
+    expect(result.words.length).toBeGreaterThan(0);
+
+    const exactWaterIdx = result.words.findIndex(
+      (w) => w.word === "水" || w.kanji === "水"
+    );
+    const compoundIdx = result.words.findIndex(
+      (w) =>
+        (w.word !== "水" && w.kanji !== "水") &&
+        ((w.kanji ?? w.word).includes("水"))
+    );
+
+    expect(exactWaterIdx).toBeGreaterThan(-1);
+    if (compoundIdx > -1) {
+      expect(exactWaterIdx).toBeLessThan(compoundIdx);
+    }
   });
 
   test("english queries return matching meanings", async () => {
@@ -316,5 +367,66 @@ describe("searchDictionary integration", () => {
       );
       expect(hasWaterMeaning).toBe(true);
     });
+  });
+});
+
+describe("English search via meanings_fts", () => {
+  let writable: ExpoSQLiteTestAdapter;
+  let db: SQLiteDatabase;
+
+  beforeAll(async () => {
+    writable = await openWritableSeedCopy();
+    db = writable.asSQLiteDatabase();
+
+    await writable.exec(`
+      CREATE VIRTUAL TABLE IF NOT EXISTS meanings_fts USING fts5(
+        meaning,
+        content='meanings',
+        content_rowid='id'
+      );
+      INSERT INTO meanings_fts(meanings_fts) VALUES('rebuild');
+    `);
+  });
+
+  afterAll(async () => {
+    await writable.close();
+  });
+
+  test("FTS-backed English query returns matching meanings", async () => {
+    const result = await searchDictionary(db, "water", { limit: 10 });
+
+    expect(result.error).toBeUndefined();
+    expect(result.words.length).toBeGreaterThan(0);
+
+    const hasWaterMeaning = Array.from(result.meanings.values()).some(
+      (meaningList) =>
+        meaningList.some((m) => m.meaning.toLowerCase().includes("water"))
+    );
+    expect(hasWaterMeaning).toBe(true);
+  });
+
+  test("FTS-backed English query ranks exact matches first", async () => {
+    const result = await searchDictionary(db, "water", { limit: 5 });
+
+    expect(result.words.length).toBeGreaterThan(0);
+
+    const firstWordMeanings = result.meanings.get(result.words[0].id) ?? [];
+    const firstWordHasExact = firstWordMeanings.some(
+      (m) => m.meaning.toLowerCase() === "water"
+    );
+
+    expect(firstWordHasExact).toBe(true);
+  });
+
+  test("FTS-backed English query uses meanings_fts in query plan", async () => {
+    const planRows = await writable.getAllAsync<{ detail: string }>(
+      "EXPLAIN QUERY PLAN SELECT m.word_id FROM meanings_fts JOIN meanings m ON m.id = meanings_fts.rowid WHERE meanings_fts.meaning MATCH ?",
+      ["water"]
+    );
+
+    const usesVirtualTable = planRows.some((row) =>
+      row.detail.toUpperCase().includes("VIRTUAL TABLE")
+    );
+    expect(usesVirtualTable).toBe(true);
   });
 });

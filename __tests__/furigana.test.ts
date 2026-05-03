@@ -1,93 +1,102 @@
-import { openDatabaseSync } from 'expo-sqlite';
-import { getFuriganaForText, searchFuriganaByPartialReading, searchTextsByReading } from '../services/database/furigana';
+import type { SQLiteDatabase } from "expo-sqlite";
 
-describe('Furigana Database Operations', () => {
-  let db: any;
+import { getFuriganaForText } from "../services/database/furigana";
+import {
+  ExpoSQLiteTestAdapter,
+  openWritableSeedCopy,
+} from "../test-utils/db-adapter";
 
-  beforeAll(() => {
-    db = openDatabaseSync(':memory:');
+jest.mock("expo-sqlite", () => ({}), { virtual: true });
 
-    // Create furigana table for testing
-    db.execSync(`
-      CREATE TABLE furigana (
-        id INTEGER PRIMARY KEY,
-        text TEXT NOT NULL,
-        reading TEXT NOT NULL,
-        reading_hiragana TEXT,
-        segments TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+jest.mock("expo-file-system", () => {
+  class MockDirectory {}
 
-    db.execSync(`
-      CREATE INDEX idx_furigana_text ON furigana(text)
-    `);
+  class MockFile {
+    get exists() {
+      return false;
+    }
 
-    db.execSync(`
-      CREATE INDEX idx_furigana_reading ON furigana(reading)
-    `);
+    delete() {}
+  }
 
-    // Insert test data
-    db.execSync(`
-      INSERT INTO furigana (text, reading, reading_hiragana, segments) VALUES
-      ('言う', 'いう', 'いう', '[{"ruby":"言","rt":"い"},{"ruby":"う"}]'),
-      ('間', 'ま', 'ま', '[{"ruby":"間","rt":"ま"}]'),
-      ('あっと言う間に', 'あっというまに', 'あっというまに', '[{"ruby":"あっと"},{"ruby":"言","rt":"い"},{"ruby":"う"},{"ruby":"間","rt":"ま"},{"ruby":"に"}]'),
-      ('今日', 'きょう', 'きょう', '[{"ruby":"今日","rt":"きょう"}]')
-    `);
+  return {
+    Directory: MockDirectory,
+    File: MockFile,
+    Paths: { document: "", cache: "" },
+  };
+});
+
+jest.mock("react-native", () => ({
+  Alert: { alert: jest.fn() },
+}));
+
+async function ensureFuriganaTable(adapter: ExpoSQLiteTestAdapter) {
+  await adapter.exec(`
+    CREATE TABLE IF NOT EXISTS furigana (
+      id INTEGER PRIMARY KEY,
+      text TEXT NOT NULL,
+      reading TEXT NOT NULL,
+      reading_hiragana TEXT,
+      segments TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_furigana_text_reading ON furigana(text, reading);
+    CREATE INDEX IF NOT EXISTS idx_furigana_text ON furigana(text);
+  `);
+}
+
+describe("getFuriganaForText", () => {
+  let adapter: ExpoSQLiteTestAdapter;
+  let db: SQLiteDatabase;
+
+  beforeAll(async () => {
+    adapter = await openWritableSeedCopy();
+    db = adapter.asSQLiteDatabase();
+    await ensureFuriganaTable(adapter);
+
+    await adapter.runAsync(
+      `INSERT OR IGNORE INTO furigana (text, reading, reading_hiragana, segments) VALUES
+        (?, ?, ?, ?),
+        (?, ?, ?, ?)`,
+      [
+        "言う",
+        "いう",
+        "いう",
+        '[{"ruby":"言","rt":"い"},{"ruby":"う"}]',
+        "今日",
+        "きょう",
+        "きょう",
+        '[{"ruby":"今日","rt":"きょう"}]',
+      ]
+    );
   });
 
-  afterAll(() => {
-    db.closeSync();
+  afterAll(async () => {
+    await adapter.close();
   });
 
-  test('getFuriganaForText returns correct furigana data', async () => {
-    const result = await getFuriganaForText(db, '言う');
+  test("returns parsed segments for a known text", async () => {
+    const result = await getFuriganaForText(db, "言う");
 
-    expect(result).toBeTruthy();
-    expect(result?.text).toBe('言う');
-    expect(result?.reading).toBe('いう');
-    expect(result?.segments).toHaveLength(2);
-    expect(result?.segments[0]).toEqual({ ruby: '言', rt: 'い' });
-    expect(result?.segments[1]).toEqual({ ruby: 'う' });
+    expect(result).not.toBeNull();
+    expect(result!.text).toBe("言う");
+    expect(result!.reading).toBe("いう");
+    expect(result!.segments).toEqual([
+      { ruby: "言", rt: "い" },
+      { ruby: "う" },
+    ]);
   });
 
-  test('getFuriganaForText returns null for non-existent text', async () => {
-    const result = await getFuriganaForText(db, '存在しない');
+  test("returns null for unknown text", async () => {
+    const result = await getFuriganaForText(db, "存在しない単語xyz");
     expect(result).toBeNull();
   });
 
-  test('searchTextsByReading finds texts by reading', async () => {
-    const results = await searchTextsByReading(db, 'いう');
+  test("handles single-segment readings", async () => {
+    const result = await getFuriganaForText(db, "今日");
 
-    expect(results).toHaveLength(1);
-    expect(results[0].text).toBe('言う');
-    expect(results[0].reading).toBe('いう');
-  });
-
-  test('searchFuriganaByPartialReading finds texts by partial reading', async () => {
-    const results = await searchFuriganaByPartialReading(db, 'あっと');
-
-    expect(results).toHaveLength(1);
-    expect(results[0].text).toBe('あっと言う間に');
-    expect(results[0].reading).toBe('あっというまに');
-  });
-
-  test('furigana segments are parsed correctly', async () => {
-    const result = await getFuriganaForText(db, 'あっと言う間に');
-
-    expect(result?.segments).toHaveLength(5);
-    expect(result?.segments[0]).toEqual({ ruby: 'あっと' });
-    expect(result?.segments[1]).toEqual({ ruby: '言', rt: 'い' });
-    expect(result?.segments[2]).toEqual({ ruby: 'う' });
-    expect(result?.segments[3]).toEqual({ ruby: '間', rt: 'ま' });
-    expect(result?.segments[4]).toEqual({ ruby: 'に' });
-  });
-
-  test('special readings like 義訓 are handled correctly', async () => {
-    const result = await getFuriganaForText(db, '今日');
-
-    expect(result?.segments).toHaveLength(1);
-    expect(result?.segments[0]).toEqual({ ruby: '今日', rt: 'きょう' });
+    expect(result).not.toBeNull();
+    expect(result!.segments).toHaveLength(1);
+    expect(result!.segments[0]).toEqual({ ruby: "今日", rt: "きょう" });
   });
 });

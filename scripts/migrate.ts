@@ -12,11 +12,11 @@
 
 import { existsSync, unlinkSync } from 'fs';
 import { join } from 'path';
-import { DatabaseManager } from './import/utils/database';
-import { WordsImporter } from './import/words-importer';
+import { ExamplesImporter } from './import/examples-importer';
 import { FuriganaImporter } from './import/furigana-importer';
 import { KanjiImporter } from './import/kanji-importer';
-import { ExamplesImporter } from './import/examples-importer';
+import { DatabaseManager } from './import/utils/database';
+import { WordsImporter } from './import/words-importer';
 
 interface MigrationConfig {
   dbPath: string;
@@ -202,7 +202,6 @@ class DatabaseMigrator {
       console.log(`   Kanji: ${stats.kanji?.toLocaleString() || 0}`);
       console.log(`   Examples: ${stats.examples?.toLocaleString() || 0}`);
       console.log(`   History: ${stats.history?.toLocaleString() || 0}`);
-      console.log(`   Audio blobs: ${stats.audio_blobs?.toLocaleString() || 0}`);
 
       // Calculate file size
       const fs = await import('fs');

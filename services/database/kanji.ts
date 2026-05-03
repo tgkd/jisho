@@ -1,5 +1,6 @@
 import { SQLiteDatabase } from "expo-sqlite";
 import { DBKanji, KanjiEntry } from "./types";
+import { retryDatabaseOperation } from "./utils";
 
 function parseKanjiResult(result: DBKanji): KanjiEntry {
   const onReadings = result.on_readings
@@ -30,9 +31,11 @@ export async function getKanji(
   character: string
 ): Promise<KanjiEntry | null> {
   try {
-    const result = await db.getFirstAsync<DBKanji>(
-      "SELECT * FROM kanji WHERE character = ?",
-      [character]
+    const result = await retryDatabaseOperation(() =>
+      db.getFirstAsync<DBKanji>(
+        "SELECT * FROM kanji WHERE character = ?",
+        [character]
+      )
     );
 
     if (!result) {
@@ -52,12 +55,14 @@ export async function searchKanji(
   limit: number = 20
 ): Promise<KanjiEntry[]> {
   try {
-    const results = await db.getAllAsync<DBKanji>(
-      `SELECT * FROM kanji
-       WHERE character LIKE ? OR meanings LIKE ?
-       ORDER BY id
-       LIMIT ?`,
-      [`%${query}%`, `%${query}%`, limit]
+    const results = await retryDatabaseOperation(() =>
+      db.getAllAsync<DBKanji>(
+        `SELECT * FROM kanji
+         WHERE character LIKE ? OR meanings LIKE ?
+         ORDER BY id
+         LIMIT ?`,
+        [`%${query}%`, `%${query}%`, limit]
+      )
     );
 
     return results.map(parseKanjiResult);
@@ -67,35 +72,16 @@ export async function searchKanji(
   }
 }
 
-export async function getKanjiByUnicode(
-  db: SQLiteDatabase,
-  unicode: string
-): Promise<KanjiEntry | null> {
-  try {
-    const result = await db.getFirstAsync<DBKanji>(
-      "SELECT * FROM kanji WHERE unicode = ?",
-      [unicode]
-    );
-
-    if (!result) {
-      return null;
-    }
-
-    return parseKanjiResult(result);
-  } catch (error) {
-    console.error("Failed to get kanji by unicode:", error);
-    return null;
-  }
-}
-
 export async function getKanjiById(
   db: SQLiteDatabase,
   id: number
 ): Promise<KanjiEntry | null> {
   try {
-    const result = await db.getFirstAsync<DBKanji>(
-      "SELECT * FROM kanji WHERE id = ?",
-      [id]
+    const result = await retryDatabaseOperation(() =>
+      db.getFirstAsync<DBKanji>(
+        "SELECT * FROM kanji WHERE id = ?",
+        [id]
+      )
     );
 
     if (!result) {
@@ -107,12 +93,4 @@ export async function getKanjiById(
     console.error("Failed to get kanji by id:", error);
     return null;
   }
-}
-
-export function getKanjiList(db: SQLiteDatabase): Promise<KanjiEntry[]> {
-  return db
-    .getAllAsync<DBKanji>("SELECT * FROM kanji ORDER BY RANDOM() LIMIT 50")
-    .then((results) => {
-      return results.map(parseKanjiResult);
-    });
 }

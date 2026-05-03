@@ -21,6 +21,7 @@ CREATE TABLE words (
 
 CREATE INDEX idx_words_word ON words(word);
 CREATE INDEX idx_words_reading ON words(reading);
+CREATE INDEX idx_words_reading_hiragana ON words(reading_hiragana);
 CREATE INDEX idx_words_kanji ON words(kanji);
 
 -- Word meanings/definitions
@@ -84,6 +85,27 @@ CREATE TRIGGER words_au AFTER UPDATE ON words BEGIN
     VALUES (new.id, new.word, new.reading, new.reading_hiragana, new.kanji);
 END;
 
+-- Search index for English meanings (lowercased for case-insensitive search)
+CREATE VIRTUAL TABLE meanings_fts USING fts5(
+    meaning,
+    content='meanings',
+    content_rowid='id'
+);
+
+-- Keep meanings FTS index in sync with meanings table
+CREATE TRIGGER meanings_ai AFTER INSERT ON meanings BEGIN
+    INSERT INTO meanings_fts(rowid, meaning) VALUES (new.id, new.meaning);
+END;
+
+CREATE TRIGGER meanings_ad AFTER DELETE ON meanings BEGIN
+    INSERT INTO meanings_fts(meanings_fts, rowid, meaning) VALUES('delete', old.id, old.meaning);
+END;
+
+CREATE TRIGGER meanings_au AFTER UPDATE ON meanings BEGIN
+    INSERT INTO meanings_fts(meanings_fts, rowid, meaning) VALUES('delete', old.id, old.meaning);
+    INSERT INTO meanings_fts(rowid, meaning) VALUES (new.id, new.meaning);
+END;
+
 -- =============================================================================
 -- KANJI SUPPORT TABLES
 -- =============================================================================
@@ -145,33 +167,6 @@ CREATE INDEX idx_history_entry_type ON history(entry_type);
 CREATE INDEX idx_history_word_id ON history(word_id);
 CREATE INDEX idx_history_kanji_id ON history(kanji_id);
 CREATE INDEX idx_history_created_at ON history(created_at);
-
--- =============================================================================
--- AUDIO DATA TABLES
--- =============================================================================
-
--- Audio pronunciation data (production implementation)
-CREATE TABLE audio_blobs (
-    id INTEGER PRIMARY KEY,
-    file_path TEXT NOT NULL,
-    word_id INTEGER,
-    example_id INTEGER,
-    audio_data BLOB NOT NULL,
-    created_at TEXT NOT NULL,
-    FOREIGN KEY (example_id) REFERENCES examples (id)
-);
-
-CREATE INDEX idx_audio_example_id ON audio_blobs(example_id);
-
--- Audio TTS cache
-CREATE TABLE audio_cache (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    text TEXT NOT NULL UNIQUE,
-    audio_data BLOB NOT NULL,
-    created_at INTEGER NOT NULL
-);
-
-CREATE INDEX idx_audio_cache_text ON audio_cache(text);
 
 -- =============================================================================
 -- PRACTICE / READING SESSION TABLES

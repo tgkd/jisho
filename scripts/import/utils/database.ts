@@ -316,7 +316,7 @@ export class DatabaseManager {
    * Get database statistics
    */
   getStats(): Record<string, number> {
-  const tables = ['words', 'meanings', 'furigana', 'kanji', 'examples', 'history', 'audio_blobs'];
+  const tables = ['words', 'meanings', 'furigana', 'kanji', 'examples', 'history'];
     const stats: Record<string, number> = {};
 
     for (const table of tables) {
