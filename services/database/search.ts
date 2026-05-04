@@ -48,6 +48,12 @@ const SUB_RANK = Object.freeze({
     WORD: 7,
     KANJI: 8,
   }),
+  CONTAINS: Object.freeze({
+    HIRAGANA: 9,
+    READING: 10,
+    WORD: 11,
+    KANJI: 12,
+  }),
   DEFAULT: 99,
 });
 
@@ -191,17 +197,18 @@ async function fetchMeanings(
 }
 
 /**
- * Searches for entries containing a single kanji character via FTS5.
- * Exact matches on word/kanji rank ahead of substring matches; ties
- * broken by surface length so "水" outranks "水曜日" for the bare kanji.
+ * Searches for entries containing a single kanji character.
+ * Uses LIKE-based substring scan because the words_fts virtual table is
+ * built with the default unicode61 tokenizer, which treats CJK runs as
+ * single tokens — a phrase match on `kanji:"水"` would only fire when
+ * the kanji column equals "水" exactly and would miss every compound.
  */
 async function searchBySingleKanji(
   db: SQLiteDatabase,
   kanji: string,
   options: { limit: number }
 ): Promise<DBDictEntry[]> {
-  const escaped = kanji.replace(/"/g, '""');
-  const matchExpression = `kanji:"${escaped}" OR word:"${escaped}"`;
+  const containsPattern = `%${kanji}%`;
 
   return await retryDatabaseOperation(() =>
     db.getAllAsync<DBDictEntry>(
@@ -214,9 +221,8 @@ async function searchBySingleKanji(
             ELSE ${MATCH_RANK.CONTAINS}
           END AS match_rank,
           length(w.word) AS word_length
-        FROM words_fts f
-        JOIN words w ON w.id = f.rowid
-        WHERE f.words_fts MATCH ?
+        FROM words w
+        WHERE w.word = ? OR w.kanji LIKE ?
       ),
       deduped AS (
         SELECT
@@ -232,7 +238,7 @@ async function searchBySingleKanji(
       ORDER BY match_rank, word_length
       LIMIT ?
       `,
-      [kanji, kanji, matchExpression, options.limit]
+      [kanji, kanji, kanji, containsPattern, options.limit]
     )
   );
 }
@@ -498,7 +504,8 @@ async function searchByTiers(
         w.position,
         CASE
           WHEN w.word = st.term OR w.reading = st.term OR w.reading_hiragana = st.term OR w.kanji = st.term THEN ${MATCH_RANK.EXACT}
-          ELSE ${MATCH_RANK.PREFIX}
+          WHEN w.word LIKE st.term || '%' OR w.reading LIKE st.term || '%' OR w.reading_hiragana LIKE st.term || '%' OR w.kanji LIKE st.term || '%' THEN ${MATCH_RANK.PREFIX}
+          ELSE ${MATCH_RANK.CONTAINS}
         END AS match_rank,
         CASE
           WHEN w.reading_hiragana = st.term THEN ${SUB_RANK.EXACT.HIRAGANA}
@@ -509,6 +516,10 @@ async function searchByTiers(
           WHEN w.reading LIKE st.term || '%' THEN ${SUB_RANK.PREFIX.READING}
           WHEN w.word LIKE st.term || '%' THEN ${SUB_RANK.PREFIX.WORD}
           WHEN w.kanji LIKE st.term || '%' THEN ${SUB_RANK.PREFIX.KANJI}
+          WHEN w.reading_hiragana LIKE '%' || st.term || '%' THEN ${SUB_RANK.CONTAINS.HIRAGANA}
+          WHEN w.reading LIKE '%' || st.term || '%' THEN ${SUB_RANK.CONTAINS.READING}
+          WHEN w.word LIKE '%' || st.term || '%' THEN ${SUB_RANK.CONTAINS.WORD}
+          WHEN w.kanji LIKE '%' || st.term || '%' THEN ${SUB_RANK.CONTAINS.KANJI}
           ELSE ${SUB_RANK.DEFAULT}
         END AS sub_rank,
         length(w.word) AS word_length
@@ -516,7 +527,8 @@ async function searchByTiers(
       JOIN search_terms st
       WHERE
         w.word = st.term OR w.reading = st.term OR w.reading_hiragana = st.term OR w.kanji = st.term OR
-        w.word LIKE st.term || '%' OR w.reading LIKE st.term || '%' OR w.reading_hiragana LIKE st.term || '%' OR w.kanji LIKE st.term || '%'
+        w.word LIKE st.term || '%' OR w.reading LIKE st.term || '%' OR w.reading_hiragana LIKE st.term || '%' OR w.kanji LIKE st.term || '%' OR
+        w.word LIKE '%' || st.term || '%' OR w.reading LIKE '%' || st.term || '%' OR w.reading_hiragana LIKE '%' || st.term || '%' OR w.kanji LIKE '%' || st.term || '%'
     ),
     deduped AS (
       SELECT
@@ -620,29 +632,31 @@ export async function searchDictionary(
       return result;
     }
 
-    // Try FTS first for all queries
+    // FTS first; if it doesn't fill the limit, backfill with tiered substring
+    // search. FTS handles exact/prefix; tiered fills in CONTAINS-tier matches
+    // that FTS can't reach because unicode61 tokenizes CJK runs as single
+    // tokens (e.g. 月曜日 is one token, so "曜日" can't prefix-match it).
     if (signal?.aborted) throw new Error("Search cancelled");
     const ftsResults = await searchByFTS(db, processedQuery, { limit });
-    if (ftsResults.length > 0) {
+
+    let mergedResults: DBDictEntry[] = ftsResults;
+    if (ftsResults.length < limit) {
       if (signal?.aborted) throw new Error("Search cancelled");
-      const meanings = withMeanings
-        ? await fetchMeanings(db, ftsResults, signal)
-        : new Map();
-      const result = formatSearchResults(ftsResults, meanings);
-      if (!result.error) {
-        setCachedSearchResult(cacheKey, result);
+      const tieredResults = await searchByTiers(db, processedQuery, limit);
+      if (ftsResults.length === 0) {
+        mergedResults = tieredResults;
+      } else {
+        const seenIds = new Set(ftsResults.map((w) => w.id));
+        const additions = tieredResults.filter((w) => !seenIds.has(w.id));
+        mergedResults = [...ftsResults, ...additions].slice(0, limit);
       }
-      return result;
     }
 
-    // Fall back to tiered search
-    if (signal?.aborted) throw new Error("Search cancelled");
-    const results = await searchByTiers(db, processedQuery, limit);
     if (signal?.aborted) throw new Error("Search cancelled");
     const meanings = withMeanings
-      ? await fetchMeanings(db, results, signal)
+      ? await fetchMeanings(db, mergedResults, signal)
       : new Map();
-    const result = formatSearchResults(results, meanings);
+    const result = formatSearchResults(mergedResults, meanings);
     if (!result.error) {
       setCachedSearchResult(cacheKey, result);
     }

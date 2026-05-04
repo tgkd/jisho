@@ -135,9 +135,55 @@ describe("searchDictionary integration", () => {
     );
 
     expect(exactWaterIdx).toBeGreaterThan(-1);
-    if (compoundIdx > -1) {
-      expect(exactWaterIdx).toBeLessThan(compoundIdx);
-    }
+    expect(compoundIdx).toBeGreaterThan(-1);
+    expect(exactWaterIdx).toBeLessThan(compoundIdx);
+  });
+
+  test("single kanji search returns compounds when kanji has no standalone entry", async () => {
+    const result = await searchDictionary(db, "曜", { limit: 20 });
+
+    expect(result.error).toBeUndefined();
+    expect(result.words.length).toBeGreaterThan(0);
+
+    const hasWeekdayCompound = result.words.some(
+      (w) => (w.kanji ?? w.word ?? "").includes("曜")
+    );
+    expect(hasWeekdayCompound).toBe(true);
+  });
+
+  test("tiered fallback returns substring matches when FTS misses", async () => {
+    const result = await searchDictionary(db, "の中", { limit: 20 });
+
+    expect(result.error).toBeUndefined();
+    expect(result.words.length).toBeGreaterThan(0);
+
+    const hasSubstringMatch = result.words.some(
+      (w) =>
+        (w.word ?? "").includes("の中") || (w.kanji ?? "").includes("の中")
+    );
+    expect(hasSubstringMatch).toBe(true);
+  });
+
+  test("FTS results are backfilled with tiered substring matches", async () => {
+    const result = await searchDictionary(db, "曜日", { limit: 20 });
+
+    expect(result.error).toBeUndefined();
+
+    const standaloneIdx = result.words.findIndex(
+      (w) => w.word === "曜日" || w.kanji === "曜日"
+    );
+    const compoundIndices = result.words
+      .map((w, i) =>
+        (w.word !== "曜日" && w.kanji !== "曜日") &&
+        ((w.kanji ?? w.word ?? "").includes("曜日"))
+          ? i
+          : -1
+      )
+      .filter((i) => i > -1);
+
+    expect(standaloneIdx).toBeGreaterThan(-1);
+    expect(compoundIndices.length).toBeGreaterThan(0);
+    expect(standaloneIdx).toBeLessThan(compoundIndices[0]);
   });
 
   test("english queries return matching meanings", async () => {
