@@ -92,15 +92,6 @@ export function formatSearchResults(
   };
 }
 
-export function isSingleKanjiCharacter(query: string): boolean {
-  return (
-    query.length === 1 &&
-    !wanakana.isHiragana(query) &&
-    !wanakana.isKatakana(query) &&
-    wanakana.isJapanese(query)
-  );
-}
-
 export function buildFtsMatchExpression(query: SearchQuery): string {
   const escape = (s: string) => s.replace(/"/g, '""');
   const terms: string[] = [];

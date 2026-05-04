@@ -7,6 +7,7 @@ export interface WordEntry {
   readings: string[];
   senses: WordSense[];
   entryId?: number;
+  priorityRank: number;
 }
 
 export interface WordSense {
@@ -99,6 +100,37 @@ export function parseFuriganaJson(value: unknown, index?: number): FuriganaEntry
 /**
  * Parse words.ljson format
  */
+/**
+ * Computes a numeric priority rank from JMdict pri tags. Lower = more common.
+ * - nfXX (frequency bucket 1-48) wins; min taken across kanji/reading metadata
+ * - i1 / s1 / g1 (curated common-word lists) → 50
+ * - any other priority tag (i2, n1, n2, ...) → 100
+ * - no priority tag → 999 (default)
+ */
+function computePriorityRank(data: any): number {
+  const tags: string[] = [];
+  for (const m of (data.km || [])) {
+    if (m && Array.isArray(m.p)) tags.push(...m.p);
+  }
+  for (const m of (data.rm || [])) {
+    if (m && Array.isArray(m.p)) tags.push(...m.p);
+  }
+  if (tags.length === 0) return 999;
+
+  let minNf = Infinity;
+  for (const tag of tags) {
+    const match = /^nf(\d+)$/.exec(tag);
+    if (match) {
+      const n = parseInt(match[1], 10);
+      if (n < minNf) minNf = n;
+    }
+  }
+  if (minNf !== Infinity) return minNf;
+
+  if (tags.includes('i1') || tags.includes('s1') || tags.includes('g1')) return 50;
+  return 100;
+}
+
 export function parseWordsLJson(line: string, lineNumber: number): WordEntry | null {
   try {
     const data = JSON.parse(line.trim());
@@ -122,7 +154,8 @@ export function parseWordsLJson(line: string, lineNumber: number): WordEntry | n
         miscTags: sense.misc || [],
         info: sense.info,
         glossType: sense.gt
-      }))
+      })),
+      priorityRank: computePriorityRank(data)
     };
 
     // Add kanji if present

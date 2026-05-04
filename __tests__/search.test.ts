@@ -151,7 +151,10 @@ describe("searchDictionary integration", () => {
     expect(hasWeekdayCompound).toBe(true);
   });
 
-  test("tiered fallback returns substring matches when FTS misses", async () => {
+  test("non-prefix substring matches surface via search_ngrams column", async () => {
+    // "の中" is a phrase-fragment that doesn't head any word entry, so
+    // unicode61's word/kanji prefix match misses every row. The bigram
+    // "の中" indexed in search_ngrams is what makes this query work.
     const result = await searchDictionary(db, "の中", { limit: 20 });
 
     expect(result.error).toBeUndefined();
@@ -164,7 +167,9 @@ describe("searchDictionary integration", () => {
     expect(hasSubstringMatch).toBe(true);
   });
 
-  test("FTS results are backfilled with tiered substring matches", async () => {
+  test("compound-substring query surfaces standalone entry first then compounds", async () => {
+    // For 曜日: standalone 曜日 entry is an exact match, weekday compounds
+    // (月曜日/火曜日/...) are substring matches via search_ngrams bigrams.
     const result = await searchDictionary(db, "曜日", { limit: 20 });
 
     expect(result.error).toBeUndefined();
@@ -184,6 +189,39 @@ describe("searchDictionary integration", () => {
     expect(standaloneIdx).toBeGreaterThan(-1);
     expect(compoundIndices.length).toBeGreaterThan(0);
     expect(standaloneIdx).toBeLessThan(compoundIndices[0]);
+  });
+
+  test("priority_rank surfaces common words ahead of obscure ones", async () => {
+    // For かんじ, JMdict pri tags rank: 幹事 (nf01) < 感じ (nf02) < 漢字 (nf07)
+    // < obscure entries (no priority, defaults to 999). All four read かんじ.
+    const result = await searchDictionary(db, "かんじ", { limit: 20 });
+
+    expect(result.error).toBeUndefined();
+    expect(result.words.length).toBeGreaterThan(0);
+
+    const findIdx = (word: string) =>
+      result.words.findIndex((w) => w.word === word);
+
+    const kanji = findIdx("漢字");
+    const kanji2 = findIdx("感じ");
+    const kanji3 = findIdx("幹事");
+
+    // All three should appear and in priority order.
+    expect(kanji).toBeGreaterThan(-1);
+    expect(kanji2).toBeGreaterThan(-1);
+    expect(kanji3).toBeGreaterThan(-1);
+    expect(kanji3).toBeLessThan(kanji2);
+    expect(kanji2).toBeLessThan(kanji);
+  });
+
+  test("seed schema includes search_ngrams + priority_rank columns", async () => {
+    const columns = await adapter.getAllAsync<{ name: string }>(
+      "PRAGMA table_info(words)"
+    );
+    const names = columns.map((c) => c.name);
+    expect(names).toEqual(
+      expect.arrayContaining(["search_ngrams", "priority_rank"])
+    );
   });
 
   test("english queries return matching meanings", async () => {

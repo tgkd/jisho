@@ -16,13 +16,16 @@ CREATE TABLE words (
     reading TEXT,                   -- Reading in kana
     reading_hiragana TEXT,          -- Normalized hiragana reading
     kanji TEXT,                     -- Kanji form (may be null for kana-only words)
-    position INTEGER                -- Position/order for results
+    position INTEGER,               -- Position/order for results
+    search_ngrams TEXT,             -- Pre-segmented unigram/bigram/trigram tokens for substring FTS match (CJK runs only)
+    priority_rank INTEGER DEFAULT 999  -- JMdict frequency rank: 1-48 from nfXX; 50 for ichimango; 100 for any other pri tag; 999 if absent
 );
 
 CREATE INDEX idx_words_word ON words(word);
 CREATE INDEX idx_words_reading ON words(reading);
 CREATE INDEX idx_words_reading_hiragana ON words(reading_hiragana);
 CREATE INDEX idx_words_kanji ON words(kanji);
+CREATE INDEX idx_words_priority_rank ON words(priority_rank);
 
 -- Word meanings/definitions
 CREATE TABLE meanings (
@@ -57,32 +60,35 @@ CREATE INDEX idx_furigana_reading ON furigana(reading);
 -- FULL-TEXT SEARCH TABLES (FTS5)
 -- =============================================================================
 
--- Main search index for words (production implementation)
+-- Main search index for words. search_ngrams holds pre-segmented unigram/
+-- bigram/trigram CJK tokens so substring queries (single kanji, 2-3 char
+-- compounds) match natively under unicode61 instead of needing LIKE scans.
 CREATE VIRTUAL TABLE words_fts USING fts5(
     word,
     reading,
     reading_hiragana,
     kanji,
+    search_ngrams,
     content='words',
     content_rowid='id'
 );
 
 -- Keep FTS index in sync with words table
 CREATE TRIGGER words_ai AFTER INSERT ON words BEGIN
-    INSERT INTO words_fts(rowid, word, reading, reading_hiragana, kanji)
-    VALUES (new.id, new.word, new.reading, new.reading_hiragana, new.kanji);
+    INSERT INTO words_fts(rowid, word, reading, reading_hiragana, kanji, search_ngrams)
+    VALUES (new.id, new.word, new.reading, new.reading_hiragana, new.kanji, new.search_ngrams);
 END;
 
 CREATE TRIGGER words_ad AFTER DELETE ON words BEGIN
-    INSERT INTO words_fts(words_fts, rowid, word, reading, reading_hiragana, kanji)
-    VALUES('delete', old.id, old.word, old.reading, old.reading_hiragana, old.kanji);
+    INSERT INTO words_fts(words_fts, rowid, word, reading, reading_hiragana, kanji, search_ngrams)
+    VALUES('delete', old.id, old.word, old.reading, old.reading_hiragana, old.kanji, old.search_ngrams);
 END;
 
 CREATE TRIGGER words_au AFTER UPDATE ON words BEGIN
-    INSERT INTO words_fts(words_fts, rowid, word, reading, reading_hiragana, kanji)
-    VALUES('delete', old.id, old.word, old.reading, old.reading_hiragana, old.kanji);
-    INSERT INTO words_fts(rowid, word, reading, reading_hiragana, kanji)
-    VALUES (new.id, new.word, new.reading, new.reading_hiragana, new.kanji);
+    INSERT INTO words_fts(words_fts, rowid, word, reading, reading_hiragana, kanji, search_ngrams)
+    VALUES('delete', old.id, old.word, old.reading, old.reading_hiragana, old.kanji, old.search_ngrams);
+    INSERT INTO words_fts(rowid, word, reading, reading_hiragana, kanji, search_ngrams)
+    VALUES (new.id, new.word, new.reading, new.reading_hiragana, new.kanji, new.search_ngrams);
 END;
 
 -- Search index for English meanings (lowercased for case-insensitive search)
@@ -196,4 +202,4 @@ PRAGMA synchronous = NORMAL;
 PRAGMA temp_store = MEMORY;
 PRAGMA mmap_size = 268435456; -- 256MB
 PRAGMA cache_size = 10000;
-PRAGMA user_version = 20;
+PRAGMA user_version = 25;

@@ -187,6 +187,124 @@ async function ensureWordsIndexes(db: SQLiteDatabase) {
   `);
 }
 
+/**
+ * Backfills the search_ngrams + priority_rank columns from the v25 seed
+ * asset and rebuilds words_fts to include the new column. Idempotent —
+ * gated by a meta flag so interrupted runs retry on next launch.
+ *
+ * The seed is the source of truth for n-grams (built at import time from
+ * JMdict) so we copy values rather than recomputing on device. UPSERT
+ * batches keep the round-trip count low.
+ */
+async function migrateToV25(db: SQLiteDatabase) {
+  await ensureMetaTable(db);
+
+  if (await getMetaFlag(db, "v25_search_ngrams_populated")) {
+    return;
+  }
+
+  // Idempotent column adds. ALTER TABLE ADD COLUMN throws if the column
+  // already exists, so swallow that specific error.
+  for (const stmt of [
+    "ALTER TABLE words ADD COLUMN search_ngrams TEXT",
+    "ALTER TABLE words ADD COLUMN priority_rank INTEGER DEFAULT 999",
+  ]) {
+    try {
+      await db.execAsync(stmt);
+    } catch (error: any) {
+      const msg = error?.message ?? "";
+      if (!msg.includes("duplicate column name")) throw error;
+    }
+  }
+
+  await db.execAsync(
+    "CREATE INDEX IF NOT EXISTS idx_words_priority_rank ON words(priority_rank)"
+  );
+
+  console.log("[v25] importing search_ngrams + priority_rank from seed...");
+
+  await importDatabaseFromAssetAsync(SEED_COPY_NAME, {
+    assetId: DATABASE_ASSET_ID,
+    forceOverwrite: true,
+  });
+
+  const seedDb = await openDatabaseAsync(SEED_COPY_NAME);
+
+  const totalRow = await seedDb.getFirstAsync<{ count: number }>(
+    "SELECT count(*) as count FROM words"
+  );
+  const total = totalRow?.count ?? 0;
+
+  for (let offset = 0; offset < total; offset += BATCH_SIZE) {
+    const rows = await seedDb.getAllAsync<{
+      id: number;
+      search_ngrams: string;
+      priority_rank: number;
+    }>(
+      `SELECT id, search_ngrams, priority_rank
+       FROM words ORDER BY id LIMIT ${BATCH_SIZE} OFFSET ${offset}`
+    );
+
+    if (rows.length === 0) break;
+
+    const placeholders = rows.map(() => "(?, ?, ?)").join(",");
+    const params = rows.flatMap((r) => [
+      r.id,
+      r.search_ngrams,
+      r.priority_rank,
+    ]);
+
+    await db.runAsync(
+      `INSERT INTO words (id, search_ngrams, priority_rank) VALUES ${placeholders}
+       ON CONFLICT(id) DO UPDATE SET
+         search_ngrams = excluded.search_ngrams,
+         priority_rank = excluded.priority_rank`,
+      params
+    );
+  }
+
+  await seedDb.closeAsync();
+  await deleteDatabaseAsync(SEED_COPY_NAME);
+
+  // Replace words_fts with the new schema (5 columns) and rebuild from
+  // the words table. The triggers reference search_ngrams, so they need
+  // to be replaced too.
+  await db.execAsync(`
+    DROP TRIGGER IF EXISTS words_ai;
+    DROP TRIGGER IF EXISTS words_ad;
+    DROP TRIGGER IF EXISTS words_au;
+    DROP TABLE IF EXISTS words_fts;
+
+    CREATE VIRTUAL TABLE words_fts USING fts5(
+      word, reading, reading_hiragana, kanji, search_ngrams,
+      content='words', content_rowid='id'
+    );
+
+    CREATE TRIGGER words_ai AFTER INSERT ON words BEGIN
+      INSERT INTO words_fts(rowid, word, reading, reading_hiragana, kanji, search_ngrams)
+      VALUES (new.id, new.word, new.reading, new.reading_hiragana, new.kanji, new.search_ngrams);
+    END;
+
+    CREATE TRIGGER words_ad AFTER DELETE ON words BEGIN
+      INSERT INTO words_fts(words_fts, rowid, word, reading, reading_hiragana, kanji, search_ngrams)
+      VALUES('delete', old.id, old.word, old.reading, old.reading_hiragana, old.kanji, old.search_ngrams);
+    END;
+
+    CREATE TRIGGER words_au AFTER UPDATE ON words BEGIN
+      INSERT INTO words_fts(words_fts, rowid, word, reading, reading_hiragana, kanji, search_ngrams)
+      VALUES('delete', old.id, old.word, old.reading, old.reading_hiragana, old.kanji, old.search_ngrams);
+      INSERT INTO words_fts(rowid, word, reading, reading_hiragana, kanji, search_ngrams)
+      VALUES (new.id, new.word, new.reading, new.reading_hiragana, new.kanji, new.search_ngrams);
+    END;
+
+    INSERT INTO words_fts(rowid, word, reading, reading_hiragana, kanji, search_ngrams)
+    SELECT id, word, reading, reading_hiragana, kanji, search_ngrams FROM words;
+  `);
+
+  await setMetaFlag(db, "v25_search_ngrams_populated");
+  console.log("[v25] done");
+}
+
 async function ensureMeaningsFts(db: SQLiteDatabase) {
   const existing = await db.getFirstAsync<{ name: string } | null>(
     "SELECT name FROM sqlite_master WHERE type='table' AND name='meanings_fts'"
@@ -221,7 +339,7 @@ async function ensureMeaningsFts(db: SQLiteDatabase) {
 }
 
 export async function migrateDbIfNeeded(db: SQLiteDatabase) {
-  const DATABASE_VERSION = 24;
+  const DATABASE_VERSION = 25;
 
   try {
     // Test if database is corrupted by trying a simple query
@@ -294,6 +412,10 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
 
     if (currentDbVersion < 24) {
       await ensureMeaningsFts(db);
+    }
+
+    if (currentDbVersion < 25) {
+      await migrateToV25(db);
     }
 
     await ensureUserDataTables(db);

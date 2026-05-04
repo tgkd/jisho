@@ -299,8 +299,8 @@ export class DatabaseManager {
 
       // Populate words FTS from words table columns
       this.db.exec(`
-        INSERT INTO words_fts(rowid, word, reading, reading_hiragana, kanji)
-        SELECT id, word, reading, reading_hiragana, kanji
+        INSERT INTO words_fts(rowid, word, reading, reading_hiragana, kanji, search_ngrams)
+        SELECT id, word, reading, reading_hiragana, kanji, search_ngrams
         FROM words
       `);
 

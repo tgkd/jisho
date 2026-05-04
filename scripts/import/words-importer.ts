@@ -8,6 +8,7 @@ import { join } from 'path';
 import { createInterface } from 'readline';
 import { toHiragana } from 'wanakana';
 import { DatabaseManager } from './utils/database';
+import { generateSearchNgrams } from './utils/ngram';
 import { parseWordsLJson, validateWordEntry } from './utils/parsers';
 import { ProgressTracker } from './utils/progress';
 
@@ -42,8 +43,8 @@ export class WordsImporter {
     const conn = this.db.getConnection();
 
     this.insertWordStmt = conn.prepare(`
-      INSERT INTO words (word, reading, reading_hiragana, kanji, position)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO words (word, reading, reading_hiragana, kanji, position, search_ngrams, priority_rank)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
 
     this.insertMeaningStmt = conn.prepare(`
@@ -116,14 +117,23 @@ export class WordsImporter {
           const primaryWord = entry.kanji?.[0] || entry.readings[0];
           const primaryReading = entry.readings[0];
           const kanjiForm = entry.kanji?.[0] || null;
+          const readingHiragana = toHiragana(primaryReading, { passRomaji: true });
+          const searchNgrams = generateSearchNgrams(
+            primaryWord,
+            primaryReading,
+            readingHiragana,
+            kanjiForm
+          );
 
           // Insert word entry
           const wordResult = this.insertWordStmt.run(
             primaryWord,
             primaryReading,
-            toHiragana(primaryReading, { passRomaji: true }),
+            readingHiragana,
             kanjiForm,
-            lineNumber // position for search ordering
+            lineNumber, // position for search ordering
+            searchNgrams,
+            entry.priorityRank
           );
           const wordId = wordResult.lastInsertRowid as number;
           this.stats.insertedWords++;
