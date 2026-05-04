@@ -21,6 +21,7 @@ const SEARCH_CACHE_TTL_MS = 30_000;
 const SEARCH_CACHE_MAX_ENTRIES = 100;
 const MAX_QUERY_LENGTH = 64;
 const MAX_QUERY_TOKENS = 8;
+const TIERED_BACKFILL_THRESHOLD = 5;
 
 type CachedSearchEntry = {
   timestamp: number;
@@ -632,15 +633,18 @@ export async function searchDictionary(
       return result;
     }
 
-    // FTS first; if it doesn't fill the limit, backfill with tiered substring
-    // search. FTS handles exact/prefix; tiered fills in CONTAINS-tier matches
-    // that FTS can't reach because unicode61 tokenizes CJK runs as single
-    // tokens (e.g. 月曜日 is one token, so "曜日" can't prefix-match it).
+    // FTS first; if it returns fewer than TIERED_BACKFILL_THRESHOLD, backfill
+    // with the tiered substring search. FTS handles exact/prefix; tiered fills
+    // in CONTAINS-tier matches that FTS can't reach because unicode61
+    // tokenizes CJK runs as single tokens (e.g. 月曜日 is one token, so
+    // "曜日" can't prefix-match it). The threshold avoids paying the
+    // tiered full-scan on every keystroke for queries where FTS already
+    // returned a screenful of exact/prefix matches.
     if (signal?.aborted) throw new Error("Search cancelled");
     const ftsResults = await searchByFTS(db, processedQuery, { limit });
 
     let mergedResults: DBDictEntry[] = ftsResults;
-    if (ftsResults.length < limit) {
+    if (ftsResults.length < TIERED_BACKFILL_THRESHOLD) {
       if (signal?.aborted) throw new Error("Search cancelled");
       const tieredResults = await searchByTiers(db, processedQuery, limit);
       if (ftsResults.length === 0) {
