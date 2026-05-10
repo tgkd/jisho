@@ -28,7 +28,6 @@ import {
 } from "react-native";
 import Markdown, { RenderRules } from "react-native-markdown-display";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
-import { isJapanese } from "wanakana";
 
 /**
  * Renders the practice session passage with speech playback controls.
@@ -166,70 +165,79 @@ export default function PracticeSessionScreen() {
   }, []);
   const markdownRules: RenderRules = useMemo(() => {
     let paragraphIndex = -1;
+    let inJapaneseSection = false;
 
     return {
+      heading3: (node, children, _parent, renderStyles) => {
+        const text = extractTextFromNode(node);
+        inJapaneseSection = /日本語/.test(text);
+        return (
+          <View key={node.key} style={renderStyles.heading3}>
+            {children}
+          </View>
+        );
+      },
       paragraph: (node, children, _parent, renderStyles) => {
-        const rawText = extractTextFromNode(node);
-        const cleanText = rawText.replace(/[#*_`]/g, "").trim();
-        const hasJapanese =
-          cleanText && Array.from(cleanText).some((char) => isJapanese(char));
+        if (inJapaneseSection) {
+          const rawText = extractTextFromNode(node);
+          const cleanText = rawText.replace(/[#*_`]/g, "").trim();
 
-        if (hasJapanese && cleanText) {
-          paragraphIndex++;
-          const currentIndex = paragraphIndex;
+          if (cleanText) {
+            paragraphIndex++;
+            const currentIndex = paragraphIndex;
+            const paragraphText =
+              japaneseParagraphs[currentIndex] || cleanText;
 
-          // Use pre-split clean Japanese text if available, otherwise fall back to extracted text
-          const paragraphText = japaneseParagraphs[currentIndex] || cleanText;
+            const isActive = speechState.index === currentIndex;
+            const isLoading = isActive && speechState.phase === "loading";
+            const isPaused = isActive && speechState.phase === "paused";
+            const isPlaying =
+              isActive && speechState.phase === "idle" && speech.isPlaying;
 
-          const isActive = speechState.index === currentIndex;
-          const isLoading = isActive && speechState.phase === "loading";
-          const isPaused = isActive && speechState.phase === "paused";
-          const isPlaying =
-            isActive && speechState.phase === "idle" && speech.isPlaying;
-
-          return (
-            <View key={node.key} style={renderStyles.paragraph}>
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "flex-start",
-                  gap: 8,
-                }}
-              >
-                <TouchableOpacity
-                  onPress={() =>
-                    handlePlayParagraph(paragraphText, currentIndex)
-                  }
+            return (
+              <View key={node.key} style={renderStyles.paragraph}>
+                <View
                   style={{
-                    marginTop: 2,
+                    flexDirection: "row",
+                    alignItems: "flex-start",
+                    gap: 8,
                   }}
                 >
-                  {isLoading ? (
-                    <ActivityIndicator size="small" color={tintColor} />
-                  ) : isPlaying ? (
-                    <IconSymbol
-                      name="pause.circle.fill"
-                      size={20}
-                      color={tintColor}
-                    />
-                  ) : isPaused ? (
-                    <IconSymbol
-                      name="play.circle.fill"
-                      size={20}
-                      color={tintColor}
-                    />
-                  ) : (
-                    <IconSymbol
-                      name="play.circle"
-                      size={20}
-                      color={tintColor}
-                    />
-                  )}
-                </TouchableOpacity>
-                <View style={{ flex: 1 }}>{children}</View>
+                  <TouchableOpacity
+                    onPress={() =>
+                      handlePlayParagraph(paragraphText, currentIndex)
+                    }
+                    style={{
+                      marginTop: 2,
+                    }}
+                  >
+                    {isLoading ? (
+                      <ActivityIndicator size="small" color={tintColor} />
+                    ) : isPlaying ? (
+                      <IconSymbol
+                        name="pause.circle.fill"
+                        size={20}
+                        color={tintColor}
+                      />
+                    ) : isPaused ? (
+                      <IconSymbol
+                        name="play.circle.fill"
+                        size={20}
+                        color={tintColor}
+                      />
+                    ) : (
+                      <IconSymbol
+                        name="play.circle"
+                        size={20}
+                        color={tintColor}
+                      />
+                    )}
+                  </TouchableOpacity>
+                  <View style={{ flex: 1 }}>{children}</View>
+                </View>
               </View>
-            </View>
-          );
+            );
+          }
         }
 
         return (

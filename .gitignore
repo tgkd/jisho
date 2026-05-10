@@ -60,6 +60,7 @@ furi/*
 
 # Database seed files
 *.db
+*.db.bak
 !assets/db/
 
 # ralphex progress logs
