@@ -45,13 +45,13 @@ export async function getAiExamples(
 
   const params = new URLSearchParams({ word: prompt });
 
-  const resp = await fetch(
+  const resp = await fetchWithTimeout(
     `${process.env.EXPO_PUBLIC_BASE_URL}/example?${params.toString()}`,
     {
-      signal,
       method: "GET",
       ...getDefaultOptions(),
-    }
+    },
+    signal
   );
 
   if (!resp.ok) {
@@ -140,6 +140,38 @@ function getDefaultOptions(): FetchRequestInit {
   return { headers, credentials: "include" };
 }
 
+const CONNECTION_TIMEOUT_MS = 20_000;
+
+/**
+ * Fetch with a connection (time-to-first-byte) timeout.
+ * The timeout guards only until the response headers arrive; once the
+ * response resolves, the streaming body lifetime is governed solely by the
+ * caller's signal. This avoids aborting a healthy long-running stream.
+ * @param {string} input - Request URL
+ * @param {FetchRequestInit} init - Fetch options (must not set `signal`)
+ * @param {AbortSignal | null} [callerSignal] - Optional caller abort signal
+ * @returns {Promise<Response>} Resolved response
+ */
+async function fetchWithTimeout(
+  input: string,
+  init: FetchRequestInit,
+  callerSignal?: AbortSignal | null
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(
+    () => controller.abort(new Error("Connection timeout")),
+    CONNECTION_TIMEOUT_MS
+  );
+  const signal = callerSignal
+    ? AbortSignal.any([callerSignal, controller.signal])
+    : controller.signal;
+  try {
+    return await fetch(input, { ...init, signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /**
  * Get AI explanation for text with streaming response.
  * Uses POST /chat endpoint with message array payload.
@@ -161,15 +193,18 @@ export function getAiExplanation(signal?: AbortSignal | null) {
       "Cache-Control": "no-cache",
       Connection: "keep-alive",
     };
-    return fetch(`${process.env.EXPO_PUBLIC_BASE_URL}/chat`, {
-      method: "POST",
-      signal: signal || undefined,
-      headers,
-      credentials: defaultOptions.credentials,
-      body: JSON.stringify({
-        messages: [{ role: "user", content: prompt }],
-      }),
-    });
+    return fetchWithTimeout(
+      `${process.env.EXPO_PUBLIC_BASE_URL}/chat`,
+      {
+        method: "POST",
+        headers,
+        credentials: defaultOptions.credentials,
+        body: JSON.stringify({
+          messages: [{ role: "user", content: prompt }],
+        }),
+      },
+      signal
+    );
   };
 }
 
@@ -201,13 +236,16 @@ export function getAiChat(signal?: AbortSignal | null) {
       Connection: "keep-alive",
     };
 
-    return fetch(`${process.env.EXPO_PUBLIC_BASE_URL}/chat`, {
-      method: "POST",
-      signal: signal || undefined,
-      headers,
-      credentials: defaultOptions.credentials,
-      body: JSON.stringify({ messages }),
-    });
+    return fetchWithTimeout(
+      `${process.env.EXPO_PUBLIC_BASE_URL}/chat`,
+      {
+        method: "POST",
+        headers,
+        credentials: defaultOptions.credentials,
+        body: JSON.stringify({ messages }),
+      },
+      signal
+    );
   };
 }
 
@@ -239,13 +277,13 @@ export function getAiReadingPassageStreaming(
 
   const params = new URLSearchParams({ lvl: level });
 
-  return fetch(
+  return fetchWithTimeout(
     `${process.env.EXPO_PUBLIC_BASE_URL}/reading?${params.toString()}`,
     {
       method: "GET",
-      signal: signal || undefined,
       headers,
       credentials: defaultOptions.credentials,
-    }
+    },
+    signal
   );
 }
