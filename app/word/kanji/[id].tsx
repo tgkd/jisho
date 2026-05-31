@@ -18,23 +18,28 @@ export default function KanjiDetailScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const db = useSQLiteContext();
 
-  const loadKanjiDetails = async () => {
-    try {
-      const result = await getKanjiById(db, Number(params.id));
-
-      if (result) {
-        setEntry(result);
-      }
-    } catch (error) {
-      console.error("Failed to load kanji details:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   useEffect(() => {
+    let active = true;
+
+    const loadKanjiDetails = async () => {
+      try {
+        const result = await getKanjiById(db, Number(params.id));
+        if (active && result) {
+          setEntry(result);
+        }
+      } catch (error) {
+        console.error("Failed to load kanji details:", error);
+      } finally {
+        if (active) setIsLoading(false);
+      }
+    };
+
     loadKanjiDetails();
-  }, [params]);
+
+    return () => {
+      active = false;
+    };
+  }, [db, params.id]);
 
   if (isLoading) {
     return (

@@ -3,7 +3,7 @@ import { ThemedText } from "@/components/ThemedText";
 import { Card } from "@/components/ui/Card";
 import { IconSymbol } from "@/components/ui/IconSymbol";
 import { Pill } from "@/components/ui/Pill";
-import { Colors } from "@/constants/Colors";
+import { useThemeColor } from "@/hooks/useThemeColor";
 import {
   deleteSession,
   getAllSessions,
@@ -22,6 +22,8 @@ export default function PracticeScreen() {
   const [sessions, setSessions] = useState<SessionWithPreview[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const tintColor = useThemeColor({}, "tint");
+  const secondaryColor = useThemeColor({}, "textSecondary");
 
   const loadSessions = async (isRefresh = false) => {
     try {
@@ -103,13 +105,13 @@ export default function PracticeScreen() {
   const renderListHeader = () => (
     <View style={styles.headerContainer}>
       <HapticTab onPress={handleNewChat} style={styles.newChatButton}>
-        <Card style={styles.newChatCard}>
+        <Card style={[styles.newChatCard, { borderColor: tintColor }]}>
           <View style={styles.newChatContent}>
             <View style={styles.iconContainer}>
               <IconSymbol
                 name="plus.circle.fill"
                 size={28}
-                color={Colors.light.tint}
+                color={tintColor}
               />
             </View>
             <View style={styles.newChatTextContainer}>
@@ -123,7 +125,7 @@ export default function PracticeScreen() {
             <IconSymbol
               name="chevron.right"
               size={20}
-              color={Colors.light.textSecondary}
+              color={secondaryColor}
             />
           </View>
         </Card>
@@ -144,7 +146,7 @@ export default function PracticeScreen() {
           <IconSymbol
             name="book.pages"
             size={48}
-            color={Colors.light.textSecondary}
+            color={secondaryColor}
           />
           <ThemedText size="md" type="secondary" style={styles.emptyText}>
             No reading passages yet
@@ -180,14 +182,14 @@ export default function PracticeScreen() {
               <IconSymbol
                 name="trash"
                 size={20}
-                color={Colors.light.textSecondary}
+                color={secondaryColor}
               />
             </HapticTab>
 
             <IconSymbol
               name="chevron.right"
               size={16}
-              color={Colors.light.textSecondary}
+              color={secondaryColor}
             />
           </View>
         </View>
@@ -217,7 +219,7 @@ export default function PracticeScreen() {
         <RefreshControl
           refreshing={isRefreshing}
           onRefresh={() => loadSessions(true)}
-          tintColor={Colors.light.tint}
+          tintColor={tintColor}
         />
       }
     />
@@ -243,7 +245,6 @@ const styles = StyleSheet.create({
   },
   newChatCard: {
     borderWidth: 2,
-    borderColor: Colors.light.tint,
     borderStyle: "solid",
   },
   newChatContent: {

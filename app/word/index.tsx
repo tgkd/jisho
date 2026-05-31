@@ -295,6 +295,13 @@ export default function HomeScreen() {
         keyExtractor={(item) =>
           isHistoryItem(item) ? `history-${item.id}` : `result-${item.id}`
         }
+        getItemType={(item) =>
+          isHistoryItem(item)
+            ? "history"
+            : isKanjiEntry(item)
+            ? "kanji"
+            : "search"
+        }
         style={styles.list}
         contentContainerStyle={styles.scrollContainer}
         contentInsetAdjustmentBehavior="automatic"

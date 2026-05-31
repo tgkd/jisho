@@ -1,4 +1,8 @@
-import { extractJapaneseFromPassage } from '../services/parse';
+import {
+  extractJapaneseFromPassage,
+  findKanji,
+  getJpTokens,
+} from '../services/parse';
 
 describe('extractJapaneseFromPassage', () => {
   describe('with standard format markers', () => {
@@ -346,5 +350,33 @@ Test
       expect(result).toContain('毎朝、私は六時に起きます');
       expect(result).toContain('それから、朝ごはんを作ります');
     });
+  });
+});
+
+describe('findKanji', () => {
+  test('finds basic CJK ideographs and excludes kana', () => {
+    expect(findKanji('日本語を学ぶ')).toEqual(['日', '本', '語', '学']);
+  });
+
+  test('includes supplementary-plane (Ext-B) kanji', () => {
+    expect(findKanji('𩸽は魚だ')).toContain('𩸽');
+  });
+
+  test('excludes the iteration mark 々', () => {
+    const result = findKanji('時々');
+    expect(result).toContain('時');
+    expect(result).not.toContain('々');
+  });
+});
+
+describe('getJpTokens', () => {
+  test('preserves the iteration mark 々 instead of fusing 時々雨 into 時雨', () => {
+    const tokens = getJpTokens('時々雨が降る');
+    expect(tokens.some((t) => t.includes('々'))).toBe(true);
+    expect(tokens).not.toContain('時雨');
+  });
+
+  test('preserves halfwidth katakana tokens', () => {
+    expect(getJpTokens('ﾊﾝｶｸのテスト')).toContain('ﾊﾝｶｸ');
   });
 });

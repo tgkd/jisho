@@ -7,6 +7,7 @@ import { useThemeColor } from "@/hooks/useThemeColor";
 import { useSpeech } from "@/providers/SpeechProvider";
 import { useUnifiedAI } from "@/providers/UnifiedAIProvider";
 import {
+  deleteSession,
   getSession,
   updateSessionContent,
   type PracticeSession
@@ -332,14 +333,18 @@ export default function PracticeSessionScreen() {
     });
   };
 
-  sessionRef.current = session;
+  useEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
 
   useEffect(() => {
     return () => {
       cancelPassage();
       const s = sessionRef.current;
       if (s && !s.content_output && !s.content) {
-        db.runAsync("DELETE FROM practice_sessions WHERE id = ?", [s.id]);
+        deleteSession(db, s.id).catch((error) =>
+          console.error("Failed to delete abandoned session:", error)
+        );
       }
     };
   }, [cancelPassage, db]);

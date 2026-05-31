@@ -169,8 +169,8 @@ export class DatabaseManager {
         try {
           this.db.exec(statement);
         } catch (error) {
-          console.warn(`⚠️  Failed to create trigger (this may be expected): ${error}`);
-          // Don't throw error for triggers, as they may reference tables that don't exist yet
+          console.error(`❌ Failed to create trigger: ${error}`);
+          throw error;
         }
       }
 

@@ -40,15 +40,21 @@ export function useStreamedChat() {
     gcTime: 0,
   });
 
-  // Commit assistant message when remote stream completes
+  // Commit assistant message when remote stream completes (success or error)
   useEffect(() => {
     if (
       prevFetchStatusRef.current === "fetching" &&
       query.fetchStatus === "idle" &&
-      query.isSuccess &&
-      isRemote
+      isRemote &&
+      (query.isSuccess || query.isError)
     ) {
-      const assistantContent = query.data || "";
+      const assistantContent = query.isError
+        ? `Error: ${
+            query.error instanceof Error
+              ? query.error.message
+              : "Failed to get a response"
+          }`
+        : query.data || "";
       setMessages((prev) => {
         const updated = [...prev];
         updated[updated.length - 1] = {
@@ -63,7 +69,14 @@ export function useStreamedChat() {
       ];
     }
     prevFetchStatusRef.current = query.fetchStatus;
-  }, [query.fetchStatus, query.isSuccess, query.data, isRemote]);
+  }, [
+    query.fetchStatus,
+    query.isSuccess,
+    query.isError,
+    query.data,
+    query.error,
+    isRemote,
+  ]);
 
   // For local AI: manual streaming via callbacks
   const localAbortRef = useRef<AbortController | null>(null);

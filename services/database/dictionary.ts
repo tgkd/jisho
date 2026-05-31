@@ -236,17 +236,13 @@ export async function getWordExamples(
       FROM examples
       WHERE
         (tokens IS NOT NULL AND tokens != '' AND
-         (json_valid(tokens) AND
-          EXISTS(SELECT 1 FROM json_each(tokens) WHERE value = ?)))
-        OR
-        (japanese_text LIKE ? AND
-         (japanese_text LIKE ? || '%' OR
-          japanese_text LIKE '%' || ? OR
-          japanese_text LIKE '%' || ? || '%'))
+         json_valid(tokens) AND
+         EXISTS(SELECT 1 FROM json_each(tokens) WHERE value = ?))
+        OR japanese_text LIKE ?
       ORDER BY length(japanese_text)
       LIMIT 5
       `,
-        [word.word, `%${word.word}%`, word.word, word.word, word.word]
+        [word.word, `%${word.word}%`]
       )
     );
 
