@@ -56,7 +56,7 @@ export function ThemedText({
       light: "rgba(0, 122, 255, 0.3)",
       dark: "rgba(64, 156, 255, 0.3)",
     },
-    "text"
+    "text",
   );
 
   const sizeStyle = useMemo(() => {
@@ -76,9 +76,7 @@ export function ThemedText({
 
   const useNativeTextView = uiTextView && selectable;
   const safeChildren =
-    useNativeTextView && (children == null || children === "")
-      ? " "
-      : children;
+    useNativeTextView && (children == null || children === "") ? " " : children;
 
   const textStyle = [
     { color },

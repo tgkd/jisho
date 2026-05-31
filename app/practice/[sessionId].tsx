@@ -10,22 +10,25 @@ import {
   deleteSession,
   getSession,
   updateSessionContent,
-  type PracticeSession
+  type PracticeSession,
 } from "@/services/database/practice-sessions";
 import {
+  cleanupJpReadings,
   createChatPrompt,
   extractJapaneseFromPassage,
-  extractJapaneseTextWithParagraphs
+  extractJapaneseTextWithParagraphs,
 } from "@/services/parse";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert, ScrollView,
+  Alert,
+  ScrollView,
   StyleSheet,
+  Text,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 import Markdown, { RenderRules } from "react-native-markdown-display";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
@@ -73,7 +76,7 @@ export default function PracticeSessionScreen() {
       "Adding vocabulary...",
       "Almost ready...",
     ],
-    []
+    [],
   );
   const [generatingLabelIndex, setGeneratingLabelIndex] = useState(0);
 
@@ -82,70 +85,49 @@ export default function PracticeSessionScreen() {
     setGeneratingLabelIndex(0);
     const interval = setInterval(() => {
       setGeneratingLabelIndex((i) =>
-        i < generatingLabels.length - 1 ? i + 1 : i
+        i < generatingLabels.length - 1 ? i + 1 : i,
       );
     }, 3000);
     return () => clearInterval(interval);
   }, [isGeneratingContent, streamingContent, generatingLabels]);
 
-  // Pre-split clean Japanese text into paragraphs for speech playback
-  const japaneseParagraphs = useMemo(() => {
-    let japaneseText = "";
+  const handlePlayParagraph = async (text: string, index: number) => {
+    if (activeSpeechIndex === index) {
+      if (activeSpeechPhase === "loading") {
+        speech.stop();
+        setSpeechState({ index: null, phase: "idle" });
+        return;
+      }
 
-    if (streamingContent) {
-      japaneseText = extractJapaneseTextWithParagraphs(streamingContent);
-    } else if (session?.content_text) {
-      japaneseText = session.content_text;
+      if (activeSpeechPhase === "paused") {
+        setSpeechState({ index, phase: "idle" });
+        await speech.resume();
+        return;
+      }
+
+      if (speech.isPlaying) {
+        speech.pause();
+        setSpeechState({ index, phase: "paused" });
+        return;
+      }
     }
 
-    if (!japaneseText) return [];
+    try {
+      setSpeechState({ index, phase: "loading" });
+      await ai.generateSpeech(text);
+      setSpeechState((current) => {
+        if (current.index !== index) return current;
+        if (current.phase !== "loading") return current;
+        return { index, phase: "idle" };
+      });
+    } catch (error) {
+      console.error("Speech generation failed:", error);
+      Alert.alert("Error", "Failed to play paragraph");
+      setSpeechState({ index: null, phase: "idle" });
+    }
+  };
 
-    return japaneseText
-      .split("\n\n")
-      .map((p) => p.trim())
-      .filter((p) => p.length > 0);
-  }, [session?.content_text, streamingContent]);
-
-  const handlePlayParagraph = useCallback(
-    async (text: string, index: number) => {
-      if (activeSpeechIndex === index) {
-        if (activeSpeechPhase === "loading") {
-          speech.stop();
-          setSpeechState({ index: null, phase: "idle" });
-          return;
-        }
-
-        if (activeSpeechPhase === "paused") {
-          setSpeechState({ index, phase: "idle" });
-          await speech.resume();
-          return;
-        }
-
-        if (speech.isPlaying) {
-          speech.pause();
-          setSpeechState({ index, phase: "paused" });
-          return;
-        }
-      }
-
-      try {
-        setSpeechState({ index, phase: "loading" });
-        await ai.generateSpeech(text);
-        setSpeechState((current) => {
-          if (current.index !== index) return current;
-          if (current.phase !== "loading") return current;
-          return { index, phase: "idle" };
-        });
-      } catch (error) {
-        console.error("Speech generation failed:", error);
-        Alert.alert("Error", "Failed to play paragraph");
-        setSpeechState({ index: null, phase: "idle" });
-      }
-    },
-    [ai, speech, activeSpeechIndex, activeSpeechPhase]
-  );
-
-  const extractTextFromNode = useCallback((node: any): string => {
+  const extractTextFromNode = (node: any): string => {
     if (!node) return "";
 
     if (typeof node === "string") return node;
@@ -163,12 +145,18 @@ export default function PracticeSessionScreen() {
     }
 
     return "";
-  }, []);
+  };
+
   const markdownRules: RenderRules = useMemo(() => {
     let paragraphIndex = -1;
     let inJapaneseSection = false;
 
     return {
+      textgroup: (node, children, _parent, renderStyles) => (
+        <Text key={node.key} style={renderStyles.textgroup} selectable>
+          {children}
+        </Text>
+      ),
       heading3: (node, children, _parent, renderStyles) => {
         const text = extractTextFromNode(node);
         inJapaneseSection = /日本語/.test(text);
@@ -186,8 +174,7 @@ export default function PracticeSessionScreen() {
           if (cleanText) {
             paragraphIndex++;
             const currentIndex = paragraphIndex;
-            const paragraphText =
-              japaneseParagraphs[currentIndex] || cleanText;
+            const paragraphText = cleanupJpReadings(cleanText).trim();
 
             const isActive = speechState.index === currentIndex;
             const isLoading = isActive && speechState.phase === "loading";
@@ -248,15 +235,7 @@ export default function PracticeSessionScreen() {
         );
       },
     };
-  }, [
-    japaneseParagraphs,
-    speechState.index,
-    speechState.phase,
-    speech.isPlaying,
-    tintColor,
-    handlePlayParagraph,
-    extractTextFromNode,
-  ]);
+  }, [speechState.index, speechState.phase, speech.isPlaying, tintColor]);
 
   const handleStreamComplete = useCallback(
     async (fullText: string) => {
@@ -272,7 +251,7 @@ export default function PracticeSessionScreen() {
         setSession(updatedSession);
       }
     },
-    [db, sessionId]
+    [db, sessionId],
   );
 
   const hasInitiatedGeneration = useRef(false);
@@ -280,23 +259,27 @@ export default function PracticeSessionScreen() {
   useEffect(() => {
     let cancelled = false;
 
-    getSession(db, Number(sessionId)).then((data) => {
-      if (cancelled) return;
-      if (!data) {
-        Alert.alert("Error", "Practice session not found");
+    getSession(db, Number(sessionId))
+      .then((data) => {
+        if (cancelled) return;
+        if (!data) {
+          Alert.alert("Error", "Practice session not found");
+          router.back();
+          return;
+        }
+        setSession(data);
+        setIsLoading(false);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        console.error("Failed to load session:", error);
+        Alert.alert("Error", "Failed to load practice session");
         router.back();
-        return;
-      }
-      setSession(data);
-      setIsLoading(false);
-    }).catch((error) => {
-      if (cancelled) return;
-      console.error("Failed to load session:", error);
-      Alert.alert("Error", "Failed to load practice session");
-      router.back();
-    });
+      });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [db, sessionId, router]);
 
   // Generate only after `session` is committed, so useStreamedPassage has
@@ -353,7 +336,7 @@ export default function PracticeSessionScreen() {
       const s = sessionRef.current;
       if (s && !s.content_output && !s.content) {
         deleteSession(db, s.id).catch((error) =>
-          console.error("Failed to delete abandoned session:", error)
+          console.error("Failed to delete abandoned session:", error),
         );
       }
     };
