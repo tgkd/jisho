@@ -1,8 +1,8 @@
-import { StyleSheet, Text } from "react-native";
+import { StyleSheet } from "react-native";
 
-import { HapticTab } from "../HapticTab";
 import { Colors } from "@/constants/Colors";
 import { useThemeColor } from "@/hooks/useThemeColor";
+import { HapticTab } from "../HapticTab";
 import { ThemedText, ThemedTextProps } from "../ThemedText";
 
 export function Pill({

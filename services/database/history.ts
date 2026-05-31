@@ -7,16 +7,18 @@ import { retryDatabaseOperation } from "./utils";
  */
 export async function addToHistory(db: SQLiteDatabase, entry: DictionaryEntry) {
   try {
-    await retryDatabaseOperation(async () => {
-      await db.runAsync(
-        "DELETE FROM history WHERE entry_type = 'word' AND word_id = ?",
-        [entry.id]
-      );
-      await db.runAsync(
-        "INSERT INTO history (entry_type, word_id, created_at) VALUES (?, ?, ?)",
-        ["word", entry.id, new Date().toISOString()]
-      );
-    });
+    await retryDatabaseOperation(() =>
+      db.withTransactionAsync(async () => {
+        await db.runAsync(
+          "DELETE FROM history WHERE entry_type = 'word' AND word_id = ?",
+          [entry.id]
+        );
+        await db.runAsync(
+          "INSERT INTO history (entry_type, word_id, created_at) VALUES (?, ?, ?)",
+          ["word", entry.id, new Date().toISOString()]
+        );
+      })
+    );
   } catch (error) {
     console.error("Failed to add word to history:", error);
   }
@@ -34,16 +36,18 @@ export async function addKanjiToHistory(
     const onReadings = kanji.onReadings ? JSON.stringify(kanji.onReadings) : null;
     const kunReadings = kanji.kunReadings ? JSON.stringify(kanji.kunReadings) : null;
 
-    await retryDatabaseOperation(async () => {
-      await db.runAsync(
-        "DELETE FROM history WHERE entry_type = 'kanji' AND kanji_id = ?",
-        [kanji.id]
-      );
-      await db.runAsync(
-        "INSERT INTO history (entry_type, kanji_id, kanji_character, kanji_meaning, kanji_on_readings, kanji_kun_readings, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        ["kanji", kanji.id, kanji.character, meaning, onReadings, kunReadings, new Date().toISOString()]
-      );
-    });
+    await retryDatabaseOperation(() =>
+      db.withTransactionAsync(async () => {
+        await db.runAsync(
+          "DELETE FROM history WHERE entry_type = 'kanji' AND kanji_id = ?",
+          [kanji.id]
+        );
+        await db.runAsync(
+          "INSERT INTO history (entry_type, kanji_id, kanji_character, kanji_meaning, kanji_on_readings, kanji_kun_readings, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          ["kanji", kanji.id, kanji.character, meaning, onReadings, kunReadings, new Date().toISOString()]
+        );
+      })
+    );
   } catch (error) {
     console.error("Failed to add kanji to history:", error);
   }

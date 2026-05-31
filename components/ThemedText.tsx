@@ -47,7 +47,7 @@ export function ThemedText({
           light: lightColor || Colors.light.text,
         };
     }
-  }, [type]);
+  }, [type, darkColor, lightColor]);
 
   const color = useThemeColor(colorType, "text");
   const linkColor = useThemeColor(colorType, "link");

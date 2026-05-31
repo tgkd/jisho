@@ -52,7 +52,7 @@ export type DBHistoryEntry = {
   entry_type: 'word' | 'kanji';
   // Word fields (nullable for kanji entries)
   word_id: number | null;
-  created_at: number;
+  created_at: string;
   word: string | null;
   reading: string | null;
   // Kanji fields (nullable for word entries)
@@ -65,7 +65,7 @@ export type DBHistoryEntry = {
 
 export type BaseHistoryEntry = {
   id: number;
-  createdAt: number;
+  createdAt: string;
 };
 
 export type WordHistoryEntry = BaseHistoryEntry & {

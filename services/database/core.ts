@@ -169,6 +169,8 @@ async function ensureUserDataTables(db: SQLiteDatabase) {
 
     CREATE INDEX IF NOT EXISTS idx_history_entry_type ON history(entry_type);
     CREATE INDEX IF NOT EXISTS idx_history_kanji_id ON history(kanji_id);
+    CREATE INDEX IF NOT EXISTS idx_history_word_id ON history(word_id);
+    CREATE INDEX IF NOT EXISTS idx_history_created_at ON history(created_at);
     CREATE INDEX IF NOT EXISTS idx_practice_sessions_level ON practice_sessions(level);
     CREATE INDEX IF NOT EXISTS idx_practice_sessions_updated_at ON practice_sessions(updated_at);
   `);
@@ -396,10 +398,9 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
     }
 
     // --- Legacy migrations (v1–v20) removed ---
-    // All users now receive jisho-seed.db (user_version=20) with
-    // the full schema on first install. The DB name changed to the
-    // stable "jisho.db", so no existing user can arrive here with
-    // a version below 20. Future migrations start at v21+.
+    // Fresh installs receive jisho-seed.db at user_version=25 with the full
+    // schema. The DB name changed to the stable "jisho.db", so no existing
+    // user can arrive below v20. Migrations below cover users on an older seed.
 
     if (currentDbVersion < 22) {
       await ensureFuriganaTable(db);

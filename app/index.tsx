@@ -1,3 +1,5 @@
+import { Redirect } from "expo-router";
+
 export default function Page() {
-  return null;
+  return <Redirect href="/word" />;
 }

@@ -363,17 +363,27 @@ describe("searchDictionary integration", () => {
     expect(result.error).toBeUndefined();
   });
 
-  test("results have no duplicate word+reading pairs", async () => {
+  test("results contain no duplicate entry ids", async () => {
     const result = await searchDictionary(db, "かど", { limit: 50 });
 
     expect(result.error).toBeUndefined();
 
-    const seen = new Set<string>();
+    const seen = new Set<number>();
     for (const w of result.words) {
-      const key = `${w.word}::${w.readingHiragana}`;
-      expect(seen.has(key)).toBe(false);
-      seen.add(key);
+      expect(seen.has(w.id)).toBe(false);
+      seen.add(w.id);
     }
+  });
+
+  test("homographs sharing a surface and reading are not collapsed", async () => {
+    const result = await searchDictionary(db, "モール", { limit: 50 });
+
+    expect(result.error).toBeUndefined();
+
+    const moolEntries = result.words.filter(
+      (w) => w.word === "モール" && w.readingHiragana === "もうる"
+    );
+    expect(moolEntries.length).toBeGreaterThan(1);
   });
 
   describe("sequential typing simulation", () => {

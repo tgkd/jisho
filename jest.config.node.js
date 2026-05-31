@@ -4,7 +4,7 @@ module.exports = {
   roots: ['<rootDir>/__tests__'],
   testMatch: ['**/__tests__/**/*.test.ts'],
   transform: {
-    '^.+\\.ts$': 'ts-jest',
+    '^.+\\.ts$': ['ts-jest', { tsconfig: 'tsconfig.test.json' }],
   },
   moduleNameMapper: {
     '^@/constants/Database$': '<rootDir>/__mocks__/Database.ts',

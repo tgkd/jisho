@@ -191,7 +191,8 @@ function segment(state: TinySegmenterState, input: string): string[] {
   return result;
 }
 
+const sharedSegmenterState = createTinySegmenter();
+
 export default function tinySegmenter(input: string): string[] {
-  const segmenterState = createTinySegmenter();
-  return segment(segmenterState, input);
+  return segment(sharedSegmenterState, input);
 }

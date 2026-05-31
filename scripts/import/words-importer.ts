@@ -73,12 +73,25 @@ export class WordsImporter {
   /**
    * Import words from ljson file
    */
+  /**
+   * Clear words + meanings so re-running the import is idempotent (mirrors the
+   * examples/furigana importers). Deletes cascade to words_fts / meanings_fts
+   * via their delete triggers, so the FTS indexes stay in sync.
+   */
+  private resetTables(): void {
+    const conn = this.db.getConnection();
+    conn.exec('DELETE FROM meanings');
+    conn.exec('DELETE FROM words');
+  }
+
   async import(filePath: string): Promise<void> {
     console.log(`📖 Starting words import from: ${filePath}`);
-    
+
     // Count lines for progress
     const totalLines = await this.countLines(filePath);
     const progress = new ProgressTracker('Importing words', totalLines);
+
+    this.resetTables();
 
     // Optimize database for bulk operations
     this.db.optimizeForBulkOperations();

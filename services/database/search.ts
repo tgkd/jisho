@@ -61,7 +61,6 @@ function setCachedSearchResult(
 
   Object.freeze(result.words);
   result.meanings.forEach((meanings) => Object.freeze(meanings));
-  Object.freeze(result.meanings);
   Object.freeze(result);
 
   searchResultCache.set(cacheKey, { timestamp: Date.now(), result });
@@ -135,29 +134,13 @@ async function searchByJapanese(
       `
       WITH params(q, orig) AS (SELECT ?, ?),
       ranked AS (
-        SELECT w.*, f.rank AS fts_rank,
-          ROW_NUMBER() OVER (
-            PARTITION BY w.word, w.reading
-            ORDER BY
-              CASE
-                WHEN w.word = p.q OR w.reading = p.q OR w.reading_hiragana = p.q OR w.kanji = p.q
-                  OR w.word = p.orig OR w.kanji = p.orig THEN 0
-                WHEN w.word LIKE p.q || '%' OR w.reading LIKE p.q || '%' OR w.reading_hiragana LIKE p.q || '%' OR w.kanji LIKE p.q || '%'
-                  OR w.word LIKE p.orig || '%' OR w.kanji LIKE p.orig || '%' THEN 1
-                ELSE 2
-              END,
-              w.priority_rank,
-              f.rank,
-              length(w.word)
-          ) AS row_num
+        SELECT w.*, f.rank AS fts_rank
         FROM words_fts f
         JOIN words w ON w.id = f.rowid
-        CROSS JOIN params p
         WHERE f.words_fts MATCH ?
       )
       SELECT * FROM ranked
       CROSS JOIN params p
-      WHERE row_num = 1
       ORDER BY
         CASE
           WHEN word = p.q OR reading = p.q OR reading_hiragana = p.q OR kanji = p.q
@@ -217,16 +200,11 @@ async function searchByEnglish(
       ranked AS (
         SELECT
           w.*,
-          mt.match_rank,
-          ROW_NUMBER() OVER (
-            PARTITION BY w.word, w.reading
-            ORDER BY mt.match_rank, w.priority_rank, length(w.word), w.position
-          ) AS row_num
+          mt.match_rank
         FROM matches mt
         JOIN words w ON w.id = mt.word_id
       )
       SELECT * FROM ranked
-      WHERE row_num = 1
       ORDER BY match_rank, priority_rank, length(word), position
       LIMIT ?
       `,

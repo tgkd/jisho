@@ -7,6 +7,7 @@ import { useThemeColor } from "@/hooks/useThemeColor";
 import { useSpeech } from "@/providers/SpeechProvider";
 import { useUnifiedAI } from "@/providers/UnifiedAIProvider";
 import {
+  deleteSession,
   getSession,
   updateSessionContent,
   type PracticeSession
@@ -288,11 +289,6 @@ export default function PracticeSessionScreen() {
       }
       setSession(data);
       setIsLoading(false);
-
-      if (!data.content_output && !data.content && !hasInitiatedGeneration.current) {
-        hasInitiatedGeneration.current = true;
-        generatePassage(handleStreamComplete);
-      }
     }).catch((error) => {
       if (cancelled) return;
       console.error("Failed to load session:", error);
@@ -301,7 +297,22 @@ export default function PracticeSessionScreen() {
     });
 
     return () => { cancelled = true; };
-  }, [db, sessionId, router, generatePassage, handleStreamComplete]);
+  }, [db, sessionId, router]);
+
+  // Generate only after `session` is committed, so useStreamedPassage has
+  // re-rendered with the real level; triggering inline after setSession ran
+  // with a stale undefined level -> "No level provided" -> no request.
+  useEffect(() => {
+    if (
+      session &&
+      !session.content_output &&
+      !session.content &&
+      !hasInitiatedGeneration.current
+    ) {
+      hasInitiatedGeneration.current = true;
+      generatePassage(handleStreamComplete);
+    }
+  }, [session, generatePassage, handleStreamComplete]);
 
   const handleStartChat = () => {
     if (!session) return;
@@ -332,14 +343,18 @@ export default function PracticeSessionScreen() {
     });
   };
 
-  sessionRef.current = session;
+  useEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
 
   useEffect(() => {
     return () => {
       cancelPassage();
       const s = sessionRef.current;
       if (s && !s.content_output && !s.content) {
-        db.runAsync("DELETE FROM practice_sessions WHERE id = ?", [s.id]);
+        deleteSession(db, s.id).catch((error) =>
+          console.error("Failed to delete abandoned session:", error)
+        );
       }
     };
   }, [cancelPassage, db]);

@@ -204,10 +204,13 @@ export function formatJp(
   switch (divider) {
     case "semicolon":
       result = parts.join(";");
+      break;
     case "dot":
       result = parts.join("・");
+      break;
     case "none":
       result = parts.join(" ");
+      break;
     default:
       result = parts.join("、");
   }
@@ -538,7 +541,7 @@ export function zip(...arrays: (any[] | string)[]): any[][] {
 }
 
 function removeJpSymbols(text: string): string {
-  return text.replace(/[\u3000-\u303F\uFF00-\uFFEF]/g, "");
+  return text.replace(/[\u3000-\u3004\u3008-\u303F\uFF01-\uFF65\uFFE0-\uFFEF]/g, "");
 }
 
 // Memoization cache for token segmentation
@@ -606,10 +609,11 @@ export function cleanupMdStr(text: string): string {
  * @return {string[]} - Array of unique kanji characters found in the text
  */
 export function findKanji(text: string): string[] {
-  return Array.from(new Set(Array.from(text).filter(char => {
-    const code = char.charCodeAt(0);
-    return code >= 0x4e00 && code <= 0x9faf;
-  })));
+  return Array.from(
+    new Set(
+      Array.from(text).filter((char) => /\p{Unified_Ideograph}/u.test(char))
+    )
+  );
 }
 
 /**

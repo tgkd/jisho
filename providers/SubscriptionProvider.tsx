@@ -2,8 +2,14 @@ import {
   SubscriptionContext,
   SubscriptionContextValue,
 } from "@/providers/SubscriptionContext";
-import { settingsStorage, SETTINGS_KEYS } from "@/services/storage";
-import React, { ReactNode, useCallback, useEffect, useState } from "react";
+import { SETTINGS_KEYS, settingsStorage } from "@/services/storage";
+import {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState
+} from "react";
 import { Platform } from "react-native";
 import Purchases, {
   CustomerInfo,
@@ -33,6 +39,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   });
   const [packages, setPackages] = useState<PurchasesPackage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const wasActiveRef = useRef<boolean | null>(null);
 
   const deriveSubscriptionInfo = useCallback(
     (customerInfo: CustomerInfo): SubscriptionInfo => {
@@ -68,8 +75,15 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       const info = deriveSubscriptionInfo(customerInfo);
       setSubscriptionInfo(info);
 
+      const wasActive = wasActiveRef.current;
+      wasActiveRef.current = info.isActive;
+
       if (info.isActive) {
-        settingsStorage.set(SETTINGS_KEYS.AI_PROVIDER_TYPE, "remote");
+        const hasPreference =
+          settingsStorage.getString(SETTINGS_KEYS.AI_PROVIDER_TYPE) != null;
+        if (wasActive === false || !hasPreference) {
+          settingsStorage.set(SETTINGS_KEYS.AI_PROVIDER_TYPE, "remote");
+        }
       } else {
         const currentProvider = settingsStorage.getString(
           SETTINGS_KEYS.AI_PROVIDER_TYPE

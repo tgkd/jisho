@@ -97,7 +97,6 @@ export function buildFtsMatchExpression(query: SearchQuery): string {
   const terms: string[] = [];
 
   const orig = escape(query.original);
-  terms.push(`"${orig}"^2`);
   terms.push(`"${orig}"*`);
 
   if (query.hiragana) {

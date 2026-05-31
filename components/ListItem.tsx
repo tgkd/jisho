@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { useRef } from "react";
+import { memo, useRef } from "react";
 import { StyleSheet, View } from "react-native";
 import ReanimatedSwipeable, {
   SwipeableMethods
@@ -76,7 +76,7 @@ export function ListItemSeparator() {
   );
 }
 
-export const ListItem = (props: ListItemProps) => {
+const ListItemImpl = (props: ListItemProps) => {
   const { variant, index, total, onPress } = props;
   const isFirst = index === 0;
   const isLast = index === total - 1;
@@ -285,6 +285,30 @@ export const ListItem = (props: ListItemProps) => {
     </Animated.View>
   );
 };
+
+/**
+ * Rows live in a recycled FlashList where the parent passes a fresh
+ * `onPress`/`onRemove` closure each render. Those closures are functionally
+ * stable per item, so we compare the props that actually drive the row and
+ * ignore handler identity — otherwise a plain memo would re-render every row
+ * on any unrelated parent state change.
+ */
+function listItemPropsEqual(prev: ListItemProps, next: ListItemProps): boolean {
+  if (
+    prev.variant !== next.variant ||
+    prev.index !== next.index ||
+    prev.total !== next.total ||
+    prev.item.id !== next.item.id
+  ) {
+    return false;
+  }
+  if (prev.variant === "search" && next.variant === "search") {
+    return prev.meanings === next.meanings;
+  }
+  return true;
+}
+
+export const ListItem = memo(ListItemImpl, listItemPropsEqual);
 
 function HistoryContent({
   item,

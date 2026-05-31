@@ -45,6 +45,14 @@ export class KanjiImporter {
   /**
    * Import kanji from kanjidic file
    */
+  /**
+   * Clear kanji so re-running the import is idempotent (mirrors the
+   * examples/furigana importers) instead of silently duplicating every row.
+   */
+  private resetTable(): void {
+    this.db.getConnection().exec('DELETE FROM kanji');
+  }
+
   async import(filePath: string): Promise<void> {
     console.log(`📖 Starting kanji import from: ${filePath}`);
 
@@ -53,6 +61,8 @@ export class KanjiImporter {
     const lines = content.split('\n').filter(line => line.trim());
 
     const progress = new ProgressTracker('Importing kanji', lines.length);
+
+    this.resetTable();
 
     // Optimize database for bulk operations
     this.db.optimizeForBulkOperations();

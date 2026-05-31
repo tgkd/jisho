@@ -1,4 +1,5 @@
 import { SQLiteDatabase } from "expo-sqlite";
+import { retryDatabaseOperation } from "./utils";
 
 export type JLPTLevel = "N5" | "N4" | "N3" | "N2" | "N1";
 
@@ -34,14 +35,8 @@ export async function createSession(
 
   const now = Date.now();
   const sanitizedContent = content ? content.trim() : null;
-  const result = await db.runAsync(
-    query,
-    level,
-    sanitizedContent,
-    sanitizedContent,
-    null,
-    now,
-    now
+  const result = await retryDatabaseOperation(() =>
+    db.runAsync(query, level, sanitizedContent, sanitizedContent, null, now, now)
   );
   return result.lastInsertRowId;
 }
@@ -56,7 +51,9 @@ export async function getSession(
     WHERE id = ?
   `;
 
-  const result = await db.getFirstAsync<PracticeSession>(query, [id]);
+  const result = await retryDatabaseOperation(() =>
+    db.getFirstAsync<PracticeSession>(query, [id])
+  );
   return result || null;
 }
 
@@ -81,7 +78,9 @@ export async function getAllSessions(
     ORDER BY updated_at DESC
   `;
 
-  const result = await db.getAllAsync<SessionWithPreview>(query);
+  const result = await retryDatabaseOperation(() =>
+    db.getAllAsync<SessionWithPreview>(query)
+  );
   return result || [];
 }
 
@@ -95,7 +94,7 @@ export async function updateSessionTimestamp(
     WHERE id = ?
   `;
 
-  await db.runAsync(query, Date.now(), id);
+  await retryDatabaseOperation(() => db.runAsync(query, Date.now(), id));
 }
 
 export async function updateSessionTitle(
@@ -109,7 +108,7 @@ export async function updateSessionTitle(
     WHERE id = ?
   `;
 
-  await db.runAsync(query, title, Date.now(), id);
+  await retryDatabaseOperation(() => db.runAsync(query, title, Date.now(), id));
 }
 
 export async function updateSessionContent(
@@ -131,13 +130,8 @@ export async function updateSessionContent(
   const text = content.text.trim();
   const normalizedOutput = output.length ? output : null;
   const normalizedText = text.length ? text : null;
-  await db.runAsync(
-    query,
-    normalizedOutput,
-    normalizedOutput,
-    normalizedText,
-    now,
-    id
+  await retryDatabaseOperation(() =>
+    db.runAsync(query, normalizedOutput, normalizedOutput, normalizedText, now, id)
   );
 }
 
@@ -146,5 +140,5 @@ export async function deleteSession(
   id: number
 ): Promise<void> {
   const query = `DELETE FROM practice_sessions WHERE id = ?`;
-  await db.runAsync(query, [id]);
+  await retryDatabaseOperation(() => db.runAsync(query, [id]));
 }

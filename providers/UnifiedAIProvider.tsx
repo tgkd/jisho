@@ -1,8 +1,9 @@
-import React, {
+import {
   createContext,
   ReactNode,
   useCallback,
   useContext,
+  useMemo,
   useState
 } from "react";
 import { useMMKVString } from "react-native-mmkv";
@@ -234,16 +235,29 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
     }
   }, [provider, localAI]);
 
-  const contextValue: UnifiedAIContextValue = {
-    generateExamples,
-    chatWithMessages,
-    generateSpeech,
-    isGenerating: isGenerating || localAI.isGenerating,
-    isAvailable,
-    currentProvider: provider,
-    setCurrentProvider,
-    interrupt,
-  };
+  const contextValue: UnifiedAIContextValue = useMemo(
+    () => ({
+      generateExamples,
+      chatWithMessages,
+      generateSpeech,
+      isGenerating: isGenerating || localAI.isGenerating,
+      isAvailable,
+      currentProvider: provider,
+      setCurrentProvider,
+      interrupt,
+    }),
+    [
+      generateExamples,
+      chatWithMessages,
+      generateSpeech,
+      isGenerating,
+      localAI.isGenerating,
+      isAvailable,
+      provider,
+      setCurrentProvider,
+      interrupt,
+    ]
+  );
 
   return (
     <UnifiedAIContext.Provider value={contextValue}>
