@@ -3,7 +3,16 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef } from "react";
 
 import { useSubscription } from "@/providers/SubscriptionContext";
-import { streamRemoteReadingPassage } from "@/services/ai-streams";
+import { streamReadingPassageDeltas } from "@/services/ai/connection";
+import { SETTINGS_KEYS, settingsStorage } from "@/services/storage";
+
+/**
+ * Read the RevenueCat user id used to authenticate remote AI requests.
+ * @returns {string | undefined} The stored user id, if any.
+ */
+function getUserId(): string | undefined {
+  return settingsStorage.getString(SETTINGS_KEYS.REVENUECAT_USER_ID);
+}
 
 export function useStreamedPassage(level: string | undefined, sessionId: number) {
   const subscription = useSubscription();
@@ -21,7 +30,7 @@ export function useStreamedPassage(level: string | undefined, sessionId: number)
           subscription.showPaywall();
           throw new Error("Subscription required for AI reading passages");
         }
-        return streamRemoteReadingPassage(level!, signal);
+        return streamReadingPassageDeltas({ level: level!, getUserId, signal });
       },
       reducer: (prev: string, chunk: string) => prev + chunk,
       initialValue: "",

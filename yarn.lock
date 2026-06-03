@@ -12,6 +12,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@ag-ui/core@npm:^0.0.52":
+  version: 0.0.52
+  resolution: "@ag-ui/core@npm:0.0.52"
+  dependencies:
+    zod: "npm:^3.22.4"
+  checksum: 10c0/182c6c8baa1e27f5ec55e32453f62db24a6b415a516a9918cc68f13b474d74ce6b2bcc6b31dd0d5f8bd3c51556d90620edbb277f5366275a4cc6e5619515f6f7
+  languageName: node
+  linkType: hard
+
 "@ai-sdk/gateway@npm:3.0.120":
   version: 3.0.120
   resolution: "@ai-sdk/gateway@npm:3.0.120"
@@ -3991,6 +4000,66 @@ __metadata:
   version: 1.1.0
   resolution: "@standard-schema/spec@npm:1.1.0"
   checksum: 10c0/d90f55acde4b2deb983529c87e8025fa693de1a5e8b49ecc6eb84d1fd96328add0e03d7d551442156c7432fd78165b2c26ff561b970a9a881f046abb78d6a526
+  languageName: node
+  linkType: hard
+
+"@tanstack/ai-client@npm:0.16.2":
+  version: 0.16.2
+  resolution: "@tanstack/ai-client@npm:0.16.2"
+  dependencies:
+    "@tanstack/ai": "npm:0.27.0"
+    "@tanstack/ai-event-client": "npm:0.5.3"
+  checksum: 10c0/4feed725254e93d3400b1791e1fe21144f43e205cdb6e98ba6036bcb3a6bbffc7fe827401ecb20cf7f9425fd0eb79ea1a4956418fa722011779137066fbb0316
+  languageName: node
+  linkType: hard
+
+"@tanstack/ai-event-client@npm:0.5.3":
+  version: 0.5.3
+  resolution: "@tanstack/ai-event-client@npm:0.5.3"
+  dependencies:
+    "@tanstack/devtools-event-client": "npm:^0.4.1"
+  peerDependencies:
+    "@tanstack/ai": 0.27.0
+  checksum: 10c0/37f2071b16a39574b6452af618a35223c2300f78394e1db3f40db84c6307c6b48d90b8a15a47edbf95767c7b3e468744ddb0281b49285ef3e5f3d612f1afa008
+  languageName: node
+  linkType: hard
+
+"@tanstack/ai-react@npm:^0.15.3":
+  version: 0.15.3
+  resolution: "@tanstack/ai-react@npm:0.15.3"
+  dependencies:
+    "@tanstack/ai-client": "npm:0.16.2"
+  peerDependencies:
+    "@tanstack/ai": ^0.27.0
+    "@types/react": ">=18.0.0"
+    react: ">=18.0.0"
+  checksum: 10c0/9fbc45bdca4c30859eae38860d127a8e8ffb9f4b956f7f822da88c6cddcebccd0a618966dc1a75182578785586cf5c72392c8118a9deefa693076313a925eab3
+  languageName: node
+  linkType: hard
+
+"@tanstack/ai@npm:0.27.0, @tanstack/ai@npm:^0.27.0":
+  version: 0.27.0
+  resolution: "@tanstack/ai@npm:0.27.0"
+  dependencies:
+    "@ag-ui/core": "npm:^0.0.52"
+    "@standard-schema/spec": "npm:^1.1.0"
+    "@tanstack/ai-event-client": "npm:0.5.3"
+    partial-json: "npm:^0.1.7"
+  peerDependencies:
+    "@opentelemetry/api": ">=1.9.0"
+  peerDependenciesMeta:
+    "@opentelemetry/api":
+      optional: true
+  checksum: 10c0/f2d0b62b61e1336664f3f94d6418757489073459eb4062a2313fbe812f393b42f4a58c679a597fc934d80cdc566f197d76e5470663310e1055b6c18142a0dbdd
+  languageName: node
+  linkType: hard
+
+"@tanstack/devtools-event-client@npm:^0.4.1":
+  version: 0.4.3
+  resolution: "@tanstack/devtools-event-client@npm:0.4.3"
+  bin:
+    intent: bin/intent.js
+  checksum: 10c0/e49eb4b884e20de655a7cf463898bf6eba7e7470ed65b32f4079c886d700500078a9d6deac47dbf799f83500c7e14ae140e304eb840fe11ae7f255932c4f600b
   languageName: node
   linkType: hard
 
@@ -9290,6 +9359,8 @@ __metadata:
     "@react-native-ai/apple": "npm:^0.12.0"
     "@react-native/jest-preset": "npm:0.85.3"
     "@shopify/flash-list": "npm:2.0.2"
+    "@tanstack/ai": "npm:^0.27.0"
+    "@tanstack/ai-react": "npm:^0.15.3"
     "@tanstack/eslint-plugin-query": "npm:^5.100.14"
     "@tanstack/react-query": "npm:5.100.14"
     "@types/better-sqlite3": "npm:^7.6.13"
@@ -10894,6 +10965,13 @@ __metadata:
   version: 1.3.3
   resolution: "parseurl@npm:1.3.3"
   checksum: 10c0/90dd4760d6f6174adb9f20cf0965ae12e23879b5f5464f38e92fce8073354341e4b3b76fa3d878351efe7d01e617121955284cfd002ab087fba1a0726ec0b4f5
+  languageName: node
+  linkType: hard
+
+"partial-json@npm:^0.1.7":
+  version: 0.1.7
+  resolution: "partial-json@npm:0.1.7"
+  checksum: 10c0/cd5f994c3a5ca903918c028a6947ebc1d46459234c1c57c7ab98e234d8dca49cb46b05a71889ee422b39d1f66b95c59a5ce3a6ae06966aca95a8960ad20c12d2
   languageName: node
   linkType: hard
 
@@ -14067,17 +14145,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"zod@npm:^3.22.4, zod@npm:^3.25.76":
+  version: 3.25.76
+  resolution: "zod@npm:3.25.76"
+  checksum: 10c0/5718ec35e3c40b600316c5b4c5e4976f7fee68151bc8f8d90ec18a469be9571f072e1bbaace10f1e85cf8892ea12d90821b200e980ab46916a6166a4260a983c
+  languageName: node
+  linkType: hard
+
 "zod@npm:^3.25.0 || ^4.0.0, zod@npm:^4.4.3":
   version: 4.4.3
   resolution: "zod@npm:4.4.3"
   checksum: 10c0/7ea31b558e88f9faf44f31dd185e2e1cbf51fed3081787fb96cc2534749b50c0acfc6da7f0922a7353ed092dd358c7d50c28ea96c94d04af64191bd33152eca3
-  languageName: node
-  linkType: hard
-
-"zod@npm:^3.25.76":
-  version: 3.25.76
-  resolution: "zod@npm:3.25.76"
-  checksum: 10c0/5718ec35e3c40b600316c5b4c5e4976f7fee68151bc8f8d90ec18a469be9571f072e1bbaace10f1e85cf8892ea12d90821b200e980ab46916a6166a4260a983c
   languageName: node
   linkType: hard
 

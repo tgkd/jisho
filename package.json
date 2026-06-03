@@ -40,6 +40,8 @@
     "@expo/vector-icons": "^15.0.3",
     "@react-native-ai/apple": "^0.12.0",
     "@shopify/flash-list": "2.0.2",
+    "@tanstack/ai": "^0.27.0",
+    "@tanstack/ai-react": "^0.15.3",
     "@tanstack/react-query": "5.100.14",
     "ai": "^6.0.191",
     "eventsource-parser": "^1.1.2",
