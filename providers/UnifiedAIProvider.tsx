@@ -10,7 +10,6 @@ import { useMMKVString } from "react-native-mmkv";
 
 import {
   AiExample,
-  getAiChat,
   getAiExamples,
   getAiSound
 } from "@/services/request";
@@ -21,12 +20,6 @@ import { useSubscription } from "./SubscriptionContext";
 
 export type AIProviderType = "local" | "remote";
 
-export interface StreamingResponse {
-  onChunk: (chunk: string) => void;
-  onComplete: (fullText: string, error?: string) => void;
-  onError: (error: string) => void;
-}
-
 class SubscriptionRequiredError extends Error {
   constructor(message: string) {
     super(message);
@@ -34,50 +27,8 @@ class SubscriptionRequiredError extends Error {
   }
 }
 
-export async function readResponseStream(
-  response: Response,
-  streaming: StreamingResponse
-): Promise<void> {
-  const reader = response.body?.getReader();
-  if (!reader) {
-    const fullText = await response.text();
-    streaming.onChunk(fullText);
-    streaming.onComplete(fullText);
-    return;
-  }
-
-  const decoder = new TextDecoder();
-  let fullText = "";
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      const chunk = decoder.decode(value, { stream: true });
-      fullText += chunk;
-      streaming.onChunk(chunk);
-    }
-
-    const remaining = decoder.decode();
-    if (remaining) {
-      fullText += remaining;
-      streaming.onChunk(remaining);
-    }
-
-    streaming.onComplete(fullText);
-  } catch (streamError) {
-    streaming.onError(`Stream reading error: ${streamError}`);
-  }
-}
-
 export interface UnifiedAIContextValue {
   generateExamples: (prompt: string) => Promise<AiExample[]>;
-  chatWithMessages: (
-    messages: { role: "user" | "assistant"; content: string }[],
-    streaming: StreamingResponse,
-    signal?: AbortSignal
-  ) => Promise<void>;
   generateSpeech: (
     text: string,
     options?: { language?: string; rate?: number }
@@ -144,49 +95,6 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
     [provider, localAI, checkRemoteAccess]
   );
 
-  const chatWithMessages = useCallback(
-    async (
-      messages: { role: "user" | "assistant"; content: string }[],
-      streaming: StreamingResponse,
-      signal?: AbortSignal
-    ): Promise<void> => {
-      try {
-        if (provider === "local") {
-          await localAI.chatWithMessages(
-            messages,
-            streaming.onChunk,
-            (fullResponse, error) => {
-              if (error) {
-                streaming.onError(error);
-              } else {
-                streaming.onComplete(fullResponse);
-              }
-            }
-          );
-        } else {
-          if (!checkRemoteAccess()) {
-            streaming.onError("Subscription required for AI chat");
-            return;
-          }
-
-          const fetchFn = getAiChat(signal);
-          const response = await fetchFn(messages);
-
-          if (!response.ok) {
-            throw new Error(`HTTP error: ${response.status}`);
-          }
-
-          await readResponseStream(response, streaming);
-        }
-      } catch (error) {
-        streaming.onError(
-          error instanceof Error ? error.message : "Unknown error"
-        );
-      }
-    },
-    [provider, localAI, checkRemoteAccess]
-  );
-
   const generateSpeech = useCallback(
     async (
       text: string,
@@ -238,7 +146,6 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
   const contextValue: UnifiedAIContextValue = useMemo(
     () => ({
       generateExamples,
-      chatWithMessages,
       generateSpeech,
       isGenerating: isGenerating || localAI.isGenerating,
       isAvailable,
@@ -248,7 +155,6 @@ export function UnifiedAIProvider({ children }: { children: ReactNode }) {
     }),
     [
       generateExamples,
-      chatWithMessages,
       generateSpeech,
       isGenerating,
       localAI.isGenerating,

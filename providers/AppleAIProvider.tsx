@@ -5,7 +5,7 @@ import {
   streamText,
 } from "ai";
 import type { ReactNode } from "react";
-import React, { createContext, useCallback, useContext, useState } from "react";
+import { createContext, useCallback, useContext, useState } from "react";
 
 import {
   AiExample,
@@ -27,11 +27,6 @@ export interface AIProviderValue {
   ) => Promise<void>;
   explainText: (
     text: string,
-    onChunk: (text: string) => void,
-    onComplete: (fullResponse: string, error?: string) => void
-  ) => Promise<void>;
-  chatWithMessages: (
-    messages: { role: "user" | "assistant"; content: string }[],
     onChunk: (text: string) => void,
     onComplete: (fullResponse: string, error?: string) => void
   ) => Promise<void>;
@@ -165,79 +160,6 @@ export function AppleAIProvider({ children }: { children: ReactNode }) {
     [isReady]
   );
 
-  const chatWithMessages = useCallback(
-    async (
-      messages: { role: "user" | "assistant"; content: string }[],
-      onChunk: (text: string) => void,
-      onComplete: (fullResponse: string, error?: string) => void
-    ) => {
-      if (!isReady) {
-        console.warn("⚠️ [AppleAI] Apple AI not ready or not enabled for chat.");
-        const fallbackMessage = "Apple Intelligence is not available. Please enable it in iOS Settings or switch to the remote AI provider.";
-        onComplete(fallbackMessage);
-        return;
-      }
-
-      setGenType("chat");
-      setIsGenerating(true);
-      setError(null);
-      setCurrentResponse("");
-
-      const controller = new AbortController();
-      setAbortController(controller);
-
-      try {
-        const appleModel = apple();
-
-        const result = await streamText({
-          model: appleModel,
-          messages: [
-            { role: "system", content: JP_EXPLANATION_SYSTEM_PROMPT },
-            ...messages,
-          ],
-          abortSignal: controller.signal,
-          maxOutputTokens: MAX_TOKENS,
-          temperature: 0.1,
-        });
-
-        const { textStream } = result;
-
-        let fullResponse = "";
-
-        for await (const chunk of textStream) {
-          fullResponse += chunk;
-          onChunk(chunk);
-          setCurrentResponse(fullResponse);
-        }
-
-        // Handle empty responses (e.g., on simulator where Apple Intelligence doesn't work)
-        if (fullResponse.length === 0) {
-          const fallbackMessage = "Apple Intelligence is not available on the simulator. Please test on a physical device with Apple Intelligence enabled, or switch to the remote AI provider in settings.";
-          console.warn("⚠️ [AppleAI] Empty response - likely running on simulator");
-          onComplete(fallbackMessage);
-          return;
-        }
-
-        onComplete(fullResponse);
-      } catch (error) {
-        if (error instanceof Error && error.name === "AbortError") {
-          console.log("⚠️ [AppleAI] Chat was aborted");
-        } else {
-          console.error("🔴 [AppleAI] Error in chat:", error);
-          const errorMessage =
-            error instanceof Error ? error.message : "Unknown error";
-          setError(errorMessage);
-          onComplete("", errorMessage);
-        }
-      } finally {
-        setIsGenerating(false);
-        setGenType(null);
-        setAbortController(null);
-      }
-    },
-    [isReady]
-  );
-
   const interrupt = useCallback(() => {
     if (abortController) {
       abortController.abort();
@@ -283,7 +205,6 @@ export function AppleAIProvider({ children }: { children: ReactNode }) {
       value={{
         generateExamples,
         explainText,
-        chatWithMessages,
         generateSpeech,
         clearHistory,
         isReady,

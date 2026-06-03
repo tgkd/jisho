@@ -43,6 +43,7 @@ export function ChatView({ initialPrompt }: ChatViewProps) {
     sendMessage,
     isStreaming,
     cancel,
+    error,
     clearMessages: hookClearMessages,
   } = useStreamedChat();
 
@@ -174,6 +175,13 @@ export function ChatView({ initialPrompt }: ChatViewProps) {
         ListEmptyComponent={renderEmpty}
         ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
       />
+      {error ? (
+        <View style={styles.errorRow}>
+          <ThemedText size="xs" style={styles.errorText}>
+            {error.message || "Something went wrong. Please try again."}
+          </ThemedText>
+        </View>
+      ) : null}
       <KeyboardAvoidingView
         behavior="translate-with-padding"
         keyboardVerticalOffset={64}
@@ -214,5 +222,12 @@ const styles = StyleSheet.create({
   },
   userMessage: {
     opacity: 0.8,
+  },
+  errorRow: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  errorText: {
+    color: "#c0392b",
   },
 });
