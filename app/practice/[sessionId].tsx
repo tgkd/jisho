@@ -63,6 +63,7 @@ export default function PracticeSessionScreen() {
     cancel: cancelPassage,
   } = useStreamedPassage(session?.level, Number(sessionId));
   const sessionRef = useRef(session);
+  const speechBusyRef = useRef(false);
 
   const { index: activeSpeechIndex, phase: activeSpeechPhase } = speechState;
 
@@ -112,7 +113,10 @@ export default function PracticeSessionScreen() {
       }
     }
 
+    if (speechBusyRef.current) return;
+
     try {
+      speechBusyRef.current = true;
       setSpeechState({ index, phase: "loading" });
       await ai.generateSpeech(text);
       setSpeechState((current) => {
@@ -124,6 +128,8 @@ export default function PracticeSessionScreen() {
       console.error("Speech generation failed:", error);
       Alert.alert("Error", "Failed to play paragraph");
       setSpeechState({ index: null, phase: "idle" });
+    } finally {
+      speechBusyRef.current = false;
     }
   };
 
