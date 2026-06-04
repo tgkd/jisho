@@ -61,6 +61,8 @@ export async function getAiExamples(
   return resp.json() as Promise<AiExample[]>;
 }
 
+const inFlightTtsDownloads = new Map<string, Promise<File>>();
+
 /**
  * Get audio file for text-to-speech synthesis.
  * @param {string} prompt - Text to synthesize
@@ -89,6 +91,13 @@ export async function getAiSound(
   const cacheKey = hashCacheKey(`${prompt}|${voice ?? ""}|${lang ?? ""}`);
   const targetFile = new File(Paths.cache, `tts_${cacheKey}.mp3`);
 
+  // Dedupe concurrent requests for the same audio so two near-simultaneous
+  // plays don't race on the same destination ("Destination already exists").
+  const inFlight = inFlightTtsDownloads.get(cacheKey);
+  if (inFlight) {
+    return inFlight;
+  }
+
   if (targetFile.exists) {
     return targetFile;
   }
@@ -99,20 +108,29 @@ export async function getAiSound(
   if (voice) queryParams.append("voice", voice);
   if (lang) queryParams.append("lang", lang);
 
-  const file = await File.downloadFileAsync(
-    `${process.env.EXPO_PUBLIC_BASE_URL}/sound?${queryParams.toString()}`,
-    targetFile,
-    {
-      headers,
-      idempotent: false,
+  const download = (async () => {
+    const file = await File.downloadFileAsync(
+      `${process.env.EXPO_PUBLIC_BASE_URL}/sound?${queryParams.toString()}`,
+      targetFile,
+      {
+        headers,
+        idempotent: false,
+      }
+    );
+
+    if (!file.exists) {
+      throw new Error("Failed to download audio" + file.uri);
     }
-  );
 
-  if (!file.exists) {
-    throw new Error("Failed to download audio" + file.uri);
+    return file;
+  })();
+
+  inFlightTtsDownloads.set(cacheKey, download);
+  try {
+    return await download;
+  } finally {
+    inFlightTtsDownloads.delete(cacheKey);
   }
-
-  return file;
 }
 
 function hashCacheKey(input: string): string {
