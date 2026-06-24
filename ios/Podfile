@@ -61,5 +61,17 @@ target 'jisho' do
       :mac_catalyst_enabled => false,
       :ccache_enabled => ccache_enabled?(podfile_properties),
     )
+
+    # Raise any pod whose deployment target is below the app's (e.g. RevenueCat at 13.0)
+    # to the project target, which the current iOS SDK requires.
+    min_ios = podfile_properties['ios.deploymentTarget'] || '15.1'
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |config|
+        current = config.build_settings['IPHONEOS_DEPLOYMENT_TARGET']
+        if current && current.to_f < min_ios.to_f
+          config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = min_ios
+        end
+      end
+    end
   end
 end
